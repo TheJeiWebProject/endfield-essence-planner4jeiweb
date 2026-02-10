@@ -69,7 +69,7 @@
           "nav nav";
         gap: 12px 24px;
         align-items: center;
-        margin-bottom: 24px;
+        margin-bottom: 7px;
       }
 
       .hero-title {
@@ -101,6 +101,15 @@
         justify-content: center;
         justify-self: center;
         width: 100%;
+      }
+
+      .hero-nav-stack {
+        grid-area: nav;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
       }
 
       .layout {
@@ -249,7 +258,7 @@
         letter-spacing: 0.08em;
       }
 
-      @media (max-width: 1024px) {
+      @media (max-width: 960px) {
         .mobile-tabs {
           display: flex;
         }
@@ -614,7 +623,7 @@
       .main-nav {
         display: flex;
         gap: 12px;
-        margin-top: 12px;
+        margin-top: 4px;
         margin-bottom: 8px;
         flex-wrap: wrap;
       }

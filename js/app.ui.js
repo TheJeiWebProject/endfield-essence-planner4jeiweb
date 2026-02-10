@@ -2,7 +2,7 @@
   const modules = (window.AppModules = window.AppModules || {});
 
   modules.initUi = function initUi(ctx, state) {
-    const { onMounted, onBeforeUnmount, nextTick } = ctx;
+    const { onMounted, onBeforeUnmount, nextTick, watch } = ctx;
 
     const showBackToTop = state.showBackToTop;
     const showLangMenu = state.showLangMenu;
@@ -10,9 +10,94 @@
     const showPlanConfig = state.showPlanConfig;
     const showPlanConfigHintDot = state.showPlanConfigHintDot;
     const isPortrait = state.isPortrait;
+    const canShowAds = state.canShowAds;
     const updateLangMenuPlacement = state.updateLangMenuPlacement;
 
     const root = typeof document !== "undefined" ? document.documentElement : null;
+
+    const allowedAdHosts = new Set(["end.canmoe.com", "127.0.0.1"]);
+
+    const evaluateAdVisibility = () => {
+      if (typeof window === "undefined") {
+        canShowAds.value = false;
+        return;
+      }
+      if (window.__adworkScriptError) {
+        canShowAds.value = false;
+        return;
+      }
+      const host = (window.location && window.location.hostname ? window.location.hostname : "").toLowerCase();
+      canShowAds.value = allowedAdHosts.has(host);
+    };
+
+    const handleAdFailed = () => {
+      canShowAds.value = false;
+      scheduleAdSlotVisibility();
+    };
+
+    const adSlotSelector = ".adwork-hero-slot, .scheme-inline-ad-top";
+    let adSlotVisibilityRaf = null;
+    let adSlotVisibilityTimers = [];
+
+    const clearAdSlotTimers = () => {
+      if (!adSlotVisibilityTimers.length) return;
+      adSlotVisibilityTimers.forEach((timer) => clearTimeout(timer));
+      adSlotVisibilityTimers = [];
+    };
+
+    const hasRenderableAdContent = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden") return false;
+      if (Number(style.opacity || 1) === 0) return false;
+      const rect = node.getBoundingClientRect();
+      return rect.width >= 120 && rect.height >= 20;
+    };
+
+    const updateAdSlotVisibility = () => {
+      if (typeof window === "undefined" || typeof document === "undefined") return;
+      const slots = document.querySelectorAll(adSlotSelector);
+      slots.forEach((slot) => {
+        const container = slot.querySelector(".adwork-net");
+        const shouldShow =
+          canShowAds.value &&
+          container instanceof HTMLElement &&
+          (hasRenderableAdContent(container) ||
+            Array.from(
+              container.querySelectorAll("iframe, img, ins, object, embed, video, canvas, svg")
+            ).some(hasRenderableAdContent));
+        slot.classList.toggle("is-ad-hidden", !shouldShow);
+      });
+    };
+
+    const scheduleAdSlotVisibility = () => {
+      if (typeof window === "undefined") return;
+      if (adSlotVisibilityRaf) {
+        cancelAnimationFrame(adSlotVisibilityRaf);
+      }
+      adSlotVisibilityRaf = requestAnimationFrame(() => {
+        adSlotVisibilityRaf = null;
+        updateAdSlotVisibility();
+      });
+    };
+
+    const primeAdSlotVisibility = () => {
+      clearAdSlotTimers();
+      [80, 360, 900, 1800, 3200].forEach((delay) => {
+        adSlotVisibilityTimers.push(
+          setTimeout(() => {
+            scheduleAdSlotVisibility();
+          }, delay)
+        );
+      });
+    };
+
+    const handleAdPotentialMutation = () => {
+      scheduleAdSlotVisibility();
+      if (typeof window !== "undefined") {
+        setTimeout(() => scheduleAdSlotVisibility(), 120);
+      }
+    };
 
     const resolveTheme = (mode) => {
       if (mode === "light" || mode === "dark") return mode;
@@ -209,14 +294,23 @@
         backToTopLastScroll = window.scrollY || window.pageYOffset || 0;
         updateBackToTopVisibility();
         window.addEventListener("scroll", handleBackToTopScroll, { passive: true });
+        evaluateAdVisibility();
+        window.addEventListener("adwork:failed", handleAdFailed);
+        window.addEventListener("resize", scheduleAdSlotVisibility);
       }
+      document.addEventListener("click", handleAdPotentialMutation, true);
       document.addEventListener("click", handleDocClick);
       document.addEventListener("keydown", handleDocKeydown);
+      primeAdSlotVisibility();
       if (typeof nextTick === "function") {
         nextTick(() => requestAnimationFrame(() => finishPreload()));
       } else {
         requestAnimationFrame(() => finishPreload());
       }
+    });
+
+    watch([canShowAds, isPortrait], () => {
+      primeAdSlotVisibility();
     });
 
     onBeforeUnmount(() => {
@@ -237,7 +331,15 @@
       }
       if (typeof window !== "undefined") {
         window.removeEventListener("scroll", handleBackToTopScroll);
+        window.removeEventListener("adwork:failed", handleAdFailed);
+        window.removeEventListener("resize", scheduleAdSlotVisibility);
       }
+      if (adSlotVisibilityRaf) {
+        cancelAnimationFrame(adSlotVisibilityRaf);
+        adSlotVisibilityRaf = null;
+      }
+      clearAdSlotTimers();
+      document.removeEventListener("click", handleAdPotentialMutation, true);
       clearBackToTopTimer();
       document.removeEventListener("click", handleDocClick);
       document.removeEventListener("keydown", handleDocKeydown);

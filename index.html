@@ -67,6 +67,13 @@
         y.parentNode.insertBefore(t, y);
       })(window, document, "clarity", "script", "vb1z842wno");
     </script>
+    <script
+      type="text/javascript"
+      charset="UTF-8"
+      src="https://cdn.adwork.net/js/makemoney.js"
+      onerror="window.__adworkScriptError=true;window.dispatchEvent(new Event('adwork:failed'));"
+      async
+    ></script>
     <style>
       html.preload body {
         background: #0b0f14;
@@ -282,7 +289,11 @@
             </div>
           </div>
         </div>
-        <nav class="main-nav hero-nav">
+        <div class="hero-nav-stack">
+          <div v-if="canShowAds && isPortrait" class="adwork-hero-slot" aria-label="adwork-banner-mobile">
+            <div class="adwork-net adwork-auto" data-id="1050"></div>
+          </div>
+          <nav class="main-nav hero-nav">
           <button 
             class="nav-item" 
             :class="{ active: currentView === 'planner' }" 
@@ -311,7 +322,8 @@
           >
             {{ t("装备精锻") }}
           </button>
-        </nav>
+          </nav>
+        </div>
       </header>
       <div v-if="showAiNotice" class="ai-notice">
         <span class="ai-chip">AI</span>
@@ -334,7 +346,6 @@
           <button class="about-button perf-keep" @click="setPerfMode('low')">{{ t("保持低GPU") }}</button>
         </div>
       </div>
-
       <main class="layout">
         <transition name="view-switch" mode="out-in">
           <div v-if="currentView === 'planner'" key="planner" class="view-shell planner-shell">
@@ -384,7 +395,7 @@
                 }"
                 @click="toggleShowWeaponAttrs"
               >
-                {{ showWeaponAttrs ? t("隐藏属性/排除/备注管理") : t("显示属性/排除/备注管理") }}
+                {{ showWeaponAttrs ? t("隐藏属性/排除/备注") : t("显示属性/排除/备注") }}
               </button>
               <button class="ghost-button" @click="showFilterPanel = !showFilterPanel">
                 {{ showFilterPanel ? t("折叠属性筛选") : t("展开属性筛选") }}
@@ -403,7 +414,7 @@
               <span class="attr-hint-text">
                 {{
                   t("提示：点击“{label}”按钮，可切换显示属性和排除功能。", {
-                    label: t("显示属性/排除/备注管理")
+                    label: t("显示属性/排除/备注")
                   })
                 }}
               </span>
@@ -869,6 +880,10 @@
             </div>
           </div>
 
+          <div v-if="canShowAds && !isPortrait" class="card scheme-inline-ad-card scheme-inline-ad-top" aria-label="adwork-banner-desktop">
+            <div class="adwork-net adwork-auto" data-id="1050"></div>
+          </div>
+
           <div v-if="!selectedWeapons.length" class="empty">
             {{ t("请选择至少一把武器，系统将自动推荐可共刷的副本方案。") }}
           </div>
@@ -905,8 +920,8 @@
                 </div>
               </div>
 
-              <div class="hint">{{ t("已选武器（冲突项标红）") }}</div>
-              <div class="scheme-weapon-list">
+              <div v-if="fallbackPlan" class="hint">{{ t("已选武器（冲突项标红）") }}</div>
+              <div v-if="fallbackPlan" class="scheme-weapon-list">
                 <div
                   v-for="weapon in fallbackPlan.weaponRows"
                   :key="weapon.name"
@@ -982,6 +997,9 @@
                     />
                   </div>
                 </div>
+              </div>
+              <div v-else class="empty">
+                {{ t("当前已启用“隐藏已排除武器”，且已选武器均被排除。请取消排除，或关闭该开关。") }}
               </div>
             </div>
           </div>

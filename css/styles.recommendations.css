@@ -11,6 +11,62 @@
         box-shadow: var(--shadow);
       }
 
+      .scheme-inline-ad-card {
+        padding: 10px;
+        min-height: 132px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .scheme-inline-ad-card .adwork-net {
+        display: block;
+        width: 100%;
+      }
+
+      .scheme-inline-ad-top {
+        margin-top: 4px;
+        margin-bottom: 2px;
+      }
+
+      .adwork-hero-slot {
+        margin: 0;
+        padding: 4px 6px;
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--panel-strong);
+        box-shadow: var(--shadow);
+        min-height: 92px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .adwork-hero-slot .adwork-net {
+        display: block;
+        width: 100%;
+      }
+
+      .adwork-hero-slot.is-ad-hidden,
+      .scheme-inline-ad-top.is-ad-hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 640px) {
+        .scheme-inline-ad-card {
+          min-height: 120px;
+          padding: 8px;
+        }
+
+        .adwork-hero-slot {
+          min-height: 84px;
+          padding: 3px 5px;
+        }
+
+      }
+
       .card-header {
         display: flex;
         flex-wrap: wrap;

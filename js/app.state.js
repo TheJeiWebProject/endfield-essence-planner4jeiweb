@@ -104,6 +104,7 @@
     ];
     state.conflictOpenMap = ref({});
     state.showBackToTop = ref(false);
+    state.canShowAds = ref(false);
 
     state.tutorialVersion = "1.0.0";
     state.tutorialActive = ref(false);

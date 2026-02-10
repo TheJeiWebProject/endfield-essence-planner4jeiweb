@@ -424,6 +424,7 @@
         showTutorialComplete: state.showTutorialComplete,
         tutorialTargetSchemeKey: state.tutorialTargetSchemeKey,
         isTutorialGuideWeapon: state.isTutorialGuideWeapon,
+        canShowAds: state.canShowAds,
         isPortrait: state.isPortrait,
         startTutorial: state.startTutorial,
         nextTutorialStep: state.nextTutorialStep,

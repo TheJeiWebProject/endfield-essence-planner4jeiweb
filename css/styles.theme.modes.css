@@ -856,3 +856,13 @@
   border-color: rgba(215, 144, 50, 0.35);
   background: rgba(255, 185, 78, 0.13);
 }
+
+[data-theme="light"] .scheme-inline-ad-card {
+  border-color: rgba(120, 150, 185, 0.35);
+  background: rgba(247, 251, 255, 0.9);
+}
+
+[data-theme="light"] .adwork-hero-slot {
+  border-color: rgba(120, 150, 185, 0.35);
+  background: rgba(247, 251, 255, 0.9);
+}

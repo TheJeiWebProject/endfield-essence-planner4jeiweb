@@ -43,6 +43,7 @@
       endIndex: Number.POSITIVE_INFINITY,
       itemHeight: 420,
       overscan: 1,
+      enabled: false,
     });
 
     const updateRecommendationVirtualWindow = () => {
@@ -52,6 +53,25 @@
           ...recommendationVirtual.value,
           startIndex: 0,
           endIndex: 0,
+        };
+        state.recommendationTopSpacer.value = 0;
+        state.recommendationBottomSpacer.value = 0;
+        return;
+      }
+
+      if (!recommendationVirtual.value.enabled) {
+        if (
+          recommendationVirtual.value.startIndex === 0 &&
+          recommendationVirtual.value.endIndex === list.length &&
+          state.recommendationTopSpacer.value === 0 &&
+          state.recommendationBottomSpacer.value === 0
+        ) {
+          return;
+        }
+        recommendationVirtual.value = {
+          ...recommendationVirtual.value,
+          startIndex: 0,
+          endIndex: list.length,
         };
         state.recommendationTopSpacer.value = 0;
         state.recommendationBottomSpacer.value = 0;
