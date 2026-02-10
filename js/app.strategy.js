@@ -2,11 +2,11 @@
   const modules = (window.AppModules = window.AppModules || {});
 
   modules.initStrategy = function (ctx, state) {
-    const { ref, computed, nextTick } = ctx;
+    const { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } = ctx;
     const weaponCatalog = Array.isArray(window.WEAPONS) ? window.WEAPONS : [];
     const weaponMap = new Map(weaponCatalog.map((weapon) => [weapon.name, weapon]));
 
-    state.characters = window.characters || [];
+    state.characters = ref(Array.isArray(window.characters) ? window.characters : []);
     state.selectedCharacterId = ref(null);
     state.strategyCategory = ref("info");
     state.strategyTab = ref("base");
@@ -116,7 +116,7 @@
 
     state.currentCharacter = computed(() => {
       if (!state.selectedCharacterId.value) return null;
-      return state.characters.find(c => c.id === state.selectedCharacterId.value);
+      return state.characters.value.find((c) => c.id === state.selectedCharacterId.value);
     });
 
     const normalizeGearRows = (rows) => {
@@ -153,7 +153,7 @@
       if (!target) return "";
 
       let bestMatch = null;
-      (state.characters || []).forEach((character) => {
+      state.characters.value.forEach((character) => {
         if (!character || !character.name || !character.avatar) return;
         const current = normalizeNameForAvatar(character.name);
         if (!current) return;
@@ -262,19 +262,240 @@
       return trimmed;
     });
 
+    const characterScripts = [
+      "./data/characters.js",
+      "./data/characters/ember.js",
+      "./data/characters/perlica.js",
+    ];
+
+    const syncCharactersFromWindow = () => {
+      state.characters.value = Array.isArray(window.characters) ? window.characters : [];
+      state.charactersLoaded.value = state.characters.value.length > 0;
+    };
+
+    const CHARACTER_LOAD_RETRY_COOLDOWN_MS = 3000;
+    let pendingCharacterLoad = null;
+    let lastCharacterLoadFailureAt = 0;
+    const ensureCharacterDataLoaded = async () => {
+      if (state.charactersLoaded.value) {
+        syncCharactersFromWindow();
+        return true;
+      }
+      if (pendingCharacterLoad) return pendingCharacterLoad;
+      if (typeof state.loadScriptOnce !== "function") return false;
+      if (
+        lastCharacterLoadFailureAt &&
+        Date.now() - lastCharacterLoadFailureAt < CHARACTER_LOAD_RETRY_COOLDOWN_MS
+      ) {
+        return false;
+      }
+      state.charactersLoading.value = true;
+      pendingCharacterLoad = (async () => {
+        try {
+          for (let index = 0; index < characterScripts.length; index += 1) {
+            await state.loadScriptOnce(characterScripts[index]);
+          }
+          syncCharactersFromWindow();
+          lastCharacterLoadFailureAt = 0;
+          return state.charactersLoaded.value;
+        } catch (error) {
+          lastCharacterLoadFailureAt = Date.now();
+          return false;
+        } finally {
+          state.charactersLoading.value = false;
+          pendingCharacterLoad = null;
+        }
+      })();
+      return pendingCharacterLoad;
+    };
+
+    const characterVirtual = ref({
+      startIndex: 0,
+      endIndex: 0,
+      columns: 1,
+      rowHeight: 220,
+      gap: 16,
+      overscanRows: 2,
+    });
+
+    const characterVirtualMetrics = {
+      valid: false,
+      listLength: 0,
+      columns: 1,
+      rowHeight: 220,
+      gap: 16,
+      totalRows: 0,
+      gridTop: 0,
+    };
+
+    const invalidateCharacterVirtualMetrics = () => {
+      characterVirtualMetrics.valid = false;
+    };
+
+    const resetCharacterVirtualWindow = (listLength) => {
+      characterVirtual.value = {
+        ...characterVirtual.value,
+        startIndex: 0,
+        endIndex: listLength,
+      };
+      state.characterGridTopSpacer.value = 0;
+      state.characterGridBottomSpacer.value = 0;
+    };
+
+    const measureCharacterVirtualMetrics = (list) => {
+      if (typeof window === "undefined") return false;
+      const grid = document.querySelector(".character-grid");
+      if (!grid) return false;
+
+      const styles = window.getComputedStyle(grid);
+      const gap = parseFloat(styles.rowGap || styles.gap || "16") || 16;
+      const sampleCard = grid.querySelector(".character-card");
+      const sampleHeight = sampleCard ? sampleCard.getBoundingClientRect().height : 200;
+      const rowHeight = Math.max(1, sampleHeight + gap);
+
+      const cssMinCardWidth =
+        parseFloat(styles.getPropertyValue("--character-card-min-width")) || 140;
+      const minCardWidth = Math.max(80, cssMinCardWidth);
+      const columns = Math.max(1, Math.floor((grid.clientWidth + gap) / (minCardWidth + gap)));
+      const totalRows = Math.ceil(list.length / columns);
+      const scrollTop = window.scrollY || window.pageYOffset || 0;
+      const gridTop = grid.getBoundingClientRect().top + scrollTop;
+
+      characterVirtualMetrics.valid = true;
+      characterVirtualMetrics.listLength = list.length;
+      characterVirtualMetrics.columns = columns;
+      characterVirtualMetrics.rowHeight = rowHeight;
+      characterVirtualMetrics.gap = gap;
+      characterVirtualMetrics.totalRows = totalRows;
+      characterVirtualMetrics.gridTop = gridTop;
+      return true;
+    };
+
+    const updateCharacterVirtualWindow = () => {
+      const list = state.characters.value || [];
+      if (!list.length) {
+        invalidateCharacterVirtualMetrics();
+        resetCharacterVirtualWindow(0);
+        return;
+      }
+
+      if (
+        state.currentView.value !== "strategy" ||
+        state.selectedCharacterId.value ||
+        typeof window === "undefined"
+      ) {
+        invalidateCharacterVirtualMetrics();
+        resetCharacterVirtualWindow(list.length);
+        return;
+      }
+
+      if (!characterVirtualMetrics.valid || characterVirtualMetrics.listLength !== list.length) {
+        const measured = measureCharacterVirtualMetrics(list);
+        if (!measured) {
+          resetCharacterVirtualWindow(list.length);
+          return;
+        }
+      }
+
+      const viewportHeight =
+        window.innerHeight ||
+        (document.documentElement && document.documentElement.clientHeight) ||
+        0;
+      const scrollTop = window.scrollY || window.pageYOffset || 0;
+      const viewTop = Math.max(0, scrollTop - characterVirtualMetrics.gridTop);
+
+      const overscanRows = characterVirtual.value.overscanRows;
+      const startRow = Math.max(
+        0,
+        Math.floor(viewTop / characterVirtualMetrics.rowHeight) - overscanRows
+      );
+      const visibleRows =
+        Math.max(1, Math.ceil(viewportHeight / characterVirtualMetrics.rowHeight) + overscanRows * 2 + 1);
+      const endRow = Math.min(characterVirtualMetrics.totalRows, startRow + visibleRows);
+
+      const startIndex = Math.min(list.length, startRow * characterVirtualMetrics.columns);
+      const endIndex = Math.min(list.length, endRow * characterVirtualMetrics.columns);
+      const topSpacer = startRow * characterVirtualMetrics.rowHeight;
+      const bottomSpacer =
+        Math.max(0, (characterVirtualMetrics.totalRows - endRow) * characterVirtualMetrics.rowHeight);
+
+      characterVirtual.value = {
+        ...characterVirtual.value,
+        startIndex,
+        endIndex,
+        columns: characterVirtualMetrics.columns,
+        rowHeight: characterVirtualMetrics.rowHeight,
+        gap: characterVirtualMetrics.gap,
+      };
+      state.characterGridTopSpacer.value = topSpacer;
+      state.characterGridBottomSpacer.value = bottomSpacer;
+    };
+
+    const scheduleCharacterVirtualWindow =
+      typeof state.createUiScheduler === "function"
+        ? state.createUiScheduler(updateCharacterVirtualWindow)
+        : () => {
+            if (typeof window === "undefined") return;
+            const run = () => updateCharacterVirtualWindow();
+            if (typeof nextTick === "function") {
+              nextTick(() => {
+                if (typeof window.requestAnimationFrame === "function") {
+                  window.requestAnimationFrame(run);
+                } else {
+                  run();
+                }
+              });
+              return;
+            }
+            if (typeof window.requestAnimationFrame === "function") {
+              window.requestAnimationFrame(run);
+            } else {
+              run();
+            }
+          };
+
+    const handleCharacterVirtualScroll = () => {
+      scheduleCharacterVirtualWindow();
+    };
+
+    const handleCharacterVirtualResize = () => {
+      invalidateCharacterVirtualMetrics();
+      scheduleCharacterVirtualWindow();
+    };
+
+    state.visibleCharacters = computed(() => {
+      const list = state.characters.value || [];
+      const start = Math.max(0, characterVirtual.value.startIndex || 0);
+      const end = Math.max(start, characterVirtual.value.endIndex || list.length);
+      return list.slice(start, end);
+    });
+
     const resetStrategyDefaults = () => {
       state.strategyCategory.value = "info";
       state.strategyTab.value = "base";
     };
 
-    state.selectCharacter = (id) => {
+    state.selectCharacter = async (id) => {
+      if (!state.charactersLoaded.value) {
+        try {
+          const loaded = await ensureCharacterDataLoaded();
+          if (!loaded) {
+            console.warn("Failed to load character data before opening character details.");
+            return;
+          }
+        } catch (error) {
+          console.warn("Failed to load character data before opening character details.", error);
+          return;
+        }
+      }
       state.selectedCharacterId.value = id;
       resetStrategyDefaults();
     };
-    
+
     state.backToCharacterList = () => {
       state.selectedCharacterId.value = null;
       resetStrategyDefaults();
+      scheduleCharacterVirtualWindow();
     };
 
     state.setStrategyTab = (tab) => {
@@ -292,6 +513,46 @@
         state.strategyTab.value = "analysis";
       }
     };
+
+    watch(() => state.currentView.value, async (view) => {
+      if (view === "strategy") {
+        invalidateCharacterVirtualMetrics();
+        const loaded = await ensureCharacterDataLoaded();
+        if (!loaded) return;
+        scheduleCharacterVirtualWindow();
+      }
+    });
+
+    watch(
+      [() => state.characters.value.length, state.selectedCharacterId, state.charactersLoaded],
+      () => {
+        if (
+          state.charactersLoaded.value &&
+          state.selectedCharacterId.value &&
+          !state.characters.value.some((item) => item && item.id === state.selectedCharacterId.value)
+        ) {
+          state.selectedCharacterId.value = null;
+        }
+        invalidateCharacterVirtualMetrics();
+        scheduleCharacterVirtualWindow();
+      }
+    );
+
+    onMounted(() => {
+      if (typeof window === "undefined") return;
+      window.addEventListener("scroll", handleCharacterVirtualScroll, { passive: true });
+      window.addEventListener("resize", handleCharacterVirtualResize);
+      if (state.currentView.value === "strategy") {
+        invalidateCharacterVirtualMetrics();
+        ensureCharacterDataLoaded().finally(scheduleCharacterVirtualWindow);
+      }
+    });
+
+    onBeforeUnmount(() => {
+      if (typeof window === "undefined") return;
+      window.removeEventListener("scroll", handleCharacterVirtualScroll);
+      window.removeEventListener("resize", handleCharacterVirtualResize);
+    });
 
     const getGuideContainer = (el) => {
       if (!el || !el.closest) return null;
@@ -386,6 +647,8 @@
         schedule();
       }
     };
+
+    state.ensureCharacterDataLoaded = ensureCharacterDataLoaded;
   };
 })();
 
