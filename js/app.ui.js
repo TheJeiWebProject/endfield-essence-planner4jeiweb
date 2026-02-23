@@ -174,6 +174,7 @@
       return children.some((child) => {
         if (!(child instanceof HTMLElement)) return false;
         if (child.matches("script, style, link, meta")) return false;
+        if (isLikelyPlaceholderNode(child)) return false;
         if (child.matches("iframe, img, ins, object, embed, video, canvas, svg, a, button")) {
           return true;
         }
@@ -205,8 +206,15 @@
           hasContainer && hasMeaningfulAdChildren(container);
         const hasContainerRenderable =
           hasContainer && hasRenderableAdContent(container);
+        const placeholderChildren =
+          hasContainer &&
+          Array.from(container.children || []).some(
+            (child) => child instanceof HTMLElement && isLikelyPlaceholderNode(child)
+          );
         const placeholderLike =
-          hasContainer && !hasRichRenderable && isLikelyPlaceholderNode(container);
+          hasContainer &&
+          !hasRichRenderable &&
+          (isLikelyPlaceholderNode(container) || placeholderChildren);
         const hasRenderable = hasRichRenderable || (hasMeaningfulChildren && hasContainerRenderable);
         const shouldHardHide = !canShowAds.value || !hasContainer || placeholderLike;
         const shouldSoftHide = !shouldHardHide && !hasRenderable;

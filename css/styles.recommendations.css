@@ -76,6 +76,17 @@
         color: var(--text);
       }
 
+      .adwork-hero-slot.is-ad-hidden .ad-close-button,
+      .scheme-inline-ad-top.is-ad-hidden .ad-close-button,
+      .adwork-hero-slot.is-ad-soft-hidden .ad-close-button,
+      .scheme-inline-ad-top.is-ad-soft-hidden .ad-close-button {
+        display: inline-flex;
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
+        z-index: 5;
+      }
+
       .ad-preview-banner {
         width: min(100%, 640px);
         min-height: 88px;
@@ -110,7 +121,9 @@
       }
 
       .adwork-hero-slot.is-ad-hidden .adwork-net,
-      .scheme-inline-ad-top.is-ad-hidden .adwork-net {
+      .scheme-inline-ad-top.is-ad-hidden .adwork-net,
+      .adwork-hero-slot.is-ad-soft-hidden .adwork-net,
+      .scheme-inline-ad-top.is-ad-soft-hidden .adwork-net {
         min-height: 0;
         height: 0;
         max-height: 0;
@@ -136,6 +149,7 @@
         border: 1px solid rgba(235, 243, 252, 0.38);
         background: rgba(235, 243, 252, 0.12);
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        pointer-events: none;
       }
 
       .adwork-hero-slot.is-ad-soft-hidden::before,
@@ -156,6 +170,7 @@
         border: 1px solid rgba(235, 243, 252, 0.38);
         background: rgba(235, 243, 252, 0.12);
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        pointer-events: none;
       }
 
       .adwork-hero-slot.is-ad-hidden::after,
@@ -169,6 +184,7 @@
         color: rgba(214, 225, 238, 0.78);
         text-align: center;
         display: block;
+        pointer-events: none;
       }
 
       [data-theme="light"] .adwork-hero-slot.is-ad-hidden::before,
