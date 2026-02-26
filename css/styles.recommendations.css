@@ -649,6 +649,32 @@
         text-overflow: ellipsis;
       }
 
+      .scheme-weapon-title .weapon-name-block {
+        display: flex;
+        flex: 0 1 auto;
+        flex-direction: column;
+        min-width: 0;
+        gap: 2px;
+      }
+
+      .scheme-weapon-title .weapon-name-block .weapon-main-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .scheme-weapon-title .weapon-type-subtitle {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+        line-height: 1.1;
+        font-weight: 500;
+        color: var(--muted);
+      }
+
       .scheme-weapon-title .badge {
         padding: 2px 6px;
         border-radius: 999px;
@@ -763,6 +789,10 @@
       }
 
       @media (max-width: 640px), (orientation: portrait) and (max-width: 1024px) {
+        .scheme-weapon-title .weapon-type-subtitle {
+          font-size: 9px;
+        }
+
         .scheme-weapon-list .scheme-weapon-attrs {
           font-size: 10px;
           gap: 4px 6px;

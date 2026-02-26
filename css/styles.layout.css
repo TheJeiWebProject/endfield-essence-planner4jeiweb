@@ -963,6 +963,17 @@
         gap: 2px;
       }
 
+      .match-weapon-item .weapon-type-subtitle {
+        max-width: 100%;
+        font-size: 10px;
+        line-height: 1.1;
+        font-weight: 500;
+        color: rgba(245, 242, 238, 0.8);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .match-status-line {
         display: flex;
         align-items: center;
@@ -1100,6 +1111,10 @@
 
         .match-selection-attrs {
           font-size: 11px;
+        }
+
+        .match-weapon-item .weapon-type-subtitle {
+          font-size: 9px;
         }
 
         .match-selection-label {

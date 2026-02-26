@@ -224,7 +224,10 @@
                             @error="handleCharacterImageError"
                           />
                         </span>
-                        <span class="weapon-main-name">{{ tTerm("weapon", weapon.name) }}</span>
+                        <span class="weapon-name-block">
+                          <span class="weapon-main-name">{{ tTerm("weapon", weapon.name) }}</span>
+                          <span class="weapon-type-subtitle">{{ tTerm("type", weapon.type) }}</span>
+                        </span>
                         <span class="rarity" :style="rarityTextStyle(weapon.rarity)">
                           {{ weapon.rarity }}★
                         </span>
@@ -234,9 +237,6 @@
                         </span>
                       </div>
                       <div class="scheme-weapon-attrs">
-                        <span class="attr-value attr-type">
-                          <span class="attr-label">{{ t("类型") }}：</span>{{ tTerm("type", weapon.type) }}
-                        </span>
                         <span class="attr-value">
                           <span class="attr-label">{{ t("基础属性") }}：</span>{{ formatS1(weapon.s1) }}
                         </span>
@@ -349,7 +349,10 @@
                         @error="handleCharacterImageError"
                       />
                     </span>
-                    <span class="weapon-main-name">{{ tTerm("weapon", weapon.name) }}</span>
+                    <span class="weapon-name-block">
+                      <span class="weapon-main-name">{{ tTerm("weapon", weapon.name) }}</span>
+                      <span class="weapon-type-subtitle">{{ tTerm("type", weapon.type) }}</span>
+                    </span>
                     <span class="rarity" :style="rarityTextStyle(weapon.rarity)">
                       {{ weapon.rarity }}★
                     </span>
@@ -361,9 +364,6 @@
                     </span>
                   </div>
                   <div class="scheme-weapon-attrs">
-                    <span class="attr-value attr-type">
-                      <span class="attr-label">{{ t("类型") }}：</span>{{ tTerm("type", weapon.type) }}
-                    </span>
                     <span
                       class="attr-value"
                       :class="{ 'base-lock': weapon.baseLocked, conflict: weapon.baseConflict }"

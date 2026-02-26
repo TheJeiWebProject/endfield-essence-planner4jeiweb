@@ -47,6 +47,10 @@
           font-size: 13px;
         }
 
+        .scheme-weapon-title .weapon-type-subtitle {
+          font-size: 10px;
+        }
+
         .scheme-weapon-title .badge {
           font-size: 10px;
           padding: 2px 6px;
@@ -317,6 +321,14 @@
         .scheme-weapon-title {
           font-size: 10px;
           padding-right: 44px;
+        }
+
+        .scheme-weapon-title .weapon-name-block {
+          gap: 1px;
+        }
+
+        .scheme-weapon-title .weapon-type-subtitle {
+          font-size: 8px;
         }
 
         .scheme-weapon-title .badge {
@@ -1052,7 +1064,7 @@
         display: flex;
         align-items: center;
         flex-wrap: nowrap;
-        gap: 8px;
+        gap: 6px;
         margin-top: 6px;
         min-width: 0;
       }
@@ -1060,15 +1072,16 @@
       .exclude-note-input {
         flex: 1 1 auto;
         min-width: 0;
-        min-height: 30px;
-        height: 30px;
-        padding: 4px 7px;
+        min-height: 24px;
+        height: auto;
+        padding: 3px 7px;
+        box-sizing: border-box;
         border-radius: 6px;
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(10, 14, 20, 0.45);
         color: var(--text);
         font-size: 12px;
-        line-height: 1.2;
+        line-height: normal;
         outline: none;
         transition: border-color 0.2s ease;
         resize: none;
@@ -1096,35 +1109,49 @@
 
         .weapon-exclude-row {
           align-items: center;
-          gap: 6px;
+          gap: 4px;
         }
 
         .weapon-exclude-row .exclude-toggle.small,
         .weapon-exclude-row .exclude-toggle.small.intent-alert {
-          padding: 1px 6px;
-          min-height: 26px;
-          font-size: 10px;
-          line-height: 1.15;
+          flex: 0 0 auto;
+          white-space: nowrap;
+          padding: 0 5px;
+          min-height: 24px;
+          font-size: 10.5px;
+          line-height: 1.1;
         }
 
         .weapon-exclude-row .exclude-note-input {
-          flex: 1 1 auto;
+          flex: 1 1 0;
           min-width: 0;
-          min-height: 26px;
-          height: 26px;
-          padding: 3px 6px;
-          font-size: 10.5px;
-          line-height: 1.2;
+          min-height: 22px;
+          height: auto;
+          padding: 2px 6px;
+          font-size: 11px;
+          line-height: normal;
         }
       }
 
       @media (max-width: 360px) {
         .weapon-exclude-row {
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
+          gap: 3px;
+        }
+
+        .weapon-exclude-row .exclude-toggle.small,
+        .weapon-exclude-row .exclude-toggle.small.intent-alert {
+          padding: 0 4px;
+          min-height: 22px;
+          font-size: 10px;
         }
 
         .weapon-exclude-row .exclude-note-input {
-          flex-basis: 100%;
+          min-height: 20px;
+          height: auto;
+          padding: 1px 5px;
+          font-size: 10.5px;
+          line-height: normal;
         }
       }
 

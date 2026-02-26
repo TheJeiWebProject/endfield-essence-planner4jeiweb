@@ -274,6 +274,9 @@
                           <div class="weapon-title">
                             {{ tTerm("weapon", matchSourceWeapon.name) }}
                           </div>
+                          <div class="weapon-type-subtitle">
+                            {{ tTerm("type", matchSourceWeapon.type) }}
+                          </div>
                           <match-status-line
                             :weapon-name="matchSourceWeapon.name"
                             :t="t"
@@ -283,7 +286,6 @@
                         </div>
                       </div>
                       <div class="scheme-weapon-attrs match-selection-attrs">
-                        <span class="attr-value attr-type">{{ t(matchSourceWeapon.type) }}</span>
                         <span class="attr-value">{{ formatS1(matchSourceWeapon.s1) }}</span>
                         <span class="attr-value">{{ t(matchSourceWeapon.s2) }}</span>
                         <span class="attr-value">{{ t(matchSourceWeapon.s3) }}</span>

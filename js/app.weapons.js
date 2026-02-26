@@ -438,6 +438,19 @@
       return { total, unowned, essenceOwned, fourStar };
     });
 
+    const selectorHiddenMemoKey = computed(() => {
+      const config = state.recommendationConfig.value || {};
+      const hasFilters = hasAttributeFilterSelection();
+      return [
+        config.hideUnownedWeapons && config.hideUnownedWeaponsInSelector ? 1 : 0,
+        config.hideEssenceOwnedWeapons && config.hideEssenceOwnedWeaponsInSelector ? 1 : 0,
+        config.hideEssenceOwnedOwnedOnly ? 1 : 0,
+        config.hideFourStarWeapons && config.hideFourStarWeaponsInSelector ? 1 : 0,
+        config.attributeFilterAffectsHiddenWeapons ? 1 : 0,
+        hasFilters ? 1 : 0,
+      ].join("|");
+    });
+
     const weaponGridVirtual = ref({
       startIndex: 0,
       endIndex: Number.POSITIVE_INFINITY,
@@ -640,6 +653,7 @@
     state.filteredWeapons = filteredWeapons;
     state.visibleFilteredWeapons = visibleFilteredWeapons;
     state.hiddenInSelectorSummary = hiddenInSelectorSummary;
+    state.selectorHiddenMemoKey = selectorHiddenMemoKey;
     state.getSelectorHiddenReason = getSelectorHiddenReason;
     state.allFilteredSelected = allFilteredSelected;
     state.selectAllWeapons = selectAllWeapons;

@@ -448,7 +448,7 @@
               v-for="weapon in visibleFilteredWeapons"
               :key="weapon.name"
               class="weapon-item"
-              v-memo="[locale, localeRenderVersion, selectedNameSet.has(weapon.name), isWeaponOwned(weapon.name), isEssenceOwned(weapon.name)]"
+              v-memo="[locale, localeRenderVersion, selectedNameSet.has(weapon.name), isWeaponOwned(weapon.name), isEssenceOwned(weapon.name), selectorHiddenMemoKey]"
               :class="{
                 'is-selected': selectedNameSet.has(weapon.name),
                 'is-unowned': isUnowned(weapon.name),
@@ -519,7 +519,10 @@
                     @error="handleCharacterImageError"
                   />
                 </span>
-                <span class="weapon-main-name">{{ tutorialWeapon.name }}</span>
+                <span class="weapon-name-block">
+                  <span class="weapon-main-name">{{ tutorialWeapon.name }}</span>
+                  <span class="weapon-type-subtitle">{{ tTerm("type", tutorialWeapon.type) }}</span>
+                </span>
                 <span class="rarity" :style="rarityTextStyle(tutorialWeapon.rarity)">
                   {{ tutorialWeapon.rarity }}★
                 </span>
@@ -530,7 +533,6 @@
                 </span>
               </div>
               <div class="scheme-weapon-attrs">
-                <span class="attr-value attr-type">{{ t(tutorialWeapon.type) }}</span>
                 <span class="attr-value">{{ formatS1(tutorialWeapon.s1) }}</span>
                 <span class="attr-value">{{ t(tutorialWeapon.s2) }}</span>
                 <span class="attr-value">{{ t(tutorialWeapon.s3) }}</span>
@@ -582,6 +584,7 @@
                 filterS2.includes(weapon.s2),
                 filterS3.includes(weapon.s3),
                 getWeaponNote(weapon.name),
+                selectorHiddenMemoKey,
               ]"
               :class="{
                 'is-selected': selectedNameSet.has(weapon.name),
@@ -616,7 +619,10 @@
                     @error="handleCharacterImageError"
                   />
                 </span>
-                <span class="weapon-main-name">{{ tTerm("weapon", weapon.name) }}</span>
+                <span class="weapon-name-block">
+                  <span class="weapon-main-name">{{ tTerm("weapon", weapon.name) }}</span>
+                  <span class="weapon-type-subtitle">{{ tTerm("type", weapon.type) }}</span>
+                </span>
                 <span class="rarity" :style="rarityTextStyle(weapon.rarity)">
                   {{ weapon.rarity }}★
                 </span>
@@ -631,7 +637,6 @@
                 </span>
               </div>
               <div class="scheme-weapon-attrs">
-                <span class="attr-value attr-type">{{ tTerm("type", weapon.type) }}</span>
                 <span
                   class="attr-value"
                   :class="{ 'base-lock': filterS1.length && filterS1.includes(weapon.s1) }"
@@ -807,7 +812,10 @@
                         @error="handleCharacterImageError"
                       />
                     </span>
-                    <span class="weapon-main-name">{{ tTerm("weapon", weapon.name) }}</span>
+                    <span class="weapon-name-block">
+                      <span class="weapon-main-name">{{ tTerm("weapon", weapon.name) }}</span>
+                      <span class="weapon-type-subtitle">{{ tTerm("type", weapon.type) }}</span>
+                    </span>
                     <span class="rarity" :style="rarityTextStyle(weapon.rarity)">
                       {{ weapon.rarity }}★
                     </span>
@@ -817,9 +825,6 @@
                     </span>
                   </div>
                   <div class="scheme-weapon-attrs">
-                    <span class="attr-value attr-type">
-                      <span class="attr-label">{{ t("类型") }}：</span>{{ tTerm("type", weapon.type) }}
-                    </span>
                     <span
                       class="attr-value"
                       :class="{

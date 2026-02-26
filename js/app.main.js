@@ -390,7 +390,7 @@
           typeof window !== "undefined" && typeof window.getComputedStyle === "function"
             ? window.getComputedStyle(target)
             : null;
-        const minHeight = Math.max(24, computedStyle ? parseFloat(computedStyle.minHeight || "0") : 0);
+        const minHeight = Math.max(20, computedStyle ? parseFloat(computedStyle.minHeight || "0") : 0);
         target.style.height = "auto";
         const maxHeight = 96;
         const contentHeight = target.scrollHeight;
@@ -538,6 +538,7 @@
         s1Options: state.s1Options,
         s2Options: state.s2Options,
         s3OptionEntries: state.s3OptionEntries,
+        selectorHiddenMemoKey: state.selectorHiddenMemoKey,
         toggleFilterValue: state.toggleFilterValue,
         clearAttributeFilters: state.clearAttributeFilters,
         hasAttributeFilters: state.hasAttributeFilters,
