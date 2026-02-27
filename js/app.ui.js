@@ -296,6 +296,16 @@
       const style = window.getComputedStyle(node);
       if (style.display === "none" || style.visibility === "hidden") return false;
       if (Number(style.opacity || 1) === 0) return false;
+      if (node instanceof HTMLImageElement) {
+        if (node.complete && node.naturalWidth > 0 && node.naturalHeight > 0) {
+          return true;
+        }
+      }
+      if (node instanceof HTMLVideoElement) {
+        if (node.videoWidth > 0 && node.videoHeight > 0) {
+          return true;
+        }
+      }
       const rect = node.getBoundingClientRect();
       return rect.width >= 120 && rect.height >= 20;
     };
@@ -307,7 +317,6 @@
         const normalized = text.toLowerCase();
         if (
           normalized.includes("广告") ||
-          normalized.includes("ad") ||
           normalized.includes("placeholder") ||
           normalized.includes("审核")
         ) {
@@ -320,8 +329,7 @@
       ) {
         return true;
       }
-      const bg = window.getComputedStyle(node).backgroundColor;
-      return bg === "rgb(255, 255, 255)" || bg === "rgba(255, 255, 255, 1)";
+      return false;
     };
 
     const hasMeaningfulAdChildren = (node) => {
@@ -349,6 +357,11 @@
           slot.classList.remove("is-slot-hidden");
           slot.classList.remove("is-slot-compact");
           return;
+        }
+        const hadCompactClass = slot.classList.contains("is-slot-compact");
+        if (hadCompactClass) {
+          // Temporarily release compact height constraints before measuring ad renderability.
+          slot.classList.remove("is-slot-compact");
         }
         const container = slot.querySelector(adSlotContainerSelector);
         const hasContainer = container instanceof HTMLElement;
@@ -400,7 +413,7 @@
 
     const primeAdSlotVisibility = () => {
       clearAdSlotTimers();
-      [80, 360, 900, 1800, 3200].forEach((delay) => {
+      [80, 360, 900, 1800, 3200, 5200, 7600, 11000].forEach((delay) => {
         adSlotVisibilityTimers.push(
           setTimeout(() => {
             scheduleAdSlotVisibility();

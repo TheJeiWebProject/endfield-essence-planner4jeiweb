@@ -416,6 +416,10 @@
         text-shadow: 0 2px 10px rgba(77, 214, 201, 0.35);
       }
 
+      .weapon-item.is-essence-owned {
+        opacity: 0.55;
+      }
+
       .weapon-item.is-essence-owned .weapon-name {
         text-decoration: line-through;
         text-decoration-thickness: 1px;
@@ -1053,6 +1057,10 @@
 
       .weapon-attr-item.is-selected .scheme-weapon-title {
         color: #e9fff9;
+      }
+
+      .weapon-attr-item.is-essence-owned {
+        opacity: 0.55;
       }
 
       .weapon-attr-item.is-essence-owned .weapon-main-name {

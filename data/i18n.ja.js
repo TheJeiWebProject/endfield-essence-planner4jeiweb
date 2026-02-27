@@ -1,4 +1,3 @@
-// Auto-generated from i18n.js
 window.I18N = window.I18N || {};
 window.I18N["ja"] = {
   "strings": {

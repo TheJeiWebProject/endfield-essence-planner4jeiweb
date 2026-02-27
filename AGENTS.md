@@ -1,4 +1,4 @@
-# AGENTS Guide (for AI / Humans)
+# AGENTS Guide (for AI)
 
 ## 0. 目标
 - 本文件是项目开发与维护约束，面向 AI，要求可直接执行。
