@@ -318,9 +318,7 @@
       state.storageErrorPreviewText.value = buildStoragePreviewText(entry.key);
       const nextLogs = [entry].concat(Array.isArray(state.storageErrorLogs.value) ? state.storageErrorLogs.value : []);
       state.storageErrorLogs.value = nextLogs.slice(0, storageIssueLogLimit);
-      if (!state.storageErrorIgnored.value) {
-        state.showStorageErrorModal.value = true;
-      }
+      state.showStorageErrorModal.value = true;
     };
 
     const storageSystemKeySet = new Set([
@@ -396,7 +394,7 @@
 
     const ignoreStorageErrors = () => {
       stopStorageClearCountdown();
-      state.storageErrorIgnored.value = true;
+      state.storageErrorIgnored.value = false;
       state.showStorageClearConfirmModal.value = false;
       state.showStorageIgnoreConfirmModal.value = false;
       state.storageErrorClearTargetKeys.value = [];

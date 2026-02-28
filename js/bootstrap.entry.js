@@ -623,7 +623,27 @@
 
   var ensureErrorRenderer = function () {
     if (typeof window.__renderBootError === "function") return;
+    var teardownPreloadOverlay = function () {
+      root.classList.remove("preload");
+      var overlay = document.getElementById("app-preload");
+      if (!overlay) return;
+      overlay.classList.add("preload-hide");
+      overlay.style.pointerEvents = "none";
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    };
     window.__renderBootError = function renderBootError(payload) {
+      if (!document.body) {
+        document.addEventListener(
+          "DOMContentLoaded",
+          function () {
+            window.__renderBootError(payload);
+          },
+          { once: true }
+        );
+        return;
+      }
       var title = String((payload && payload.title) || bt("error_title_page_load"));
       var summary = String((payload && payload.summary) || bt("error_summary_unknown"));
       var details = Array.isArray(payload && payload.details)
@@ -633,9 +653,15 @@
         ? payload.suggestions.filter(Boolean).map(String)
         : [];
 
+      teardownPreloadOverlay();
+      var existing = document.getElementById("boot-error-overlay");
+      if (existing && existing.parentNode) {
+        existing.parentNode.removeChild(existing);
+      }
       var page = document.createElement("div");
+      page.id = "boot-error-overlay";
       page.style.cssText =
-        "min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0b0f14;color:#e6e9ef;font-family:'Microsoft YaHei UI','PingFang SC',sans-serif;";
+        "position:fixed;inset:0;z-index:2147483647;overflow:auto;display:flex;align-items:center;justify-content:center;padding:24px;background:#0b0f14;color:#e6e9ef;font-family:'Microsoft YaHei UI','PingFang SC',sans-serif;";
       var card = document.createElement("div");
       card.style.cssText =
         "width:min(680px,92vw);border:1px solid rgba(243,108,108,0.42);border-radius:14px;padding:18px 18px 16px;background:rgba(26,14,18,0.84);box-shadow:0 14px 34px rgba(0,0,0,0.38);";
@@ -697,6 +723,10 @@
         "cursor:pointer;border:1px solid rgba(77,214,201,0.45);border-radius:999px;padding:6px 14px;background:rgba(12,18,28,0.9);color:#c9fff7;";
       retryButton.textContent = bt("action_retry");
       retryButton.addEventListener("click", function () {
+        var current = document.getElementById("boot-error-overlay");
+        if (current && current.parentNode) {
+          current.parentNode.removeChild(current);
+        }
         if (typeof window.__startBootstrapEntry === "function") {
           window.__startBootstrapEntry({ fromRetry: true });
           return;
@@ -726,7 +756,6 @@
 
       card.appendChild(actionRow);
       page.appendChild(card);
-      document.body.textContent = "";
       document.body.appendChild(page);
     };
   };
@@ -797,11 +826,11 @@
         clearInterval(progressPulseTimer);
         progressPulseTimer = null;
       }
-      if (!root.classList.contains("preload")) return;
       root.classList.remove("preload");
       var overlay = document.getElementById("app-preload");
       if (overlay) {
         overlay.classList.add("preload-hide");
+        overlay.style.pointerEvents = "none";
         setTimeout(function () {
           if (overlay && overlay.parentNode) {
             overlay.parentNode.removeChild(overlay);
