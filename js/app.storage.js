@@ -321,6 +321,39 @@
       state.showStorageErrorModal.value = true;
     };
 
+    const writeJsonStorageWithVerify = (key, payload, meta) => {
+      const serialized = JSON.stringify(payload);
+      localStorage.setItem(key, serialized);
+      const readBack = localStorage.getItem(key);
+      const readBackText = readBack == null ? "<null>" : String(readBack);
+      const note = `write=${truncateText(serialized, 220)} | read=${truncateText(readBackText, 220)}`;
+      if (readBack == null) {
+        const mismatchError = new Error("localStorage read-back is empty after write");
+        mismatchError.name = "StorageRoundTripMismatchError";
+        reportStorageIssue("storage.verify", key, mismatchError, {
+          scope: (meta && meta.scope) || "",
+          note,
+        });
+        return;
+      }
+      if (readBackText !== serialized) {
+        const mismatchError = new Error("localStorage read-back mismatch after write");
+        mismatchError.name = "StorageRoundTripMismatchError";
+        reportStorageIssue("storage.verify", key, mismatchError, {
+          scope: (meta && meta.scope) || "",
+          note,
+        });
+      }
+      try {
+        JSON.parse(readBackText);
+      } catch (error) {
+        reportStorageIssue("storage.verify", key, error, {
+          scope: (meta && meta.scope) || "",
+          note,
+        });
+      }
+    };
+
     const storageSystemKeySet = new Set([
       "localStorage",
       "sessionStorage",
@@ -839,7 +872,9 @@
             localStorage.removeItem(state.marksStorageKey);
             return;
           }
-          localStorage.setItem(state.marksStorageKey, JSON.stringify(normalized));
+          writeJsonStorageWithVerify(state.marksStorageKey, normalized, {
+            scope: "persist-weapon-marks-verify",
+          });
         } catch (error) {
           reportStorageIssue("storage.write", state.marksStorageKey, error, {
             scope: "persist-weapon-marks",
