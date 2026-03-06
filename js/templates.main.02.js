@@ -310,7 +310,6 @@
                     'base-selectable': card.baseOverflow,
                     'base-choice':
                       card.baseOverflow &&
-                      !weapon.isEssenceOwned &&
                       ((card.manualPickOverflow && weapon.baseLocked) ||
                         (!card.manualPickOverflow && card.manualPickNeeded && !weapon.baseLocked)),
                     'is-dim': weapon.baseDim || weapon.isEssenceOwned,
