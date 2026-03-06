@@ -89,57 +89,14 @@
         .filter(Boolean);
     };
 
-    const escapeHtml = (value) =>
-      String(value || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-
-    const sanitizeUrl = (value) => {
-      const trimmed = String(value || "").trim();
-      if (!/^https?:\/\//i.test(trimmed)) return "";
-      return escapeHtml(trimmed);
-    };
-
-    const formatNoticeItem = (value) => {
-      const raw = String(value || "");
-      const linkTokens = [];
-      const tokenized = raw.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (match, text, url) => {
-        const safeUrl = sanitizeUrl(url);
-        const safeText = escapeHtml(text);
-        const html = safeUrl
-          ? '<a class="notice-link" href="' +
-            safeUrl +
-            '" target="_blank" rel="noreferrer">' +
-            safeText +
-            "</a>"
-          : safeText;
-        const token = `__NOTICE_LINK_${linkTokens.length}__`;
-        linkTokens.push({ token, html });
-        return token;
-      });
-
-      const escaped = escapeHtml(tokenized);
-      const highlighted = escaped.replace(/==(.+?)==/g, '<mark class="notice-highlight">$1</mark>');
-      const urlPattern = /https?:\/\/[^\s<]+/g;
-      const linked = highlighted.replace(urlPattern, (match) => {
-        const trimmed = match.replace(/[),.;!?，。！？、]+$/g, "");
-        const tail = match.slice(trimmed.length);
-        if (!trimmed) return match;
-        return (
-          '<a class="notice-link" href="' +
-          trimmed +
-          '" target="_blank" rel="noreferrer">' +
-          trimmed +
-          "</a>" +
-          tail
-        );
-      });
-
-      return linkTokens.reduce((result, entry) => result.replace(entry.token, entry.html), linked);
-    };
+    const noticeSanitizer =
+      typeof window !== "undefined" &&
+      window.__APP_SANITIZER__ &&
+      typeof window.__APP_SANITIZER__.tokenizeNoticeItem === "function"
+        ? window.__APP_SANITIZER__
+        : {
+            tokenizeNoticeItem: (value) => [{ type: "text", text: String(value || "") }],
+          };
 
     const getContentForLocale = (targetLocale) => {
       const content = getContentRoot();
@@ -156,30 +113,48 @@
         about: { ...base.about, ...(localized.about || {}) },
       };
     };
+    const i18nKeyPattern = /^[A-Za-z0-9_]+(?:[.-][A-Za-z0-9_]+)+$/;
+    const resolveTitleValue = (rawTitle, fallbackKey) => {
+      const fallbackTitle = t(fallbackKey);
+      if (typeof rawTitle !== "string") return fallbackTitle;
+      const normalizedTitle = rawTitle.trim();
+      if (!normalizedTitle) return fallbackTitle;
+      if (!i18nKeyPattern.test(normalizedTitle)) return normalizedTitle;
+      const translated = t(normalizedTitle);
+      return translated === "文案缺失" ? normalizedTitle : translated;
+    };
 
     const localizedContent = computed(() => getContentForLocale(state.locale.value));
     const defaultAnnouncement = computed(() => ({
       version: "",
-      title: t("公告"),
+      title: t("nav.announcement"),
       date: "",
       qqGroup: "",
       qqNote: "",
       items: [],
     }));
-    const announcement = computed(() => ({
-      ...defaultAnnouncement.value,
-      ...(localizedContent.value.announcement || {}),
-    }));
+    const announcement = computed(() => {
+      const next = {
+        ...defaultAnnouncement.value,
+        ...(localizedContent.value.announcement || {}),
+      };
+      next.title = resolveTitleValue(next.title, "nav.announcement");
+      return next;
+    });
     const defaultChangelog = computed(() => ({
-      title: t("更新日志"),
+      title: t("nav.changelog"),
       entries: [],
     }));
-    const changelog = computed(() => ({
-      ...defaultChangelog.value,
-      ...(localizedContent.value.changelog || {}),
-    }));
+    const changelog = computed(() => {
+      const next = {
+        ...defaultChangelog.value,
+        ...(localizedContent.value.changelog || {}),
+      };
+      next.title = resolveTitleValue(next.title, "nav.changelog");
+      return next;
+    });
     const defaultAbout = computed(() => ({
-      title: t("关于本工具"),
+      title: t("nav.about_this_tool"),
       paragraphs: [],
       author: "",
       links: [],
@@ -190,6 +165,7 @@
         ...defaultAbout.value,
         ...(localizedContent.value.about || {}),
       };
+      base.title = resolveTitleValue(base.title, "nav.about_this_tool");
       const list = normalizeSponsorList((base.sponsor && base.sponsor.list) || getSponsorEntries());
       const items =
         (base.sponsor && Array.isArray(base.sponsor.items) && base.sponsor.items) || [];
@@ -203,7 +179,7 @@
     state.content = computed(() => getContentRoot());
     state.ensureContentLoaded = ensureContentLoaded;
     state.announcement = announcement;
-    state.formatNoticeItem = formatNoticeItem;
+    state.formatNoticeItem = (value) => noticeSanitizer.tokenizeNoticeItem(value);
     state.changelog = changelog;
     state.aboutContent = aboutContent;
   };

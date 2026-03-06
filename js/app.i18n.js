@@ -8,11 +8,14 @@
     const fallbackLocale = "zh-CN";
     const allLocales = ["zh-CN", "zh-TW", "en", "ja"];
     const localeScriptMap = {
-      "zh-CN": "./data/i18n.zh-CN.js",
-      "zh-TW": "./data/i18n.zh-TW.js",
-      en: "./data/i18n.en.js",
-      ja: "./data/i18n.ja.js",
+      "zh-CN": "./data/i18n/zh-CN.js",
+      "zh-TW": "./data/i18n/zh-TW.js",
+      en: "./data/i18n/en.js",
+      ja: "./data/i18n/ja.js",
     };
+    const missingI18nPlaceholder = "文案缺失";
+    const missingI18nWarningDedupWindowMs = 10000;
+    const missingI18nWarningLastSeenAt = new Map();
     const reportStorageIssue = (operation, key, error, meta) => {
       if (typeof state.reportStorageIssue === "function") {
         state.reportStorageIssue(operation, key, error, meta);
@@ -148,22 +151,76 @@
       (i18n[targetLocale] && i18n[targetLocale].strings) || {};
     const getTerms = (targetLocale) =>
       (i18n[targetLocale] && i18n[targetLocale].terms) || {};
+    const resolveLocalizedString = (targetLocale, key, fallbackText) => {
+      const localeStrings = getStrings(targetLocale);
+      if (Object.prototype.hasOwnProperty.call(localeStrings, key)) {
+        return localeStrings[key];
+      }
+      const fallbackStrings = getStrings(fallbackLocale);
+      if (Object.prototype.hasOwnProperty.call(fallbackStrings, key)) {
+        return fallbackStrings[key];
+      }
+      return fallbackText;
+    };
     const interpolate = (text, params) => {
       if (!params) return text;
       return String(text).replace(/\{(\w+)\}/g, (match, name) =>
         Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match
       );
     };
+    const reportMissingI18nKey = (targetLocale, messageKey) => {
+      if (typeof state.reportRuntimeWarning !== "function") return;
+      const normalizedLocale = normalizeLocale(targetLocale);
+      const normalizedKey = String(messageKey || "").trim() || "unknown";
+      const warningKey = `${normalizedLocale}:${normalizedKey}`;
+      const optionalSignature = `i18n-missing-key:${warningKey}`;
+      const now = Date.now();
+      const lastSeenAt = missingI18nWarningLastSeenAt.get(optionalSignature) || 0;
+      if (now - lastSeenAt <= missingI18nWarningDedupWindowMs) return;
+      missingI18nWarningLastSeenAt.set(optionalSignature, now);
+      const warning = new Error(`Missing i18n key: ${warningKey}`);
+      warning.name = "I18nMissingKeyError";
+      const localizedTitle = interpolate(
+        resolveLocalizedString(
+          normalizedLocale,
+          "warning.i18n_missing_key_title",
+          "文案缺失提醒（{locale}）"
+        ),
+        { locale: normalizedLocale }
+      );
+      const localizedSummary = interpolate(
+        resolveLocalizedString(
+          normalizedLocale,
+          "warning.i18n_missing_key_summary",
+          "检测到文案缺失，已回退到占位文案。"
+        ),
+        { locale: normalizedLocale }
+      );
+      state.reportRuntimeWarning(warning, {
+        scope: "i18n.missing-key",
+        operation: "i18n.lookup",
+        key: warningKey,
+        title: localizedTitle,
+        summary: localizedSummary,
+        note: `locale=${normalizedLocale}\nkey=${normalizedKey}`,
+        asToast: true,
+        optionalSignature,
+      });
+    };
     const t = (key, params) => {
       void localeRenderVersion.value;
       const strings = getStrings(locale.value);
       const fallbackStrings = getStrings(fallbackLocale);
-      const raw =
-        Object.prototype.hasOwnProperty.call(strings, key)
-          ? strings[key]
-          : Object.prototype.hasOwnProperty.call(fallbackStrings, key)
-          ? fallbackStrings[key]
-          : key;
+      const hasLocaleValue = Object.prototype.hasOwnProperty.call(strings, key);
+      const hasFallbackValue = Object.prototype.hasOwnProperty.call(fallbackStrings, key);
+      const raw = hasLocaleValue
+        ? strings[key]
+        : hasFallbackValue
+        ? fallbackStrings[key]
+        : missingI18nPlaceholder;
+      if (!hasLocaleValue && !hasFallbackValue) {
+        reportMissingI18nKey(locale.value, key);
+      }
       return interpolate(raw, params);
     };
 
@@ -222,8 +279,8 @@
       if (!overlay) return;
       const title = overlay.querySelector(".preload-title");
       const sub = overlay.querySelector(".preload-note") || overlay.querySelector(".preload-sub");
-      if (title) title.textContent = t("少女祈祷中");
-      if (sub) sub.textContent = t("首次打开或强制刷新可能稍慢");
+      if (title) title.textContent = t("preload_title");
+      if (sub) sub.textContent = t("preload_note");
     };
 
     let localeWatchSeq = 0;
@@ -278,4 +335,8 @@
     state.tStrictPriorityOrderOptions = tStrictPriorityOrderOptions;
     state.localeRenderVersion = localeRenderVersion;
   };
+  modules.initI18n.required = ["initState"];
+  modules.initI18n.optional = [];
+  modules.initI18n.requiredProviders = [];
+  modules.initI18n.optionalProviders = [];
 })();

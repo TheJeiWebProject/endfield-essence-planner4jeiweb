@@ -1,5 +1,9 @@
       const dungeons = Array.isArray(window.DUNGEONS) ? window.DUNGEONS : [];
       const weapons = Array.isArray(window.WEAPONS) ? window.WEAPONS : [];
+      const weaponUpSchedules =
+        window.WEAPON_UP_SCHEDULES && typeof window.WEAPON_UP_SCHEDULES === "object"
+          ? window.WEAPON_UP_SCHEDULES
+          : {};
       const gears = Array.isArray(window.GEARS) ? window.GEARS : [];
       const weaponImages = new Set(Array.isArray(window.WEAPON_IMAGES) ? window.WEAPON_IMAGES : []);
       const i18nState = {
@@ -470,7 +474,8 @@
         }, {});
 
       const formatS1 = (value) => {
-        if (!value || value === "任意") return i18nState.t("任意");
+        if (value === "任意") return i18nState.t("任意");
+        if (!value) return i18nState.t("error.attribute_missing");
         return i18nState.tTerm("s1", value);
       };
 
@@ -538,7 +543,7 @@
           if (weapon.s2 !== lockOption.value) {
             conflictS2 = true;
             reasons.push(
-              i18nState.t("附加属性需为 {value}", {
+              i18nState.t("plan.extra_attribute_must_be_value", {
                 value: i18nState.tTerm("s2", lockOption.value),
               })
             );
@@ -546,7 +551,7 @@
           if (!dungeon.s3_pool.includes(weapon.s3)) {
             conflictS3 = true;
             reasons.push(
-              i18nState.t("方案地区（{name}）不产出该技能属性", {
+              i18nState.t("plan.dungeon_name_not_drop_skill_attribute", {
                 name: i18nState.tTerm("dungeon", dungeon.name),
               })
             );
@@ -555,7 +560,7 @@
           if (weapon.s3 !== lockOption.value) {
             conflictS3 = true;
             reasons.push(
-              i18nState.t("技能属性需为 {value}", {
+              i18nState.t("plan.skill_attribute_must_be_value", {
                 value: i18nState.tTerm("s3", lockOption.value),
               })
             );
@@ -563,7 +568,7 @@
           if (!dungeon.s2_pool.includes(weapon.s2)) {
             conflictS2 = true;
             reasons.push(
-              i18nState.t("方案地区（{name}）不产出该附加属性", {
+              i18nState.t("plan.dungeon_name_not_drop_extra_attribute", {
                 name: i18nState.tTerm("dungeon", dungeon.name),
               })
             );
@@ -575,7 +580,7 @@
           conflictS3,
           conflictReason: reasons.length
             ? reasons.join("；")
-            : i18nState.t("与当前方案属性不兼容"),
+            : i18nState.t("plan.incompatible_with_current_plan_attributes"),
         };
       };
 

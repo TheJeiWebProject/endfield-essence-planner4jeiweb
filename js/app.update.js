@@ -5,7 +5,7 @@
     const { ref, watch, onMounted, onBeforeUnmount } = ctx;
 
     const versionEndpoint = "./data/version.json";
-    const checkIntervalMs = 5 * 60 * 1000;
+    const checkIntervalMs = 30 * 60 * 1000;
     const checkCooldownMs = 60 * 1000;
     const firstCheckDelayMs = 12 * 1000;
 
@@ -28,10 +28,47 @@
     let lastCheckAt = 0;
     let copyFeedbackTimer = null;
     let gameCompatWarningDismissedSession = false;
+    // Contract with scripts/gen-version.mjs output payload.
+    const versionCoreFields = Object.freeze([
+      "buildId",
+      "displayVersion",
+      "announcementVersion",
+      "fingerprint",
+      "publishedAt",
+    ]);
+    const reportNonFatalDiagnostic = (payload) => {
+      const source = payload && typeof payload === "object" ? payload : {};
+      const reporter =
+        (typeof state.reportNonFatalDiagnostic === "function" && state.reportNonFatalDiagnostic) ||
+        (typeof window !== "undefined" && typeof window.__reportNonFatalDiagnostic === "function"
+          ? window.__reportNonFatalDiagnostic
+          : null) ||
+        (typeof window !== "undefined" &&
+        window.__APP_DIAGNOSTICS__ &&
+        typeof window.__APP_DIAGNOSTICS__.reportNonFatalDiagnostic === "function"
+          ? window.__APP_DIAGNOSTICS__.reportNonFatalDiagnostic
+          : null);
+      if (typeof reporter !== "function") return;
+      try {
+        reporter({
+          module: "app.update",
+          operation: safeText(source.operation) || "update.unknown",
+          kind: safeText(source.kind) || "non-fatal",
+          resource: safeText(source.resource) || versionEndpoint,
+          timestamp: source.timestamp,
+          errorName: safeText(source.errorName) || "",
+          errorMessage: safeText(source.errorMessage) || "",
+          note: safeText(source.note) || "",
+          optionalSignature: safeText(source.optionalSignature) || "",
+        });
+      } catch (error) {
+        // diagnostic reporter must stay non-blocking
+      }
+    };
 
     const safeText = (value) => String(value == null ? "" : value).trim();
     const getCurrentVersionLoadFailedText = () =>
-      (typeof state.t === "function" ? state.t("当前版本获取失败") : "current version load failed");
+      (typeof state.t === "function" ? state.t("storage.failed_to_load_current_version") : "current version load failed");
     const formatPublishedAtLocal = (value) => {
       const raw = safeText(value);
       if (!raw) return "";
@@ -90,15 +127,82 @@
       return "";
     };
 
-    const normalizeVersionInfo = (raw) => {
-      if (!raw || typeof raw !== "object") return null;
+    const reportInvalidVersionPayload = (source, reason, raw, missingFields) => {
+      reportNonFatalDiagnostic({
+        operation: "update.payload-validate",
+        kind: "invalid-version-payload",
+        resource: source || versionEndpoint,
+        errorName: "VersionPayloadContractError",
+        errorMessage: reason || "invalid-payload",
+        note:
+          Array.isArray(missingFields) && missingFields.length
+            ? `missing=${missingFields.join(",")}`
+            : "",
+        optionalSignature: `update.payload-validate:${safeText(source) || "unknown"}:${safeText(reason) || "invalid"}`,
+      });
+      if (typeof state.reportRuntimeWarning !== "function") return;
+      const error = new Error(`invalid version payload from ${source}: ${reason}`);
+      error.name = "VersionPayloadContractError";
+      let payloadPreview = "";
+      try {
+        payloadPreview = JSON.stringify(raw);
+      } catch (serializeError) {
+        payloadPreview = "[unserializable payload]";
+      }
+      const details = [
+        `source: ${safeText(source) || "unknown"}`,
+        `reason: ${safeText(reason) || "invalid payload"}`,
+      ];
+      if (Array.isArray(missingFields) && missingFields.length) {
+        details.push(`missing: ${missingFields.join(", ")}`);
+      }
+      if (payloadPreview) {
+        details.push(`payload: ${payloadPreview.slice(0, 500)}`);
+      }
+      state.reportRuntimeWarning(error, {
+        scope: "update.version",
+        operation: "update.payload-validate",
+        key: `${safeText(source) || "unknown"}:${safeText(reason) || "invalid"}`,
+        title:
+          typeof state.t === "function"
+            ? state.t("update.version_payload_invalid_title")
+            : "Invalid version payload",
+        summary:
+          typeof state.t === "function"
+            ? state.t("update.version_payload_invalid_summary")
+            : "Invalid version payload rejected, update prompt skipped.",
+        note: details.join("\n"),
+        asToast: true,
+      });
+    };
+
+    const normalizeVersionInfo = (raw, options) => {
+      const resolved = options && typeof options === "object" ? options : {};
+      const source = safeText(resolved.source || "unknown");
+      const isLocalSource = source === "local";
+      const reportInvalid = Boolean(resolved.reportInvalid);
+      if (!raw || typeof raw !== "object") {
+        if (reportInvalid) {
+          reportInvalidVersionPayload(source, "payload-not-object", raw, versionCoreFields);
+        }
+        return null;
+      }
       const info = {
-        buildId: safeText(raw.buildId || raw.build || raw.version || ""),
-        displayVersion: safeText(raw.displayVersion || raw.label || ""),
+        buildId: safeText(raw.buildId || ""),
+        displayVersion: safeText(raw.displayVersion || ""),
         announcementVersion: safeText(raw.announcementVersion || ""),
         fingerprint: safeText(raw.fingerprint || ""),
-        publishedAt: safeText(raw.publishedAt || raw.builtAt || ""),
+        publishedAt: safeText(raw.publishedAt || ""),
       };
+      const missingFields = versionCoreFields.filter((field) => !info[field]);
+      if (missingFields.length) {
+        if (reportInvalid) {
+          reportInvalidVersionPayload(source, "missing-core-fields", raw, missingFields);
+        }
+        if (!isLocalSource) {
+          return null;
+        }
+      }
       info.buildTimeToken = extractBuildTimeToken(info.buildId);
       const signature =
         info.buildTimeToken ||
@@ -112,7 +216,26 @@
           .join("|");
       info.signature = safeText(signature);
       info.display = buildDisplayText(info) || info.signature;
-      return info.signature ? info : null;
+      if (!info.signature) {
+        if (reportInvalid) {
+          reportInvalidVersionPayload(source, "empty-signature", raw, versionCoreFields);
+        }
+        if (!isLocalSource) {
+          return null;
+        }
+        const fallbackSignature = [
+          info.fingerprint,
+          info.announcementVersion,
+          info.publishedAt,
+          info.displayVersion,
+          info.buildId,
+        ]
+          .filter(Boolean)
+          .join("|");
+        info.signature = safeText(fallbackSignature || "local-version-metadata-downgraded");
+        info.display = buildDisplayText(info) || info.signature;
+      }
+      return info;
     };
 
     const getContentRoot = () => {
@@ -161,7 +284,7 @@
       const text = safeText(version);
       if (!text) return "";
       if (typeof state.t === "function") {
-        return state.t("适配 {version}", { version: text });
+        return state.t("update.compat_version", { version: text });
       }
       return `Compat ${text}`;
     };
@@ -220,12 +343,16 @@
       const buildId = safeText(globalVersion && globalVersion.buildId);
       const displayVersion = safeText(globalVersion && globalVersion.displayVersion);
       const publishedAt = safeText(globalVersion && globalVersion.publishedAt);
-      return normalizeVersionInfo({
+      const localCorePayload = {
         buildId,
         displayVersion,
         announcementVersion,
         fingerprint,
         publishedAt,
+      };
+      return normalizeVersionInfo(localCorePayload, {
+        source: "local",
+        reportInvalid: true,
       });
     };
 
@@ -319,7 +446,7 @@
       latestVersionInfo = info;
       state.updateLatestVersionText.value =
         (latestVersionInfo && latestVersionInfo.display) ||
-        (typeof state.t === "function" ? state.t("未知") : "unknown");
+        (typeof state.t === "function" ? state.t("gear_refining.unknown") : "unknown");
       state.updateLatestPublishedAt.value = latestVersionInfo
         ? formatPublishedAtLocal(latestVersionInfo.publishedAt)
         : "";
@@ -334,9 +461,22 @@
         cache: "no-store",
         credentials: "same-origin",
       });
-      if (!response.ok) return null;
+      if (!response.ok) {
+        reportNonFatalDiagnostic({
+          operation: "update.fetch-latest-version",
+          kind: "http-not-ok",
+          resource: versionEndpoint,
+          errorName: "VersionFetchHttpError",
+          errorMessage: `status=${response.status}`,
+          optionalSignature: `update.fetch-http:${response.status || 0}`,
+        });
+        return null;
+      }
       const data = await response.json();
-      return normalizeVersionInfo(data);
+      return normalizeVersionInfo(data, {
+        source: "remote",
+        reportInvalid: true,
+      });
     };
 
     const shouldShowPrompt = (remoteInfo) => {
@@ -364,7 +504,14 @@
           state.showUpdatePrompt.value = true;
         }
       } catch (error) {
-        // ignore update check errors to avoid user disruption
+        reportNonFatalDiagnostic({
+          operation: "update.check",
+          kind: "check-failed",
+          resource: versionEndpoint,
+          errorName: safeText(error && error.name) || "Error",
+          errorMessage: safeText(error && error.message) || "update-check-failed",
+          optionalSignature: "update.check:failed",
+        });
       } finally {
         checking = false;
       }
@@ -402,14 +549,14 @@
       const copyPayload = buildVersionCopyText(currentVersionInfo);
       const copied = await copyTextToClipboard(copyPayload);
       if (copied) {
-        showCopyFeedback("版本信息已复制");
+        showCopyFeedback("update.copy_version_success");
         return;
       }
-      showCopyFeedback("复制失败，请手动复制");
+      showCopyFeedback("update.copy_version_failure");
       if (typeof window !== "undefined" && typeof window.prompt === "function") {
         const promptText =
           typeof state.t === "function"
-            ? state.t("当前环境不支持自动复制，请手动复制以下内容：")
+            ? state.t("update.auto_copy_is_not_available_in_this_environment_please_co")
             : "Auto copy is not available. Please copy the following content manually:";
         window.prompt(promptText, copyPayload);
       }
@@ -484,4 +631,8 @@
       document.removeEventListener("visibilitychange", handleVisibilityRecovery);
     });
   };
+  modules.initUpdate.required = ["initState", "initI18n", "initContent"];
+  modules.initUpdate.optional = ["initUi"];
+  modules.initUpdate.requiredProviders = [];
+  modules.initUpdate.optionalProviders = ["reportRuntimeWarning"];
 })();

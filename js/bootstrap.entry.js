@@ -2,31 +2,116 @@
   var root = document.documentElement;
   var themeStorageKey = "planner-theme-mode:v1";
   var runSerial = 0;
-  var cssFiles = [
-    "./css/styles.theme.css",
-    "./css/styles.layout.css",
-    "./css/styles.overlays.css",
-    "./css/styles.filters.css",
-    "./css/styles.weapons.css",
-    "./css/styles.recommendations.css",
-    "./css/styles.gear-refining.css",
-    "./css/styles.theme.modes.css",
+  var warnFlags = Object.create(null);
+  var warnOnce = function (key, message) {
+    if (warnFlags[key]) return;
+    warnFlags[key] = true;
+    if (typeof console !== "undefined" && typeof console.warn === "function") {
+      console.warn(message);
+    }
+  };
+  var reportNonFatalDiagnostic = function (payload) {
+    var source = payload && typeof payload === "object" ? payload : {};
+    var reporter =
+      typeof window !== "undefined" && typeof window.__reportNonFatalDiagnostic === "function"
+        ? window.__reportNonFatalDiagnostic
+        : typeof window !== "undefined" &&
+          window &&
+          window.__APP_DIAGNOSTICS__ &&
+          typeof window.__APP_DIAGNOSTICS__.reportNonFatalDiagnostic === "function"
+          ? window.__APP_DIAGNOSTICS__.reportNonFatalDiagnostic
+          : null;
+    if (typeof reporter !== "function") return;
+    try {
+      reporter({
+        module: "bootstrap.entry",
+        operation: String(source.operation || "bootstrap.unknown"),
+        kind: String(source.kind || "non-fatal"),
+        resource: String(source.resource || "bootstrap.entry"),
+        timestamp: source.timestamp,
+        errorName: String(source.errorName || ""),
+        errorMessage: String(source.errorMessage || ""),
+        note: String(source.note || ""),
+        optionalSignature: String(source.optionalSignature || ""),
+      });
+    } catch (error) {
+      // diagnostic reporter must stay non-blocking
+    }
+  };
+  var bootstrapModuleScripts = [
+    "./js/app.protocol.js",
+    "./js/bootstrap.resources.js",
+    "./js/bootstrap.error.js",
+    "./js/bootstrap.optional.js",
   ];
-  var startupScripts = [
-    "./vendor/vue.global.prod.js",
-    "./data/version.js",
-    "./data/dungeons.js",
-    "./data/weapons.js",
-    "./data/gears.js",
-    "./data/weapon-images.js",
-    "./data/i18n.zh-CN.js",
-    "./js/app.script-chain.js",
-    "./js/app.js",
-  ];
-  var optionalScriptConfigs = {
-    "./vendor/pinyin-pro.min.js": {
-      featureKey: "pinyin",
-    },
+  var bootstrapModulePromises = Object.create(null);
+  var normalizeBootstrapScriptUrl = function (src) {
+    try {
+      return new URL(String(src || ""), window.location.href).href;
+    } catch (error) {
+      return String(src || "");
+    }
+  };
+  var loadBootstrapModuleScript = function (src) {
+    if (bootstrapModulePromises[src]) {
+      return bootstrapModulePromises[src];
+    }
+    bootstrapModulePromises[src] = new Promise(function (resolve, reject) {
+      var targetScriptSrc = normalizeBootstrapScriptUrl(src);
+      var existing = Array.from(document.scripts || []).find(function (script) {
+        var loaded = script && script.dataset && script.dataset.loaded === "true";
+        if (!loaded) return false;
+        var scriptSrc = String(script.getAttribute("src") || script.src || "");
+        return normalizeBootstrapScriptUrl(scriptSrc) === targetScriptSrc;
+      });
+      if (existing) {
+        resolve();
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = src;
+      script.onload = function () {
+        script.dataset.loaded = "true";
+        resolve();
+      };
+      script.onerror = function () {
+        delete bootstrapModulePromises[src];
+        reject(new Error("Failed to load bootstrap helper: " + src));
+      };
+      var target = document.head || document.documentElement || document.body;
+      target.appendChild(script);
+    }).catch(function (error) {
+      delete bootstrapModulePromises[src];
+      throw error;
+    });
+    return bootstrapModulePromises[src];
+  };
+  var ensureBootstrapModulesReady = function () {
+    return Promise.all(
+      bootstrapModuleScripts.map(function (src) {
+        return loadBootstrapModuleScript(src);
+      })
+    );
+  };
+  var resolveBootProtocolValue = function (protocolName, legacyName) {
+    var appBoot = window.__APP_BOOT__;
+    if (appBoot && typeof appBoot.readProtocol === "function") {
+      var value = appBoot.readProtocol(protocolName);
+      if (typeof value !== "undefined") {
+        return value;
+      }
+    }
+    return legacyName ? window[legacyName] : undefined;
+  };
+  var publishBootProtocolValue = function (protocolName, legacyName, value) {
+    var appBoot = window.__APP_BOOT__;
+    if (appBoot && typeof appBoot.publishProtocol === "function") {
+      appBoot.publishProtocol(protocolName, value);
+    }
+    if (legacyName) {
+      window[legacyName] = value;
+    }
+    return value;
   };
   var langStorageKey = "planner-lang";
   var fallbackBootLocale = "zh-CN";
@@ -642,23 +727,48 @@
     if (!preload) {
       preload = document.createElement("div");
       preload.id = "app-preload";
-      preload.innerHTML =
-        '<div class="preload-card">' +
-        '<div class="preload-title">' +
-        bt("preload_title") +
-        "</div>" +
-        '<div class="preload-sub preload-note">' +
-        bt("preload_note") +
-        "</div>" +
-        '<div class="preload-status" aria-live="polite">' +
-        bt("preload_status_prepare") +
-        "</div>" +
-        '<div class="preload-current" aria-live="polite"></div>' +
-        '<div class="preload-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">' +
-        '<span class="preload-progress-fill" aria-valuenow="0"></span>' +
-        "</div>" +
-        '<div class="preload-count" aria-live="polite">0/0</div>' +
-        "</div>";
+      var card = document.createElement("div");
+      card.className = "preload-card";
+
+      var title = document.createElement("div");
+      title.className = "preload-title";
+      title.textContent = bt("preload_title");
+      card.appendChild(title);
+
+      var note = document.createElement("div");
+      note.className = "preload-sub preload-note";
+      note.textContent = bt("preload_note");
+      card.appendChild(note);
+
+      var status = document.createElement("div");
+      status.className = "preload-status";
+      status.setAttribute("aria-live", "polite");
+      status.textContent = bt("preload_status_prepare");
+      card.appendChild(status);
+
+      var current = document.createElement("div");
+      current.className = "preload-current";
+      current.setAttribute("aria-live", "polite");
+      card.appendChild(current);
+
+      var progress = document.createElement("div");
+      progress.className = "preload-progress";
+      progress.setAttribute("role", "progressbar");
+      progress.setAttribute("aria-valuemin", "0");
+      progress.setAttribute("aria-valuemax", "100");
+      var progressFill = document.createElement("span");
+      progressFill.className = "preload-progress-fill";
+      progressFill.setAttribute("aria-valuenow", "0");
+      progress.appendChild(progressFill);
+      card.appendChild(progress);
+
+      var count = document.createElement("div");
+      count.className = "preload-count";
+      count.setAttribute("aria-live", "polite");
+      count.textContent = "0/0";
+      card.appendChild(count);
+
+      preload.appendChild(card);
       document.body.insertBefore(preload, document.body.firstChild || null);
     } else {
       syncPreloadStaticText(preload);
@@ -690,188 +800,25 @@
   };
 
   var ensureErrorRenderer = function () {
-    if (typeof window.__renderBootError === "function") return;
-    var teardownPreloadOverlay = function () {
-      root.classList.remove("preload");
-      var overlay = document.getElementById("app-preload");
-      if (!overlay) return;
-      overlay.classList.add("preload-hide");
-      overlay.style.pointerEvents = "none";
-      if (overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    };
-    window.__renderBootError = function renderBootError(payload) {
-      if (!document.body) {
-        document.addEventListener(
-          "DOMContentLoaded",
-          function () {
-            window.__renderBootError(payload);
-          },
-          { once: true }
-        );
-        return;
-      }
-      var title = String((payload && payload.title) || bt("error_title_page_load"));
-      var summary = String((payload && payload.summary) || bt("error_summary_unknown"));
-      var details = Array.isArray(payload && payload.details)
-        ? payload.details.filter(Boolean).map(String)
-        : [];
-      var suggestions = Array.isArray(payload && payload.suggestions)
-        ? payload.suggestions.filter(Boolean).map(String)
-        : [];
-
-      teardownPreloadOverlay();
-      var existing = document.getElementById("boot-error-overlay");
-      if (existing && existing.parentNode) {
-        existing.parentNode.removeChild(existing);
-      }
-      var page = document.createElement("div");
-      page.id = "boot-error-overlay";
-      page.style.cssText =
-        "position:fixed;inset:0;z-index:2147483647;overflow:auto;display:flex;align-items:center;justify-content:center;padding:24px;background:#0b0f14;color:#e6e9ef;font-family:'Microsoft YaHei UI','PingFang SC',sans-serif;";
-      var card = document.createElement("div");
-      card.style.cssText =
-        "width:min(680px,92vw);border:1px solid rgba(243,108,108,0.42);border-radius:14px;padding:18px 18px 16px;background:rgba(26,14,18,0.84);box-shadow:0 14px 34px rgba(0,0,0,0.38);";
-
-      var titleEl = document.createElement("div");
-      titleEl.style.cssText = "font-size:16px;font-weight:700;letter-spacing:0.03em;color:#ff9e9e;";
-      titleEl.textContent = title;
-      card.appendChild(titleEl);
-
-      var summaryEl = document.createElement("div");
-      summaryEl.style.cssText = "margin-top:8px;line-height:1.7;color:#ffd7d7;";
-      summaryEl.textContent = summary;
-      card.appendChild(summaryEl);
-
-      if (details.length) {
-        var detailWrap = document.createElement("div");
-        detailWrap.style.cssText =
-          "margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);";
-        var detailTitle = document.createElement("div");
-        detailTitle.style.cssText = "font-weight:600;color:#ffd1d1;";
-        detailTitle.textContent = bt("error_details_title");
-        detailWrap.appendChild(detailTitle);
-        var detailUl = document.createElement("ul");
-        detailUl.style.cssText = "margin:8px 0 0 18px;padding:0;line-height:1.65;";
-        details.forEach(function (item) {
-          var li = document.createElement("li");
-          li.textContent = item;
-          detailUl.appendChild(li);
-        });
-        detailWrap.appendChild(detailUl);
-        card.appendChild(detailWrap);
-      }
-
-      if (suggestions.length) {
-        var suggestWrap = document.createElement("div");
-        suggestWrap.style.cssText =
-          "margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);";
-        var suggestTitle = document.createElement("div");
-        suggestTitle.style.cssText = "font-weight:600;color:#f2e5c9;";
-        suggestTitle.textContent = bt("error_suggestions_title");
-        suggestWrap.appendChild(suggestTitle);
-        var suggestOl = document.createElement("ol");
-        suggestOl.style.cssText = "margin:8px 0 0 18px;padding:0;line-height:1.65;";
-        suggestions.forEach(function (item) {
-          var li = document.createElement("li");
-          li.textContent = item;
-          suggestOl.appendChild(li);
-        });
-        suggestWrap.appendChild(suggestOl);
-        card.appendChild(suggestWrap);
-      }
-
-      var actionRow = document.createElement("div");
-      actionRow.style.cssText = "margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;";
-
-      var retryButton = document.createElement("button");
-      retryButton.type = "button";
-      retryButton.style.cssText =
-        "cursor:pointer;border:1px solid rgba(77,214,201,0.45);border-radius:999px;padding:6px 14px;background:rgba(12,18,28,0.9);color:#c9fff7;";
-      retryButton.textContent = bt("action_retry");
-      retryButton.addEventListener("click", function () {
-        var current = document.getElementById("boot-error-overlay");
-        if (current && current.parentNode) {
-          current.parentNode.removeChild(current);
-        }
-        if (typeof window.__startBootstrapEntry === "function") {
-          window.__startBootstrapEntry({ fromRetry: true });
-          return;
-        }
-        window.location.reload();
-      });
-      actionRow.appendChild(retryButton);
-
-      var refreshButton = document.createElement("button");
-      refreshButton.type = "button";
-      refreshButton.style.cssText =
-        "cursor:pointer;border:1px solid rgba(255,255,255,0.45);border-radius:999px;padding:6px 14px;background:rgba(12,18,28,0.9);color:#fff;";
-      refreshButton.textContent = bt("action_refresh");
-      refreshButton.addEventListener("click", function () {
-        window.location.reload();
-      });
-      actionRow.appendChild(refreshButton);
-
-      var feedbackLink = document.createElement("a");
-      feedbackLink.href = "https://github.com/cmyyx/endfield-essence-planner/issues";
-      feedbackLink.target = "_blank";
-      feedbackLink.rel = "noreferrer";
-      feedbackLink.style.cssText =
-        "display:inline-flex;align-items:center;text-decoration:none;border:1px solid rgba(77,214,201,0.45);border-radius:999px;padding:6px 14px;background:rgba(12,18,28,0.85);color:#c9fff7;";
-      feedbackLink.textContent = bt("action_feedback");
-      actionRow.appendChild(feedbackLink);
-
-      card.appendChild(actionRow);
-      page.appendChild(card);
-      document.body.appendChild(page);
-    };
+    var api = window.__BOOTSTRAP_ERROR__;
+    if (!api || typeof api.ensureErrorRenderer !== "function") return;
+    api.ensureErrorRenderer({
+      root: root,
+      bt: bt,
+    });
   };
 
   var ensureLoadErrorReporter = function () {
-    if (typeof window.__reportScriptChainMissing !== "function") {
-      window.__reportScriptChainMissing = function reportScriptChainMissing() {
-        window.__renderBootError({
-          title: bt("error_title_resource"),
-          summary: bt("error_summary_script_chain_missing"),
-          details: [
-            bt("error_detail_missing_chain"),
-            bt("error_detail_confirm_chain"),
-          ],
-          suggestions: [bt("suggestion_retry"), bt("suggestion_hard_refresh")],
-        });
-      };
-    }
-    if (typeof window.__reportScriptLoadFailure !== "function") {
-      window.__reportScriptLoadFailure = function reportScriptLoadFailure(failedScript, diagnostics) {
-        var failed = String(failedScript || "").trim();
-        var status = diagnostics && diagnostics.status ? Number(diagnostics.status) : 0;
-        var onlineState = navigator.onLine ? bt("error_network_online") : bt("error_network_offline");
-        var details = [
-          bt("error_detail_failed_resource", { name: failed || bt("unknown_item") }),
-          bt("error_detail_network_state", { state: onlineState }),
-        ];
-        if (status) {
-          var hint = explainHttpStatus(status);
-          details.push(
-            bt("error_detail_http_status", {
-              status: status,
-              hint: hint ? " (" + hint + ")" : "",
-            })
-          );
-        }
-        details.push(bt("error_hint_flaky"));
-        window.__renderBootError({
-          title: bt("error_title_resource"),
-          summary: resolveResourceSummary(status, "error_summary_core_script"),
-          details: details,
-          suggestions: [bt("suggestion_retry"), bt("suggestion_hard_refresh"), bt("suggestion_issue_screenshot")],
-        });
-      };
-    }
+    var api = window.__BOOTSTRAP_ERROR__;
+    if (!api || typeof api.ensureLoadErrorReporter !== "function") return;
+    api.ensureLoadErrorReporter({
+      bt: bt,
+      resolveResourceSummary: resolveResourceSummary,
+      explainHttpStatus: explainHttpStatus,
+    });
   };
 
-  var startBootstrap = function (options) {
+  var runBootstrap = function (options) {
     options = options || {};
     if (options.fromRetry && document.body) {
       document.body.textContent = "";
@@ -879,20 +826,31 @@
     runSerial += 1;
     var runId = runSerial;
     window.__bootstrapEntryRunning = true;
+    var appScriptChainFromProtocol = resolveBootProtocolValue("appScriptChain", "__APP_SCRIPT_CHAIN");
     var declaredAppScriptChain =
-      Array.isArray(window.__APP_SCRIPT_CHAIN) && window.__APP_SCRIPT_CHAIN.length
-        ? window.__APP_SCRIPT_CHAIN.slice()
+      Array.isArray(appScriptChainFromProtocol) && appScriptChainFromProtocol.length
+        ? appScriptChainFromProtocol.slice()
         : [];
     root.classList.add("preload");
     applyPreloadTheme();
     ensureErrorRenderer();
     ensureLoadErrorReporter();
-    var progressPulseTimer = null;
+    var resourcesApi = window.__BOOTSTRAP_RESOURCES__;
+    if (!resourcesApi || typeof resourcesApi.resolveBootResourceConfig !== "function") {
+      throw new Error("Bootstrap resource manifest resolver is unavailable.");
+    }
+    var activeBootResourceConfig = resourcesApi.resolveBootResourceConfig({ warnOnce: warnOnce });
+    var cssFiles = activeBootResourceConfig.cssFiles;
+    var startupDataScripts = activeBootResourceConfig.startupDataScripts;
+    var runtimePreludeScripts = activeBootResourceConfig.runtimePreludeScripts;
+    var appEntryScript = activeBootResourceConfig.appEntryScript;
+    var startupScripts = activeBootResourceConfig.startupScripts;
+    var optionalScriptConfigs = activeBootResourceConfig.optionalScriptConfigs;
+    var resourceRuntime = null;
 
     var finish = function () {
-      if (progressPulseTimer) {
-        clearInterval(progressPulseTimer);
-        progressPulseTimer = null;
+      if (resourceRuntime && typeof resourceRuntime.cleanup === "function") {
+        resourceRuntime.cleanup();
       }
       root.classList.remove("preload");
       var overlay = document.getElementById("app-preload");
@@ -973,538 +931,93 @@
     };
     ensurePreloadAssist();
 
-    var optionalFailureReported = new Set();
-    var optionalFailureEventName = "planner:optional-resource-failed";
-    var optionalFailureQueueKey = "__bootOptionalLoadFailures";
-    var resolveOptionalFeatureKey = function (entry) {
-      if (entry && entry.featureKey) return String(entry.featureKey);
-      return "";
-    };
-    var resolveOptionalFeatureLabel = function (featureKey) {
-      if (!featureKey) return "";
-      var key = "optional_feature_" + featureKey;
-      var translated = bt(key);
-      if (!translated || translated === key) return "";
-      return translated;
-    };
-    var enqueueOptionalFailure = function (payload) {
-      if (typeof window === "undefined") return;
-      var queue = Array.isArray(window[optionalFailureQueueKey]) ? window[optionalFailureQueueKey] : [];
-      queue.push(payload);
-      window[optionalFailureQueueKey] = queue.slice(-20);
-      if (typeof window.dispatchEvent === "function") {
-        try {
-          var event = new CustomEvent(optionalFailureEventName, { detail: payload });
-          window.dispatchEvent(event);
-        } catch (error) {
-          // ignore event dispatch failures
-        }
-      }
-    };
-    var reportOptionalResourceFailure = function (entry) {
-      if (!entry || !entry.optional) return;
-      var featureKey = resolveOptionalFeatureKey(entry);
-      var resourceLabel = String((entry && entry.label) || (entry && entry.src) || "").trim();
-      var signature = String(featureKey || "") + "|" + resourceLabel;
-      if (optionalFailureReported.has(signature)) return;
-      optionalFailureReported.add(signature);
-      enqueueOptionalFailure({
-        id: "bootopt-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8),
-        occurredAt: new Date().toISOString(),
-        featureKey: featureKey,
-        featureLabel: resolveOptionalFeatureLabel(featureKey),
-        src: String((entry && entry.src) || ""),
-        label: resourceLabel,
-      });
-    };
-
-    var toResourceLabel = function (src) {
-      var value = String(src || "");
-      if (!value) return bt("unknown_resource");
-      if (/^https?:\/\//i.test(value)) return value;
-      return value;
-    };
-    var resourceState = new Map();
-    var progressMeta = {
-      startedAt: Date.now(),
-      lastCompleted: -1,
-      lastCompletedAt: Date.now(),
-    };
-    var preloadAssistStallMs = 30000;
-    var preloadFailStallMs = 60000;
-    var preloadLongHelpStallMs = 45000;
-    var triggerStallTimeout = null;
-    var ensureResource = function (src, kind, options) {
-      var normalizedOptions = options && typeof options === "object" ? options : {};
-      var optionalConfig = optionalScriptConfigs[src] || null;
-      var key = normalizeResourceKey(src);
-      if (!resourceState.has(key)) {
-        resourceState.set(key, {
-          key: key,
-          src: src,
-          kind: kind || "resource",
-          label: toResourceLabel(src),
-          status: "pending",
-          statusAt: 0,
-          optional: Boolean(normalizedOptions.optional || optionalConfig),
-          featureKey: normalizedOptions.featureKey || (optionalConfig ? optionalConfig.featureKey : ""),
-        });
-      } else if (normalizedOptions.optional || optionalConfig) {
-        var existing = resourceState.get(key);
-        if (existing) {
-          existing.optional = true;
-          if (!existing.featureKey) {
-            existing.featureKey = normalizedOptions.featureKey || (optionalConfig ? optionalConfig.featureKey : "");
-          }
-        }
-      }
-      return key;
-    };
-    var renderProgress = function () {
-      if (runId !== runSerial) return;
-      ensurePreloadAssist();
-      var refs = getPreloadRefs();
-      if (!refs.overlay) return;
-      var entries = Array.from(resourceState.values());
-      var total = entries.length;
-      var loaded = entries.filter(function (entry) {
-        return entry.status === "loaded";
-      }).length;
-      var criticalFailedItem = entries.find(function (entry) {
-        return entry.status === "failed" && !entry.optional;
-      });
-      var optionalFailedItems = entries.filter(function (entry) {
-        return entry.status === "failed" && entry.optional;
-      });
-      var completedCount = loaded + optionalFailedItems.length;
-      var loadingItems = entries.filter(function (entry) {
-        return entry.status === "loading";
-      });
-      var loadingItem = loadingItems.length ? loadingItems[0] : null;
-      var loadingCount = loadingItems.length;
-      var loadingPreview =
-        loadingCount > 0
-          ? loadingItems
-              .slice(0, 3)
-              .map(function (entry) {
-                return entry.label;
-              })
-              .join(bt("list_sep"))
-          : "";
-      var recentLoadedPreview = entries
-        .filter(function (entry) {
-          return entry.status === "loaded" && entry.statusAt > 0;
-        })
-        .sort(function (a, b) {
-          return b.statusAt - a.statusAt;
-        })
-        .slice(0, 2)
-        .map(function (entry) {
-          return entry.label;
-        })
-        .join(bt("list_sep"));
-      if (completedCount !== progressMeta.lastCompleted) {
-        progressMeta.lastCompleted = completedCount;
-        progressMeta.lastCompletedAt = Date.now();
-      }
-      var stagnantMs = Date.now() - progressMeta.lastCompletedAt;
-      var shouldShowAssist =
-        !criticalFailedItem && completedCount < total && stagnantMs >= preloadAssistStallMs;
-      var shouldForceTimeout =
-        !criticalFailedItem && completedCount < total && stagnantMs >= preloadFailStallMs;
-      var hasStagingGap = !criticalFailedItem && !loadingItem && completedCount < total;
-      if (refs.count) {
-        refs.count.textContent = completedCount + "/" + total;
-      }
-      if (refs.progressFill) {
-        var percent = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
-        refs.progressFill.style.width = percent + "%";
-        refs.progressFill.setAttribute("aria-valuenow", String(percent));
-      }
-      if (refs.status) {
-        if (criticalFailedItem) {
-          refs.status.textContent = bt("preload_status_failed");
-        } else if (total === 0) {
-          refs.status.textContent = bt("preload_status_prepare");
-        } else if (completedCount >= total) {
-          refs.status.textContent = bt("preload_status_ready");
-        } else if (hasStagingGap) {
-          refs.status.textContent = bt("preload_status_staging");
-        } else if (loadingCount > 1) {
-          refs.status.textContent = bt("preload_status_parallel");
-        } else {
-          refs.status.textContent = bt("preload_status_loading");
-        }
-      }
-      if (refs.current) {
-        var currentText = "";
-        if (criticalFailedItem) {
-          currentText = bt("preload_current_failed", { label: criticalFailedItem.label });
-        } else if (loadingCount > 1) {
-          var parallelText = bt("preload_current_parallel", {
-            labels: loadingPreview,
-            more:
-              loadingCount > 3
-                ? bt("preload_current_parallel_more", { count: loadingCount })
-                : "",
-          });
-          currentText = recentLoadedPreview
-            ? parallelText + " | " + bt("preload_current_done", { labels: recentLoadedPreview })
-            : parallelText;
-        } else if (loadingItem) {
-          currentText = bt("preload_current_now", { label: loadingItem.label });
-        } else if (hasStagingGap) {
-          currentText = recentLoadedPreview
-            ? bt("preload_current_wait_stage", { labels: recentLoadedPreview })
-            : bt("preload_current_wait_core");
-        } else if (completedCount >= total && total > 0) {
-          currentText = bt("preload_current_wait_mount");
-        }
-        if (!criticalFailedItem && optionalFailedItems.length) {
-          var optionalFailedPreview = optionalFailedItems
-            .slice(0, 2)
-            .map(function (entry) {
-              return entry.label;
-            })
-            .join(bt("list_sep"));
-          var optionalFailedText = bt("preload_current_optional_failed", {
-            label: optionalFailedPreview,
-          });
-          currentText = currentText ? currentText + " | " + optionalFailedText : optionalFailedText;
-        }
-        refs.current.textContent = currentText;
-      }
-      if (refs.help) {
-        if (criticalFailedItem) {
-          refs.help.textContent = "";
-        } else if (completedCount < total && stagnantMs >= preloadLongHelpStallMs) {
-          refs.help.textContent = bt("preload_help_long");
-        } else if (shouldShowAssist) {
-          refs.help.textContent = bt("preload_help_short");
-        } else {
-          refs.help.textContent = "";
-        }
-      }
-      if (refs.actions) {
-        refs.actions.style.display = shouldShowAssist ? "flex" : "none";
-      }
-      if (shouldForceTimeout && typeof triggerStallTimeout === "function") {
-        triggerStallTimeout();
-      }
-    };
-    var setResourceStatus = function (key, status) {
-      var item = resourceState.get(key);
-      if (!item) return;
-      item.status = status;
-      item.statusAt = Date.now();
-      renderProgress();
-    };
-
-    cssFiles.forEach(function (href) {
-      ensureResource(href, "style");
-    });
-    startupScripts.forEach(function (src) {
-      ensureResource(src, "script");
-    });
-    declaredAppScriptChain.forEach(function (src) {
-      ensureResource(src, "script");
-    });
-    renderProgress();
-
-    if (document.readyState === "loading") {
-      document.addEventListener(
-        "DOMContentLoaded",
-        function () {
-          ensurePreloadAssist();
-          renderProgress();
-        },
-        { once: true }
-      );
+    var optionalApi = window.__BOOTSTRAP_OPTIONAL__;
+    var resourcesApiRuntime = window.__BOOTSTRAP_RESOURCES__;
+    if (
+      !optionalApi ||
+      typeof optionalApi.createOptionalFailureReporter !== "function" ||
+      typeof optionalApi.createOptionalScriptLoader !== "function" ||
+      !resourcesApiRuntime ||
+      typeof resourcesApiRuntime.createResourceRuntime !== "function"
+    ) {
+      throw new Error("Bootstrap helper module APIs are unavailable.");
     }
-    progressPulseTimer = setInterval(function () {
-      if (runId !== runSerial) {
-        clearInterval(progressPulseTimer);
-        progressPulseTimer = null;
-        return;
-      }
-      renderProgress();
-    }, 1000);
 
-    var scriptLoadRegistry = new Map();
-    var loadScript = function (src, options) {
-      var requestSrc = applyBootCacheBust(src);
-      var key = ensureResource(src, "script", options);
-      if (scriptLoadRegistry.has(key)) {
-        return scriptLoadRegistry.get(key);
-      }
-      var task = new Promise(function (resolve, reject) {
-        var existingLoaded = false;
-        if (!bootCacheBustToken) {
-          existingLoaded = Array.from(document.scripts || []).some(function (script) {
-            var s = script.getAttribute("src") || script.src || "";
-            var same = normalizeResourceKey(s) === key;
-            return same && script.dataset && script.dataset.loaded === "true";
-          });
-        }
-        if (existingLoaded) {
-          setResourceStatus(key, "loaded");
-          resolve();
-          return;
-        }
-        var script = document.createElement("script");
-        script.src = requestSrc;
-        setResourceStatus(key, "loading");
-        script.onload = function () {
-          script.dataset.loaded = "true";
-          setResourceStatus(key, "loaded");
-          resolve();
-        };
-        script.onerror = function () {
-          setResourceStatus(key, "failed");
-          scriptLoadRegistry.delete(key);
-          probeResourceStatus(requestSrc).then(function (probe) {
-            reject(createLoadError("script", src, "error", probe));
-          });
-        };
-        var target = document.body || document.head || document.documentElement;
-        target.appendChild(script);
-      });
-      scriptLoadRegistry.set(key, task);
-      return task;
-    };
-    window.__loadScript = loadScript;
+    var optionalReporter = optionalApi.createOptionalFailureReporter({ bt: bt });
+    var reportOptionalResourceFailure = optionalReporter.reportOptionalResourceFailure;
+    resourceRuntime = resourcesApiRuntime.createResourceRuntime({
+      bt: bt,
+      cssFiles: cssFiles,
+      startupScripts: startupScripts,
+      declaredAppScriptChain: declaredAppScriptChain,
+      optionalScriptConfigs: optionalScriptConfigs,
+      runId: runId,
+      getRunSerial: function () {
+        return runSerial;
+      },
+      ensurePreloadAssist: ensurePreloadAssist,
+      getPreloadRefs: getPreloadRefs,
+      normalizeResourceKey: normalizeResourceKey,
+      applyBootCacheBust: applyBootCacheBust,
+      probeResourceStatus: probeResourceStatus,
+      isFatalHttpStatus: isFatalHttpStatus,
+      createLoadError: createLoadError,
+      reportOptionalResourceFailure: reportOptionalResourceFailure,
+      bootCacheBustToken: bootCacheBustToken,
+    });
+    resourceRuntime.initialize();
 
-    var styleLoadRegistry = new Map();
-    var resolveCssStallLimitMs = function () {
-      var base = 60000;
-      try {
-        var conn =
-          navigator && (navigator.connection || navigator.mozConnection || navigator.webkitConnection);
-        if (conn) {
-          if (conn.saveData) return 75000;
-          var type = String(conn.effectiveType || "").toLowerCase();
-          if (type === "slow-2g" || type === "2g") return 75000;
-          if (type === "3g") return 65000;
-        }
-      } catch (error) {
-        // ignore
-      }
-      return base;
-    };
-    var cssStallLimitMs = resolveCssStallLimitMs();
-    var cssStatePollIntervalMs = 900;
-    var cssProbeIntervalMs = 5000;
-    var isStylesheetReady = function (key, link) {
-      if (!link) return false;
-      try {
-        if (link.sheet && !link.disabled) {
-          return true;
-        }
-      } catch (error) {
-        // ignore cross-origin/parse errors and continue with fallback scan
-      }
-      try {
-        var sheets = Array.from(document.styleSheets || []);
-        return sheets.some(function (sheet) {
-          var href = "";
-          try {
-            href = sheet && sheet.href ? normalizeResourceKey(sheet.href) : "";
-          } catch (error) {
-            href = "";
-          }
-          return href === key;
-        });
-      } catch (error) {
-        return false;
-      }
-    };
-    var loadStyle = function (href) {
-      var requestHref = applyBootCacheBust(href);
-      var key = ensureResource(href, "style");
-      if (styleLoadRegistry.has(key)) {
-        return styleLoadRegistry.get(key);
-      }
-      var task = new Promise(function (resolve, reject) {
-        var settled = false;
-        var probeInFlight = false;
-        var lastProbe = null;
-        var errorSettleTimer = null;
-        var nextProbeAt = Date.now();
-        var link =
-          bootCacheBustToken
-            ? null
-            : document.querySelector('link[rel="stylesheet"][href="' + href + '"]');
-        if (!link) {
-          link = document.createElement("link");
-          link.rel = "stylesheet";
-          link.href = requestHref;
-          document.head.appendChild(link);
-        }
-        setResourceStatus(key, "loading");
-        var pollTimer = null;
-        var stallTimer = null;
-        var cleanup = function () {
-          clearInterval(pollTimer);
-          clearTimeout(stallTimer);
-          clearTimeout(errorSettleTimer);
-          link.removeEventListener("load", onLoad);
-          link.removeEventListener("error", onError);
-        };
-        var onLoad = function () {
-          if (settled) return;
-          settled = true;
-          if (link.dataset) {
-            link.dataset.loaded = "true";
-          }
-          cleanup();
-          setResourceStatus(key, "loaded");
-          resolve();
-        };
-        var onFailure = function (reason, probe) {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          setResourceStatus(key, "failed");
-          styleLoadRegistry.delete(key);
-          reject(createLoadError("style", href, reason, probe));
-        };
-        var runProbe = function (source) {
-          if (settled || probeInFlight) return;
-          probeInFlight = true;
-          probeResourceStatus(requestHref)
-            .then(function (probe) {
-              if (settled) return;
-              lastProbe = probe || null;
-              if (isStylesheetReady(key, link)) {
-                onLoad();
-                return;
-              }
-              var status = probe && probe.status ? Number(probe.status) : 0;
-              if (status && isFatalHttpStatus(status)) {
-                onFailure("http", probe);
-                return;
-              }
-            })
-            .finally(function () {
-              probeInFlight = false;
-            });
-        };
-        var schedulePoll = function () {
-          clearInterval(pollTimer);
-          pollTimer = setInterval(function () {
-            if (settled) return;
-            if (isStylesheetReady(key, link)) {
-              onLoad();
-              return;
-            }
-            if (Date.now() >= nextProbeAt) {
-              nextProbeAt = Date.now() + cssProbeIntervalMs;
-              runProbe("poll");
-            }
-          }, cssStatePollIntervalMs);
-        };
-        var scheduleStallWatchdog = function () {
-          clearTimeout(stallTimer);
-          stallTimer = setTimeout(function () {
-            if (settled) return;
-            if (isStylesheetReady(key, link)) {
-              onLoad();
-              return;
-            }
-            probeResourceStatus(requestHref).then(function (probe) {
-              if (settled) return;
-              if (isStylesheetReady(key, link)) {
-                onLoad();
-                return;
-              }
-              var status = probe && probe.status ? Number(probe.status) : 0;
-              if (status && isFatalHttpStatus(status)) {
-                onFailure("http", probe);
-                return;
-              }
-              onFailure("stalled", probe);
-            });
-          }, cssStallLimitMs);
-        };
-        schedulePoll();
-        scheduleStallWatchdog();
-        link.addEventListener("load", onLoad);
-        var onError = function () {
-          if (settled) return;
-          runProbe("error");
-          clearTimeout(errorSettleTimer);
-          errorSettleTimer = setTimeout(function () {
-            if (settled) return;
-            if (isStylesheetReady(key, link)) {
-              onLoad();
-              return;
-            }
-            onFailure("error", lastProbe);
-          }, 1600);
-        };
-        link.addEventListener("error", onError);
-        try {
-          if (isStylesheetReady(key, link)) {
-            onLoad();
-            return;
-          }
-          runProbe("init");
-        } catch (error) {
-          // ignore and wait load/error
-        }
-      });
-      styleLoadRegistry.set(key, task);
-      return task;
-    };
+    var ensureResource = resourceRuntime.ensureResource;
+    var renderProgress = resourceRuntime.renderProgress;
+    var loadScript = resourceRuntime.loadScript;
+    var loadStyle = resourceRuntime.loadStyle;
+    var setStallTimeoutTrigger = resourceRuntime.setStallTimeoutTrigger;
+    var loadOptionalScriptWithRetry = optionalApi.createOptionalScriptLoader({
+      loadScript: loadScript,
+      optionalScriptConfigs: optionalScriptConfigs,
+      resourceState: resourceRuntime.resourceState,
+      normalizeResourceKey: normalizeResourceKey,
+      warnOnce: warnOnce,
+      getRunSerial: function () {
+        return runSerial;
+      },
+      reportOptionalResourceFailure: reportOptionalResourceFailure,
+    });
 
     var cssPromise = Promise.all(cssFiles.map(loadStyle));
-    var vuePromise = loadScript("./vendor/vue.global.prod.js");
-    var pinyinOptionalOptions = { optional: true, featureKey: "pinyin" };
-    var pinyinOptionalPromise = loadScript("./vendor/pinyin-pro.min.js", pinyinOptionalOptions).catch(function () {
-      var capturedRunId = runId;
-      return new Promise(function (resolve) {
-        setTimeout(function () {
-          if (runSerial !== capturedRunId) {
-            resolve();
-            return;
-          }
-          loadScript("./vendor/pinyin-pro.min.js", pinyinOptionalOptions)
-            .catch(function () {
-              if (runSerial !== capturedRunId) return;
-              var entry = resourceState.get(normalizeResourceKey("./vendor/pinyin-pro.min.js"));
-              if (runSerial !== capturedRunId) return;
-              if (entry) {
-                if (runSerial !== capturedRunId) return;
-                reportOptionalResourceFailure(entry);
-              } else {
-                if (runSerial !== capturedRunId) return;
-                reportOptionalResourceFailure({
-                  optional: true,
-                  label: "./vendor/pinyin-pro.min.js",
-                  featureKey: "pinyin",
-                  src: "./vendor/pinyin-pro.min.js",
-                });
-              }
-            })
-            .finally(resolve);
-        }, 1200);
-      });
+    var dataPromise = Promise.all(
+      startupDataScripts.map(function (src) {
+        return loadScript(src);
+      })
+    );
+    var runtimePreludePromise = dataPromise.then(function () {
+      return Promise.all(
+        runtimePreludeScripts.map(function (src) {
+          return loadScript(src);
+        })
+      );
     });
-    var dataPromise = Promise.all([
-      loadScript("./data/version.js"),
-      loadScript("./data/dungeons.js"),
-      loadScript("./data/weapons.js"),
-      loadScript("./data/gears.js"),
-      loadScript("./data/weapon-images.js"),
-      loadScript("./data/i18n.zh-CN.js"),
-    ]);
-    var scriptChainPromise = loadScript("./js/app.script-chain.js");
+    var optionalScripts = Object.keys(optionalScriptConfigs);
+    var optionalScriptPromise = runtimePreludePromise.then(function () {
+      return Promise.all(
+        optionalScripts.map(function (src) {
+          return loadOptionalScriptWithRetry(src, optionalScriptConfigs[src], runId);
+        })
+      );
+    });
     if (typeof window.__loadAnalyticsNow === "function") {
       try {
         // Intentionally eager: capture real startup timing under first-screen contention.
         window.__loadAnalyticsNow();
       } catch (error) {
-        // ignore analytics bootstrap errors
+        reportNonFatalDiagnostic({
+          operation: "bootstrap.analytics-preload",
+          kind: "analytics-load-failed",
+          resource: "window.__loadAnalyticsNow",
+          errorName: String((error && error.name) || "Error"),
+          errorMessage: String((error && error.message) || "analytics preload failed"),
+          optionalSignature: "bootstrap.analytics-preload",
+        });
       }
     }
     var shellReadyPromise = new Promise(function (resolve) {
@@ -1524,6 +1037,7 @@
       check();
     });
     var stallTimeoutTriggered = false;
+    var triggerStallTimeout = null;
     var stallTimeoutReject = null;
     var stallTimeoutPromise = new Promise(function (resolve, reject) {
       stallTimeoutReject = reject;
@@ -1540,110 +1054,54 @@
       };
       stallTimeoutReject(stallError);
     };
+    if (typeof setStallTimeoutTrigger === "function") {
+      setStallTimeoutTrigger(triggerStallTimeout);
+    }
     var bootLoadPromise = Promise.all([
       shellReadyPromise,
       cssPromise,
-      vuePromise,
-      dataPromise,
-      scriptChainPromise,
+      runtimePreludePromise,
     ])
       .then(function () {
         if (
           !declaredAppScriptChain.length &&
-          Array.isArray(window.__APP_SCRIPT_CHAIN) &&
-          window.__APP_SCRIPT_CHAIN.length
+          Array.isArray(resolveBootProtocolValue("appScriptChain", "__APP_SCRIPT_CHAIN")) &&
+          resolveBootProtocolValue("appScriptChain", "__APP_SCRIPT_CHAIN").length
         ) {
-          declaredAppScriptChain = window.__APP_SCRIPT_CHAIN.slice();
+          declaredAppScriptChain = resolveBootProtocolValue("appScriptChain", "__APP_SCRIPT_CHAIN").slice();
           declaredAppScriptChain.forEach(function (src) {
             ensureResource(src, "script");
           });
           renderProgress();
         }
-        pinyinOptionalPromise.catch(function () {
-          // non-blocking optional dependency
+        optionalScriptPromise.catch(function (error) {
+          reportNonFatalDiagnostic({
+            operation: "bootstrap.optional-preload",
+            kind: "optional-preload-failed",
+            resource: "bootstrap.optional",
+            errorName: String((error && error.name) || "Error"),
+            errorMessage: String((error && error.message) || "optional preload failed"),
+            optionalSignature: "bootstrap.optional-preload",
+          });
         });
-        return loadScript("./js/app.js");
+        return loadScript(appEntryScript);
       });
     Promise.race([bootLoadPromise, stallTimeoutPromise])
       .catch(function (error) {
         if (runId !== runSerial) return;
         finish();
-        var failedMessage = String((error && error.message) || "");
-        var resourceMeta = error && error.resource ? error.resource : null;
-        var probe = resourceMeta && resourceMeta.probe ? resourceMeta.probe : null;
-        var status = probe && probe.status ? Number(probe.status) : 0;
-        var statusHint = explainHttpStatus(status);
-        var failedScript = failedMessage.replace(/^Failed to load:\s*/i, "");
-        if (resourceMeta && resourceMeta.kind === "script" && resourceMeta.src) {
-          failedScript = resourceMeta.src;
-        }
-        if (resourceMeta && resourceMeta.kind === "startup-stall") {
-          window.__renderBootError({
-            title: bt("error_title_resource"),
-            summary: bt("error_summary_core_resource"),
-            details: [
-              bt("error_detail_failed_reason", { reason: bt("error_reason_stalled") }),
-              bt("error_hint_flaky"),
-            ],
-            suggestions: [bt("suggestion_retry"), bt("suggestion_hard_refresh"), bt("suggestion_issue_screenshot")],
+        var errorApi = window.__BOOTSTRAP_ERROR__;
+        if (errorApi && typeof errorApi.handleBootFailure === "function") {
+          errorApi.handleBootFailure({
+            error: error,
+            bt: bt,
+            resolveResourceSummary: resolveResourceSummary,
+            explainHttpStatus: explainHttpStatus,
+            describeStyleFailureReason: describeStyleFailureReason,
           });
           return;
         }
-        var failedStyle = failedMessage
-          .replace(/^Failed to load stylesheet(?: \([^)]+\))?:\s*/i, "")
-          .trim();
-        if (resourceMeta && resourceMeta.kind === "style" && resourceMeta.src) {
-          failedStyle = resourceMeta.src;
-        }
-        var failureReason = resourceMeta && resourceMeta.reason ? String(resourceMeta.reason) : "";
-        var isCssFailure =
-          (resourceMeta && resourceMeta.kind === "style") || failedMessage.indexOf("stylesheet") !== -1;
-        if (isCssFailure) {
-          var cssDetails = [bt("error_detail_failed_style", { name: failedStyle || bt("unknown_item") })];
-          if (status) {
-            cssDetails.push(
-              bt("error_detail_http_status", {
-                status: status,
-                hint: statusHint ? " (" + statusHint + ")" : "",
-              })
-            );
-          }
-          if (failureReason) {
-            cssDetails.push(
-              bt("error_detail_failed_reason", {
-                reason: describeStyleFailureReason(failureReason, status),
-              })
-            );
-          }
-          window.__renderBootError({
-            title: bt("error_title_style"),
-            summary: resolveResourceSummary(status, "error_summary_style"),
-            details: cssDetails,
-            suggestions: [bt("suggestion_retry"), bt("suggestion_hard_refresh")],
-          });
-        } else if (typeof window.__reportScriptLoadFailure === "function") {
-          window.__reportScriptLoadFailure(failedScript, {
-            status: status,
-          });
-        } else {
-          var scriptDetails = [
-            bt("error_detail_failed_resource", { name: failedScript || bt("unknown_item") }),
-          ];
-          if (status) {
-            scriptDetails.push(
-              bt("error_detail_http_status", {
-                status: status,
-                hint: statusHint ? " (" + statusHint + ")" : "",
-              })
-            );
-          }
-          window.__renderBootError({
-            title: bt("error_title_resource"),
-            summary: resolveResourceSummary(status, "error_summary_core_resource"),
-            details: scriptDetails,
-            suggestions: [bt("suggestion_retry"), bt("suggestion_hard_refresh")],
-          });
-        }
+        throw error;
       })
       .finally(function () {
         stallTimeoutTriggered = true;
@@ -1653,6 +1111,58 @@
       });
   };
 
+  var startBootstrap = function (options) {
+    ensureBootstrapModulesReady()
+      .then(function () {
+        runBootstrap(options || {});
+      })
+      .catch(function (error) {
+        var message = String((error && error.message) || "Failed to load bootstrap helper modules.");
+        warnOnce("bootstrap-module-load-failed", "[bootstrap] " + message);
+        reportNonFatalDiagnostic({
+          operation: "bootstrap.load-helper-modules",
+          kind: "helper-module-load-failed",
+          resource: "bootstrap-module-scripts",
+          errorName: String((error && error.name) || "Error"),
+          errorMessage: message,
+          optionalSignature: "bootstrap.load-helper-modules",
+        });
+        if (typeof window.__renderBootError === "function") {
+          window.__renderBootError({
+            title: bt("error_title_resource"),
+            summary: bt("error_summary_core_resource"),
+            details: [message],
+            suggestions: [bt("suggestion_retry"), bt("suggestion_hard_refresh")],
+          });
+          return;
+        }
+        var fallbackContainerId = "bootstrap-minimal-error";
+        var fallbackRoot =
+          typeof document !== "undefined" ? document.getElementById(fallbackContainerId) : null;
+        if (!fallbackRoot && typeof document !== "undefined" && document.body) {
+          fallbackRoot = document.createElement("div");
+          fallbackRoot.id = fallbackContainerId;
+          fallbackRoot.style.cssText =
+            "position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,102,102,0.55);background:rgba(18,10,14,0.94);color:#ffd4d4;box-shadow:0 8px 24px rgba(0,0,0,0.35);font:13px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;";
+          document.body.appendChild(fallbackRoot);
+        }
+        if (fallbackRoot) {
+          fallbackRoot.innerHTML = "";
+          var titleNode = document.createElement("div");
+          titleNode.textContent = bt("error_title_resource");
+          titleNode.style.cssText = "font-weight:700;margin-bottom:4px;";
+          var messageNode = document.createElement("div");
+          messageNode.textContent = message;
+          fallbackRoot.appendChild(titleNode);
+          fallbackRoot.appendChild(messageNode);
+        }
+        if (typeof console !== "undefined" && typeof console.error === "function") {
+          console.error(error);
+        }
+      });
+  };
+
+  publishBootProtocolValue("startBootstrapEntry", "__startBootstrapEntry", startBootstrap);
   window.__startBootstrapEntry = startBootstrap;
   startBootstrap({ fromRetry: false });
 })();

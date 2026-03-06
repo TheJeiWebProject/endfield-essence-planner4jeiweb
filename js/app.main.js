@@ -174,6 +174,88 @@
   };
 
   const modules = window.AppModules || {};
+  const readRuntimeEnv = () => {
+    const normalizeEnv = (value) => String(value || "").trim().toLowerCase();
+    if (typeof window !== "undefined" && window.location && typeof window.location.search === "string") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const fromQuery = normalizeEnv(params.get("app_env"));
+        if (fromQuery) return fromQuery;
+      } catch (error) {
+        // ignore malformed query
+      }
+    }
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      try {
+        const fromStorage = normalizeEnv(localStorage.getItem("planner-app-env:v1"));
+        if (fromStorage) return fromStorage;
+      } catch (error) {
+        // ignore storage read failures
+      }
+    }
+    if (typeof window !== "undefined" && typeof window.__APP_ENV__ === "string") {
+      const fromWindow = normalizeEnv(window.__APP_ENV__);
+      if (fromWindow) return fromWindow;
+    }
+    if (
+      typeof process !== "undefined" &&
+      process &&
+      process.env &&
+      typeof process.env.NODE_ENV === "string"
+    ) {
+      const fromProcess = normalizeEnv(process.env.NODE_ENV);
+      if (fromProcess) return fromProcess;
+    }
+    if (typeof window !== "undefined" && window.location && typeof window.location.hostname === "string") {
+      const host = normalizeEnv(window.location.hostname);
+      if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+        return "development";
+      }
+    }
+    return "production";
+  };
+  const strictInitContractEnvs = new Set(["development", "test"]);
+  const announceStrictRuntimeEnv = (runtimeEnv) => {
+    const normalized = String(runtimeEnv || "").trim().toLowerCase();
+    if (!strictInitContractEnvs.has(normalized)) return;
+    if (typeof console === "undefined" || typeof console.info !== "function") return;
+    const envText = normalized.toUpperCase();
+    const titleText =
+      normalized === "test"
+        ? "████████████████\nTEST MODE\n████████████████\n测试模式"
+        : "████████████████████\nDEVELOPMENT MODE\n████████████████████\n开发模式";
+    const storageKey = "planner-app-env:v1";
+    console.info(
+      "%c" + titleText,
+      "display:block;background:linear-gradient(135deg,#0b1220,#1d4ed8);color:#f8fafc;padding:12px 14px;border:1px solid #38bdf8;border-radius:12px;font-weight:900;font-size:21px;line-height:1.12;letter-spacing:1px;text-shadow:0 1px 0 #0b1220,0 0 14px rgba(56,189,248,0.45);"
+    );
+    console.info(
+      "%cRuntime: " +
+        envText +
+        "\n切换环境 / How to switch" +
+        "\n1) 临时(当前链接): 在 URL 末尾加 ?app_env=development 或 ?app_env=test" +
+        "\n   Temporary (current URL): append ?app_env=development or ?app_env=test" +
+        "\n2) 持久(当前浏览器): localStorage.setItem('" +
+        storageKey +
+        "','development')" +
+        "\n   Persistent (this browser): localStorage.setItem('" +
+        storageKey +
+        "','development')" +
+        "\n3) 恢复生产: localStorage.removeItem('" +
+        storageKey +
+        "')" +
+        "\n   Back to production: localStorage.removeItem('" +
+        storageKey +
+        "')" +
+        "\n4) 查看当前环境: window.__APP_RUNTIME_ENV__" +
+        "\n   Show current env: window.__APP_RUNTIME_ENV__",
+      "display:block;background:#0b1220;color:#a5f3fc;padding:10px 12px;border:1px dashed #155e75;border-radius:10px;line-height:1.6;font-weight:600;"
+    );
+  };
+  const parseInitContractList = (value) =>
+    Array.isArray(value)
+      ? Array.from(new Set(value.map((item) => String(item || "").trim()).filter(Boolean)))
+      : [];
   const appTemplates =
     typeof window !== "undefined" && window.__APP_TEMPLATES ? window.__APP_TEMPLATES : {};
   const templateMainParts =
@@ -230,13 +312,13 @@
     class="match-status-chip"
     :class="{ 'is-owned': isWeaponOwned(weaponName), 'is-unowned': !isWeaponOwned(weaponName) }"
   >
-    {{ isWeaponOwned(weaponName) ? t("已拥有") : t("未拥有") }}
+    {{ isWeaponOwned(weaponName) ? t("badge.owned") : t("nav.not_owned") }}
   </span>
   <span
     class="match-status-chip"
     :class="{ 'is-essence-owned': isEssenceOwned(weaponName) }"
   >
-    {{ isEssenceOwned(weaponName) ? t("基质已有") : t("基质未有") }}
+    {{ isEssenceOwned(weaponName) ? t("nav.essence_owned") : t("badge.essence_not_owned") }}
   </span>
 </div>`,
   };
@@ -296,36 +378,259 @@
     setup() {
       const ctx = { ref, computed, onMounted, onBeforeUnmount, watch, nextTick };
       const state = {};
+      const fallbackInterpolate = (key, params) => {
+        const text = String(key || "");
+        if (!params || typeof params !== "object") return text;
+        return text.replace(/\{(\w+)\}/g, (match, name) =>
+          Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match
+        );
+      };
+      state.t = (key, params) => fallbackInterpolate(key, params);
+      state.tTerm = (category, value) => String(value || "");
       state.loadScriptOnce = loadScriptOnce;
       state.createUiScheduler = createUiScheduler;
-      const init = (name) => {
-        const fn = modules[name];
-        if (typeof fn === "function") {
-          fn(ctx, state);
+      const runtimeEnv = readRuntimeEnv();
+      if (typeof window !== "undefined") {
+        window.__APP_RUNTIME_ENV__ = runtimeEnv;
+      }
+      announceStrictRuntimeEnv(runtimeEnv);
+      const initializedModules = new Set();
+      const providedCapabilities = new Set();
+      const pendingInitContractWarnings = [];
+      const markProvidedCapabilities = (fn) => {
+        parseInitContractList(fn && fn.provides).forEach((capability) => {
+          providedCapabilities.add(capability);
+        });
+      };
+      const flushPendingInitContractWarnings = () => {
+        if (
+          typeof state.reportRuntimeWarning !== "function" ||
+          !Array.isArray(pendingInitContractWarnings) ||
+          !pendingInitContractWarnings.length
+        ) {
+          return;
         }
+        const queue = pendingInitContractWarnings.splice(0, pendingInitContractWarnings.length);
+        queue.forEach((runReporter) => {
+          try {
+            runReporter();
+          } catch (error) {
+            if (typeof console !== "undefined" && typeof console.warn === "function") {
+              console.warn("[init-contract] failed to flush pending warning", error);
+            }
+          }
+        });
+      };
+      const resolveMissingContracts = (declaredList, seenSet) =>
+        declaredList.filter((item) => !seenSet.has(item));
+      const reportInitContractWarning = (name, kind, details) => {
+        const normalizedName = String(name || "unknown");
+        const missingRequired = Array.isArray(details && details.missingRequired)
+          ? details.missingRequired
+          : [];
+        const missingOptional = Array.isArray(details && details.missingOptional)
+          ? details.missingOptional
+          : [];
+        const missingRequiredProviders = Array.isArray(details && details.missingRequiredProviders)
+          ? details.missingRequiredProviders
+          : [];
+        const missingOptionalProviders = Array.isArray(details && details.missingOptionalProviders)
+          ? details.missingOptionalProviders
+          : [];
+        const detailLines = [
+          `env: ${runtimeEnv}`,
+          `module: ${normalizedName}`,
+        ];
+        if (missingRequired.length) {
+          detailLines.push(`missing required modules: ${missingRequired.join(", ")}`);
+        }
+        if (missingRequiredProviders.length) {
+          detailLines.push(`missing required providers: ${missingRequiredProviders.join(", ")}`);
+        }
+        if (missingOptional.length) {
+          detailLines.push(`missing optional modules: ${missingOptional.join(", ")}`);
+        }
+        if (missingOptionalProviders.length) {
+          detailLines.push(`missing optional providers: ${missingOptionalProviders.join(", ")}`);
+        }
+        const summaryText =
+          kind === "required"
+            ? typeof state.t === "function"
+              ? state.t("warning.init_contract_required_summary")
+              : "Critical module dependencies are missing; this module was skipped in degraded mode."
+            : typeof state.t === "function"
+            ? state.t("warning.init_contract_optional_summary")
+            : "Optional dependencies are missing; module initialization continues.";
+        const warningKeyParts = [
+          kind,
+          normalizedName,
+          missingRequired.join("|"),
+          missingRequiredProviders.join("|"),
+          missingOptional.join("|"),
+          missingOptionalProviders.join("|"),
+        ];
+        const warningText = `[init-contract] ${warningKeyParts.filter(Boolean).join("::")}`;
+        const warnConsole = () => {
+          if (typeof console !== "undefined" && typeof console.warn === "function") {
+            console.warn(warningText, detailLines.join("\n"));
+          }
+        };
+        const sendReporter = () => {
+          const warningError = new Error(warningText);
+          warningError.name = "InitContractWarning";
+          state.reportRuntimeWarning(warningError, {
+            scope: "init.contract",
+            operation: "init.contract-check",
+            key: `${kind}:${normalizedName}`,
+            title:
+              typeof state.t === "function"
+                ? state.t("warning.init_contract_title")
+                : "Module Init Dependency Warning",
+            summary: summaryText,
+            note: detailLines.join("\n"),
+            asToast: true,
+            optionalSignature: warningText,
+          });
+        };
+        if (typeof state.reportRuntimeWarning === "function") {
+          sendReporter();
+          return;
+        }
+        warnConsole();
+        pendingInitContractWarnings.push(sendReporter);
+      };
+      const reportInitExecutionWarning = (name, error) => {
+        const normalizedName = String(name || "unknown");
+        const errorName = String((error && error.name) || "Error");
+        const errorMessage = String((error && error.message) || "module init failed");
+        const detailLines = [
+          `env: ${runtimeEnv}`,
+          `module: ${normalizedName}`,
+          `error: ${errorName}: ${errorMessage}`,
+        ];
+        if (error && error.stack) {
+          detailLines.push(`stack: ${String(error.stack)}`);
+        }
+        const warningText = `[init-exec] ${normalizedName}::${errorName}::${errorMessage}`;
+        const warnConsole = () => {
+          if (typeof console !== "undefined" && typeof console.warn === "function") {
+            console.warn(warningText, detailLines.join("\n"));
+          }
+        };
+        const sendReporter = () => {
+          const warningError = error instanceof Error ? error : new Error(errorMessage);
+          warningError.name = errorName;
+          state.reportRuntimeWarning(warningError, {
+            scope: "init.execution",
+            operation: "init.module-run",
+            key: normalizedName,
+            title:
+              typeof state.t === "function"
+                ? state.t("warning.init_execution_title")
+                : "Module Init Execution Error",
+            summary:
+              typeof state.t === "function"
+                ? state.t("warning.init_execution_summary")
+                : "Module initialization failed; this module was skipped in degraded mode.",
+            note: detailLines.join("\n"),
+            asToast: true,
+            optionalSignature: warningText,
+          });
+        };
+        if (typeof state.reportRuntimeWarning === "function") {
+          sendReporter();
+          return;
+        }
+        warnConsole();
+        pendingInitContractWarnings.push(sendReporter);
+      };
+      const runInitWithContract = (name) => {
+        const fn = modules[name];
+        if (typeof fn !== "function") {
+          const missingError = new Error(`[init-contract] missing module initializer: ${name}`);
+          missingError.name = "InitModuleMissingError";
+          reportInitExecutionWarning(name, missingError);
+          if (strictInitContractEnvs.has(runtimeEnv)) {
+            throw missingError;
+          }
+          return "degraded";
+        }
+        const required = parseInitContractList(fn.required);
+        const optional = parseInitContractList(fn.optional);
+        const requiredProviders = parseInitContractList(fn.requiredProviders);
+        const optionalProviders = parseInitContractList(fn.optionalProviders);
+        const missingRequired = resolveMissingContracts(required, initializedModules);
+        const missingRequiredProviders = resolveMissingContracts(requiredProviders, providedCapabilities);
+        if (missingRequired.length || missingRequiredProviders.length) {
+          const messageParts = [`[init-contract] ${name} missing required dependencies`];
+          if (missingRequired.length) {
+            messageParts.push(`modules=${missingRequired.join(",")}`);
+          }
+          if (missingRequiredProviders.length) {
+            messageParts.push(`providers=${missingRequiredProviders.join(",")}`);
+          }
+          if (strictInitContractEnvs.has(runtimeEnv)) {
+            throw new Error(messageParts.join(" | "));
+          }
+          reportInitContractWarning(name, "required", {
+            missingRequired,
+            missingRequiredProviders,
+          });
+          return "degraded";
+        }
+
+        const missingOptional = resolveMissingContracts(optional, initializedModules);
+        const missingOptionalProviders = resolveMissingContracts(optionalProviders, providedCapabilities);
+        if (missingOptional.length || missingOptionalProviders.length) {
+          reportInitContractWarning(name, "optional", {
+            missingOptional,
+            missingOptionalProviders,
+          });
+        }
+
+        try {
+          fn(ctx, state);
+        } catch (error) {
+          reportInitExecutionWarning(name, error);
+          if (strictInitContractEnvs.has(runtimeEnv)) {
+            throw error;
+          }
+          return "degraded";
+        }
+        initializedModules.add(name);
+        markProvidedCapabilities(fn);
+        flushPendingInitContractWarnings();
+        return "ok";
       };
 
-      init("initState");
-      init("initI18n");
-      init("initContent");
-      init("initSearch");
-      init("initUi");
-      init("initStorage");
-      init("initMigration");
-      init("initAnalytics");
-      init("initEmbed");
-      init("initPerf");
-      init("initBackground");
-      init("initWeapons");
-      init("initWeaponMatch");
-      init("initRecommendations");
-      init("initTutorial");
-      init("initRecommendationDisplay");
-      init("initModals");
-      init("initUpdate");
-      init("initMedia");
-      init("initStrategy");
-      init("initGearRefining");
+      const initExecutionOrder = [
+        "initState",
+        "initI18n",
+        "initContent",
+        "initSearch",
+        "initUi",
+        "initUpSchedule",
+        "initRerunRanking",
+        "initStorage",
+        "initAnalytics",
+        "initEmbed",
+        "initPerf",
+        "initBackground",
+        "initWeapons",
+        "initWeaponMatch",
+        "initRecommendations",
+        "initTutorial",
+        "initRecommendationDisplay",
+        "initModals",
+        "initUpdate",
+        "initMedia",
+        "initStrategy",
+        "initGearRefining",
+      ];
+
+      initExecutionOrder.forEach((name) => {
+        runInitWithContract(name);
+      });
 
       const weaponCatalog =
         typeof window !== "undefined" && Array.isArray(window.WEAPONS) ? window.WEAPONS : [];
@@ -362,6 +667,9 @@
         }
         if (view === "gear-refining") {
           return { view: "gear-refining", weaponNames, hasWeaponParam };
+        }
+        if (view === "rerun-ranking") {
+          return { view: "rerun-ranking" };
         }
         if (view === "match") {
           return { view: "match" };
@@ -416,13 +724,22 @@
         if (view === "gear-refining") {
           return "/gear-refining";
         }
+        if (view === "rerun-ranking") {
+          return "/rerun-ranking";
+        }
         if (view === "match") {
           return "/match";
         }
         return "/planner";
       };
 
-      const legacyScrollbarHiddenViews = new Set(["planner", "match", "strategy", "gear-refining"]);
+      const legacyScrollbarHiddenViews = new Set([
+        "planner",
+        "match",
+        "strategy",
+        "gear-refining",
+        "rerun-ranking",
+      ]);
       const syncLegacyScrollbarMode = () => {
         if (typeof document === "undefined" || !document.documentElement) return;
         const root = document.documentElement;
@@ -533,6 +850,21 @@
       };
       const toExceptionKey = (entry, kind) => {
         if (!entry || typeof entry !== "object") return `${kind}:unknown`;
+        const optionalSignature = String(
+          entry.optionalSignature || entry.signature || ""
+        ).trim();
+        if (optionalSignature) {
+          return `${kind}:sig:${optionalSignature}`;
+        }
+        if (kind === "runtime") {
+          return [
+            kind,
+            entry.operation || "",
+            entry.key || "",
+            entry.errorName || "",
+            entry.errorMessage || "",
+          ].join("|");
+        }
         if (entry.id) return `${kind}:${entry.id}`;
         return [
           kind,
@@ -585,7 +917,13 @@
         if (!current || current.__kind !== "runtime") return false;
         const operation = String(current.operation || "");
         const scope = String(current.scope || "");
-        return operation === "optional.load" || scope === "boot.optional-resource";
+        const errorName = String(current.errorName || "");
+        return (
+          operation === "optional.load" ||
+          scope === "boot.optional-resource" ||
+          scope === "i18n.missing-key" ||
+          errorName === "I18nMissingKeyError"
+        );
       });
       const unifiedExceptionLogs = computed(() => {
         const runtimeLogs =
@@ -676,6 +1014,91 @@
           state.requestIgnoreStorageErrors();
         }
       };
+      const buildRuntimeWarningPreviewFromEntry = (entry) => {
+        if (!entry) return "";
+        const lines = [
+          `scope: ${entry.scope || "unknown"}`,
+          `operation: ${entry.operation || "unknown"}`,
+          `key: ${entry.key || "unknown"}`,
+          `error: ${entry.errorName || "Error"}: ${entry.errorMessage || "unknown"}`,
+        ];
+        if (entry.note) {
+          lines.push(`note: ${entry.note}`);
+        }
+        if (entry.errorStack) {
+          lines.push("", "stack:", String(entry.errorStack));
+        }
+        return lines.join("\n");
+      };
+      const buildStorageErrorPreviewFromEntry = (entry) => {
+        if (!entry) return "";
+        if (typeof entry.previewText === "string" && entry.previewText) {
+          return entry.previewText;
+        }
+        const lines = [
+          `operation: ${entry.operation || "unknown"}`,
+          `key: ${entry.key || "unknown"}`,
+          `error: ${entry.errorName || "Error"}: ${entry.errorMessage || "unknown"}`,
+        ];
+        if (entry.scope) {
+          lines.push(`scope: ${entry.scope}`);
+        }
+        if (entry.note) {
+          lines.push(`note: ${entry.note}`);
+        }
+        return lines.join("\n");
+      };
+      const openUnifiedExceptionFromLog = (item) => {
+        if (!item || typeof item !== "object") return;
+        const kind = String(item.__kind || "runtime");
+        if (kind === "storage") {
+          const storageEntry = { ...item };
+          delete storageEntry.__kind;
+          if (state.storageErrorCurrent) {
+            state.storageErrorCurrent.value = storageEntry;
+          }
+          if (state.storageErrorPreviewText) {
+            state.storageErrorPreviewText.value = buildStorageErrorPreviewFromEntry(storageEntry);
+          }
+          if (state.showRuntimeWarningModal) {
+            state.showRuntimeWarningModal.value = false;
+          }
+          if (state.showStorageErrorModal) {
+            state.showStorageErrorModal.value = true;
+          }
+          return;
+        }
+        const runtimeEntry = { ...item };
+        delete runtimeEntry.__kind;
+        if (!runtimeEntry.errorName && runtimeEntry.code) {
+          runtimeEntry.errorName = String(runtimeEntry.code);
+        }
+        if (!runtimeEntry.errorMessage && runtimeEntry.message) {
+          runtimeEntry.errorMessage = String(runtimeEntry.message);
+        }
+        if (state.runtimeWarningCurrent) {
+          state.runtimeWarningCurrent.value = runtimeEntry;
+        }
+        if (state.runtimeWarningPreviewText) {
+          state.runtimeWarningPreviewText.value = buildRuntimeWarningPreviewFromEntry(runtimeEntry);
+        }
+        if (state.runtimeWarningLogs && Array.isArray(state.runtimeWarningLogs.value)) {
+          const runtimeKey = toExceptionKey(runtimeEntry, "runtime");
+          const nextLogs = [runtimeEntry].concat(
+            state.runtimeWarningLogs.value.filter(
+              (entry) => toExceptionKey(entry, "runtime") !== runtimeKey
+            )
+          );
+          state.runtimeWarningLogs.value = nextLogs.slice(0, 20);
+        }
+        if (state.showStorageErrorModal) {
+          state.showStorageErrorModal.value = false;
+        }
+        if (state.showRuntimeWarningModal) {
+          state.showRuntimeWarningModal.value = true;
+        }
+      };
+      state.openUnifiedExceptionFromLog = openUnifiedExceptionFromLog;
 
       return {
         currentView: state.currentView,
@@ -685,6 +1108,12 @@
             typeof state.markGearRefiningNavHintSeen === "function"
           ) {
             state.markGearRefiningNavHintSeen();
+          }
+          if (
+            view === "rerun-ranking" &&
+            typeof state.markRerunRankingNavHintSeen === "function"
+          ) {
+            state.markRerunRankingNavHintSeen();
           }
           state.currentView.value = view;
           window.scrollTo(0, 0);
@@ -727,9 +1156,27 @@
         toggleFilterPanel: state.toggleFilterPanel,
         showAllSchemes: state.showAllSchemes,
         showPlanConfig: state.showPlanConfig,
+        showWeaponAttrDataModal: state.showWeaponAttrDataModal,
         showPlanConfigHintDot: state.showPlanConfigHintDot,
         showGearRefiningNavHintDot: state.showGearRefiningNavHintDot,
+        showRerunRankingNavHintDot: state.showRerunRankingNavHintDot,
         togglePlanConfig: state.togglePlanConfig,
+        openWeaponAttrDataModal: state.openWeaponAttrDataModal,
+        openWeaponDataIntegrityDetails: state.openWeaponDataIntegrityDetails,
+        closeWeaponAttrDataModal: state.closeWeaponAttrDataModal,
+        hasWeaponAttrIssues: state.hasWeaponAttrIssues,
+        weaponAttrIssueRows: state.weaponAttrIssueRows,
+        previewWeaponRows: state.previewWeaponRows,
+        hasPreviewWeapons: state.hasPreviewWeapons,
+        dataIntegrityWeaponAttrRows: state.dataIntegrityWeaponAttrRows,
+        hasDataIntegrityWeaponAttrs: state.hasDataIntegrityWeaponAttrs,
+        weaponAttrS1Options: state.weaponAttrS1Options,
+        weaponAttrS2Options: state.weaponAttrS2Options,
+        weaponAttrS3Options: state.weaponAttrS3Options,
+        setWeaponAttrOverride: state.setWeaponAttrOverride,
+        clearWeaponAttrOverride: state.clearWeaponAttrOverride,
+        getWeaponAttrEditorValue: state.getWeaponAttrEditorValue,
+        isWeaponRawAttrMissingField: state.isWeaponRawAttrMissingField,
         recommendationConfig: state.recommendationConfig,
         regionOptions: state.regionOptions,
         showBackToTop: state.showBackToTop,
@@ -752,11 +1199,7 @@
         showTutorialComplete: state.showTutorialComplete,
         tutorialTargetSchemeKey: state.tutorialTargetSchemeKey,
         isTutorialGuideWeapon: state.isTutorialGuideWeapon,
-        canShowAds: state.canShowAds,
-        adPreviewMode: state.adPreviewMode,
-        dismissAdsForSession: state.dismissAdsForSession,
         isPortrait: state.isPortrait,
-        isAdPortrait: state.isAdPortrait,
         startTutorial: state.startTutorial,
         nextTutorialStep: state.nextTutorialStep,
         prevTutorialStep: state.prevTutorialStep,
@@ -782,6 +1225,11 @@
         s2Options: state.s2Options,
         s3OptionEntries: state.s3OptionEntries,
         selectorHiddenMemoKey: state.selectorHiddenMemoKey,
+        weaponUpBadgeMemoKey: state.weaponUpBadgeMemoKey,
+        isWeaponUpActive: state.isWeaponUpActive,
+        rerunRankingRows: state.rerunRankingRows,
+        hasRerunRankingRows: state.hasRerunRankingRows,
+        rerunRankingGeneratedAt: state.rerunRankingGeneratedAt,
         toggleFilterValue: state.toggleFilterValue,
         clearAttributeFilters: state.clearAttributeFilters,
         hasAttributeFilters: state.hasAttributeFilters,
@@ -793,6 +1241,7 @@
         weaponGridBottomSpacer: state.weaponGridBottomSpacer,
         allFilteredSelected: state.allFilteredSelected,
         recommendations: state.recommendations,
+        recommendationDataIssue: state.recommendationDataIssue,
         recommendationEmptyReason: state.recommendationEmptyReason,
         coverageSummary: state.coverageSummary,
         primaryRecommendations: state.primaryRecommendations,
@@ -855,21 +1304,6 @@
         showNotice: state.showNotice,
         showChangelog: state.showChangelog,
         hasLegacyMigrationData: state.hasLegacyMigrationData,
-        showMigrationModal: state.showMigrationModal,
-        migrationMappingMode: state.migrationMappingMode,
-        migrationConflictStrategy: state.migrationConflictStrategy,
-        showMigrationConfirmModal: state.showMigrationConfirmModal,
-        migrationConfirmAction: state.migrationConfirmAction,
-        migrationConfirmCountdown: state.migrationConfirmCountdown,
-        migrationPreviewExpanded: state.migrationPreviewExpanded,
-        migrationModalScrollable: state.migrationModalScrollable,
-        migrationPreview: state.migrationPreview,
-        toggleMigrationPreviewDetails: state.toggleMigrationPreviewDetails,
-        shouldShowConflictStrategy: state.shouldShowConflictStrategy,
-        migrationConflictOptions: state.migrationConflictOptions,
-        openMigrationConfirm: state.openMigrationConfirm,
-        closeMigrationConfirm: state.closeMigrationConfirm,
-        confirmMigrationAction: state.confirmMigrationAction,
         showStorageErrorModal: state.showStorageErrorModal,
         showRuntimeWarningModal: state.showRuntimeWarningModal,
         showRuntimeIgnoreConfirmModal: state.showRuntimeIgnoreConfirmModal,
@@ -885,6 +1319,12 @@
         storageErrorClearTargetKeys: state.storageErrorClearTargetKeys,
         storageFeedbackUrl: state.storageFeedbackUrl,
         dismissRuntimeWarning: state.dismissRuntimeWarning,
+        optionalFailureNotices: state.optionalFailureNotices,
+        optionalFailureNotice: state.optionalFailureNotice,
+        hasOptionalFailureHistory: state.hasOptionalFailureHistory,
+        dismissOptionalFailureNotice: state.dismissOptionalFailureNotice,
+        openOptionalFailureDetailByLogId: state.openOptionalFailureDetailByLogId,
+        openLatestOptionalFailureDetail: state.openLatestOptionalFailureDetail,
         ignoreRuntimeWarnings: state.ignoreRuntimeWarnings,
         requestIgnoreRuntimeWarnings: state.requestIgnoreRuntimeWarnings,
         cancelIgnoreRuntimeWarnings: state.cancelIgnoreRuntimeWarnings,
@@ -899,6 +1339,7 @@
         exportUnifiedExceptionDiagnostic,
         refreshUnifiedException,
         ignoreUnifiedException,
+        openUnifiedExceptionFromLog,
         ignoreStorageErrors: state.ignoreStorageErrors,
         requestIgnoreStorageErrors: state.requestIgnoreStorageErrors,
         cancelIgnoreStorageErrors: state.cancelIgnoreStorageErrors,

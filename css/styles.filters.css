@@ -17,6 +17,26 @@
         margin-left: auto;
       }
 
+      .weapon-attr-warning {
+        width: 100%;
+        margin: 4px 0 12px;
+        border-style: dashed;
+        border-color: rgba(255, 171, 86, 0.42);
+        background: rgba(48, 30, 10, 0.3);
+      }
+
+      .weapon-attr-warning-text {
+        min-width: 0;
+        color: #ffe4be;
+        line-height: 1.4;
+      }
+
+      .weapon-attr-warning-action {
+        margin-left: auto;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+
       @media (max-width: 960px) and (orientation: portrait) {
         .filter-toolbar {
           display: grid;
@@ -78,6 +98,10 @@
           .filter-toolbar-clear {
             grid-column: 2;
           }
+        }
+
+        .weapon-attr-warning {
+          width: 100%;
         }
       }
 

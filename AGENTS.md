@@ -1,9 +1,11 @@
 # Development Guide
 # AGENTS Development Guide
 
+## 0. 遵循 gitignore ，如果已被忽略的内容就不要提交了
+
 ## 1. MCP 使用约定
 - `ace-tool.search_context`：优先用于语义级代码定位、跨文件流程理解、改动影响面分析。
-- `desktop-commander`：用于目录/文件读取、编辑、搜索、语法检查与本地命令执行。
+- `desktop-commander`：用于目录/文件读取、搜索、语法检查(请勿使用desktop-commander进行写入/编辑文件或本地命令执行)。
 - `context7`：仅在使用第三方库且本地信息不足时，查询官方文档与示例。
 - `fetch`：仅在需要联网验证外部信息时使用。
 
@@ -24,21 +26,18 @@
 - 官方部署信号由响应头控制：`x-endfield-essence-planner-official: 1`。
 - 仅当响应头值为 `1` 时，才启用“非官方域名提示 / iframe 内嵌提示”（见 `js/app.embed.js`）。
 - 开源二次部署默认不加该响应头，不应触发官方域名提示。
-- 本地广告位调试规则（见 `js/app.ui.js`）：
-  - 仅 `127.0.0.1` / `localhost` / `::1` 可用 `?adPreview=1`。
-  - 广告关闭状态为单次会话内存态（`adDismissedSession`），刷新后恢复。
 
 ## 4. 启动链路（必须理解）
-- `index.html` 只保留最小壳：`#app-preload`、`#app`、`./js/app.script-chain.js`、`./js/bootstrap.entry.js`。
+- `index.html` 只保留最小壳：`#app-preload`、`#app`、`./js/app.resource-manifest.js`、`./js/app.script-chain.js`、`./js/bootstrap.entry.js`。
 - `js/bootstrap.entry.js` 是唯一前置入口，负责：
   - preload 主题预应用（`planner-theme-mode:v1` + `prefers-color-scheme`）。
   - preload 动态状态（当前加载项、计数、进度）。
-  - 关键资源加载：`cssFiles` 与 `startupScripts`（含 `./data/version.js`）。
+  - 关键资源加载：读取 `window.__APP_RESOURCE_MANIFEST.boot`（`css/data/runtime/optional`）。
   - 统一错误渲染：`window.__renderBootError(...)`。
   - 不刷新重试：`window.__startBootstrapEntry({ fromRetry: true })`。
 - `js/app.js` 继续加载模块链（`window.__APP_SCRIPT_CHAIN` 或默认清单）。
 - `js/app.main.js` 负责 `createApp(...).mount("#app")`，并在依赖/数据缺失时走错误页。
-- 模板分片文件：`js/templates.plan-config.js`、`js/templates.main.01.js`、`js/templates.main.02.js`、`js/templates.main.03.js`（单文件尽量 < 1000 行）。
+- 模板分片文件：`js/templates.plan-config.js`、`js/templates.gear-refining.js`、`js/templates.main.01.js`、`js/templates.main.02.js`、`js/templates.main.03.js`、`js/templates.main.04.js`（单文件尽量 < 1000 行）。
 
 ## 4.1 可选资源（Optional）接入规范
 - 可选资源统一在 `js/bootstrap.entry.js` 的 `optionalScriptConfigs` 中声明。
@@ -68,16 +67,24 @@
   - `刷新页面`（硬刷新兜底）。
 
 ## 6. 改动时必须同步维护的点
-- 新增/删除 `app.*.js` 模块：必须更新 `js/app.script-chain.js`（唯一脚本链来源）。
-- 新增首屏关键样式或关键启动资源：必须评估并更新 `js/bootstrap.entry.js` 中：
-  - `cssFiles`
-  - `startupScripts`
+- 新增/删除 `app.*.js` 模块：必须更新 `js/app.resource-manifest.js` 的 `app.scriptChain`（`js/app.script-chain.js` 仅保留兼容输出层）。
+- 新增首屏关键样式或关键启动资源：必须评估并更新 `js/app.resource-manifest.js` 中：
+  - `boot.css`
+  - `boot.data`
+  - `boot.runtime`
+  - `boot.optional`
 - 调整 preload 结构文案时：同步检查 `index.html` 与 `js/bootstrap.entry.js` 中的 preload DOM 构造逻辑。
 - 调整官方检测逻辑时：同步更新 `README.md` 对响应头行为的说明。
 - 若更新检测依赖字段有变更（`buildId` / `displayVersion` / `announcementVersion` / `fingerprint` / `publishedAt`）：
   - 同步更新 `scripts/gen-version.mjs`、`js/app.update.js` 与 `README.md` 字段说明。
 - 调整 `data/content.js` 中 `announcement.version` 后：
   - 发布前必须重新执行 `node scripts/gen-version.mjs`，确保 `data/version.js/json` 同步。
+
+## 6.1 Phase 6 继承约束与 Phase 7 文档门禁
+- **Phase 6 legacy bridge 约束**：`window.__APP_BOOT__` 与 legacy `__*` bridge 仍处于兼容期，相关行为以 `js/app.protocol.js` 与 `tests/phase-06-03/task3-global-protocol-bridge.test.cjs` 为准，不得静默移除。
+- **Phase 6 红灯治理继承**：启动链事实源必须保持 `manifest -> script-chain -> bootstrap/app` 单源一致；若出现脚本链/文档漂移，视为发布阻断项。
+- **Phase 7 文档门禁**：文档清单以 `js/app.resource-manifest.js` + `js/app.script-chain.js` 反推并校验，统一执行 `scripts/verify-doc-manifest-consistency.mjs`；缺项或冗余必须非零退出。
+- **文档职责真源**：`AGENTS.md` 是执行清单主文档；`README.md` 仅保留摘要与引用，不再维护完整重复 checklist。
 
 ## 7. 安全与实现约束
 - 不把不可信输入直接写入 `innerHTML`/`outerHTML`/`document.write`。
@@ -94,19 +101,46 @@
   - `node --check js/app.ui.js`
   - `node --check scripts/gen-version.mjs`
   - `node --check js/templates.plan-config.js`
+  - `node --check js/templates.gear-refining.js`
   - `node --check js/templates.main.01.js`
   - `node --check js/templates.main.02.js`
   - `node --check js/templates.main.03.js`
+  - `node --check js/templates.main.04.js`
+  - `node --check scripts/verify-doc-manifest-consistency.mjs`
+- 文档门禁检查：
+  - `node scripts/verify-doc-manifest-consistency.mjs`
+  - `node tests/phase-07-01/task1-doc-manifest-sync.test.cjs`
+  - `node tests/phase-07-01/task2-phase6-guardrail-doc-coverage.test.cjs`
+- Phase 8 硬门禁（失败即阻断）：
+  - `node tests/phase-08-04/task1-phase8-gate-manifest.test.cjs`
+  - `node tests/phase-08-04/task2-phase8-hard-gate-behavior.test.cjs`
+  - `node scripts/phase-08-gate.mjs`
 - 手工验证：
   - 正常启动可进入应用，preload 文案与主题正常。
   - 断网或拦截关键资源时能进入错误页并可重试恢复。
-  - 本地 `?adPreview=1` 有效。
   - 官方 header=1 与非官方部署两种场景行为符合预期。
   - 保持页面不刷新，更新 `data/version.json` 后可出现右下角“检测到新版本”提示。
 
+## 8.1 常规检测流程（推荐）
+- 开发中（最小闭环）：
+  - 仅对改动文件执行 `node --check <file>`。
+  - 仅执行受影响模块对应的 `tests/phase-**/**.test.cjs`。
+- 提交前（功能完成）：
+  - 执行本节“语法检查”与“文档门禁检查”。
+  - 至少执行一次 `node scripts/phase-08-gate.mjs`，确保硬门禁全绿。
+- 发版前（发布门禁）：
+  - 执行 `node scripts/phase-08-gate.mjs`。
+  - 执行 E2E：`npm run test:phase-08-03:e2e`（Playwright 启动/兜底双路径）。
+
+## 8.2 E2E 覆盖说明
+- 项目已包含 E2E：`tests/phase-08-03/e2e/startup-and-fallback.spec.cjs`。
+- 当前 `phase-08-gate` 直接执行的是 `task1-browser-smoke-gate`，用于校验 E2E 资源与命令接线存在性。
+- `phase-08-gate` 不直接执行 Playwright 用例本体；需要通过 `npm run test:phase-08-03:e2e` 单独跑完整 E2E。
+
 ## 9. 快速导航
 - `index.html`：最小页面壳 + bootstrap 入口与兜底。
-- `js/app.script-chain.js`：应用脚本链单一来源（供 preload 计数与 `app.js` 共用）。
+- `js/app.resource-manifest.js`：启动链与应用链唯一资源清单来源。
+- `js/app.script-chain.js`：基于 manifest 输出 `window.__APP_SCRIPT_CHAIN` 的兼容层。
 - `css/styles.preload.css`：preload 样式与主题过渡。
 - `js/bootstrap.entry.js`：启动与错误恢复核心。
 - `js/app.js`：模块链加载器。

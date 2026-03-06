@@ -305,6 +305,7 @@
       @media (max-width: 1024px) {
         .mobile-tabs {
           display: flex;
+          top: 48px;
         }
 
         .mobile-hint {
@@ -727,26 +728,34 @@
 
       .nav-hint-dot {
         position: absolute;
-        right: -3px;
-        top: -3px;
-        width: 8px;
-        height: 8px;
+        right: -10px;
+        top: -9px;
+        min-width: 28px;
+        height: 16px;
+        padding: 0 6px;
         border-radius: 999px;
-        background: #ff6b6b;
-        box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.38), 0 0 10px rgba(255, 107, 107, 0.5);
+        border: 1px solid rgba(255, 130, 130, 0.72);
+        background: linear-gradient(135deg, #ff8a74, #ff5f6d);
+        color: #fff8f8;
+        font-size: 9px;
+        font-weight: 800;
+        line-height: 14px;
+        letter-spacing: 0.08em;
+        text-align: center;
+        box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.3), 0 0 12px rgba(255, 107, 107, 0.45);
         animation: nav-hint-dot-pulse 1.6s ease-in-out infinite;
       }
 
       @keyframes nav-hint-dot-pulse {
         0%,
         100% {
-          transform: scale(1);
-          box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.38), 0 0 10px rgba(255, 107, 107, 0.5);
+          transform: translateY(0);
+          box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.3), 0 0 12px rgba(255, 107, 107, 0.45);
         }
 
         50% {
-          transform: scale(1.25);
-          box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.48), 0 0 14px rgba(255, 107, 107, 0.65);
+          transform: translateY(-1px);
+          box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.48), 0 0 16px rgba(255, 107, 107, 0.62);
         }
       }
 
@@ -935,6 +944,101 @@
       .match-view {
         display: block;
         grid-column: 1 / -1;
+      }
+
+      .rerun-ranking-view {
+        display: block;
+        grid-column: 1 / -1;
+      }
+
+      .rerun-ranking-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .rerun-ranking-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .rerun-ranking-card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px solid var(--stroke);
+        background: var(--panel-strong);
+        box-shadow: var(--shadow);
+      }
+
+      .rerun-ranking-avatar-shell {
+        width: clamp(64px, 10vw, 108px);
+        height: clamp(64px, 10vw, 108px);
+        flex: 0 0 clamp(64px, 10vw, 108px);
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .rerun-ranking-avatar {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .rerun-ranking-avatar-fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(18px, 2.6vw, 28px);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: var(--text);
+      }
+
+      .rerun-ranking-main {
+        min-width: 0;
+        display: grid;
+        gap: 4px;
+      }
+
+      .rerun-ranking-name {
+        font-size: clamp(18px, 2.1vw, 24px);
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1.25;
+      }
+
+      .rerun-ranking-meta {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .rerun-ranking-up-chip {
+        margin-left: auto;
+        align-self: flex-start;
+      }
+
+      .rerun-ranking-upcoming-chip .weapon-up-chip-fallback {
+        border-color: rgba(255, 182, 122, 0.55);
+        background: rgba(62, 38, 14, 0.86);
+        color: #ffe8cb;
+      }
+
+      .rerun-ranking-empty {
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px dashed rgba(255, 255, 255, 0.14);
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
       }
 
       .match-grid {
@@ -1222,6 +1326,26 @@
 
         .match-selection-label {
           letter-spacing: 0.12em;
+        }
+
+        .rerun-ranking-list {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .rerun-ranking-card {
+          padding: 10px;
+          gap: 10px;
+        }
+
+        .rerun-ranking-avatar-shell {
+          width: clamp(56px, 20vw, 84px);
+          height: clamp(56px, 20vw, 84px);
+          flex-basis: clamp(56px, 20vw, 84px);
+        }
+
+        .rerun-ranking-name {
+          font-size: clamp(16px, 4.3vw, 20px);
         }
       }
 

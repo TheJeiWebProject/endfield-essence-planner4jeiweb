@@ -3,7 +3,7 @@
   window.__APP_TEMPLATE_MAIN_PARTS.push(`
 <header class="hero">
         <div class="hero-title">
-          <h1>{{ t("终末地基质规划器") }}</h1>
+          <h1>{{ t("nav.endfield_essence_planner") }}</h1>
         </div>
         <div class="hero-actions">
           <div class="lang-switch" ref="langSwitchRef" @click.stop>
@@ -40,42 +40,42 @@
             </div>
           </div>
           <div class="theme-switch" @click.stop>
-            <label class="theme-label" for="theme-mode-select">{{ t("主题") }}</label>
+            <label class="theme-label" for="theme-mode-select">{{ t("nav.theme") }}</label>
             <select
               id="theme-mode-select"
               class="theme-select"
               :value="themePreference"
               @change="setThemeMode($event.target.value)"
             >
-              <option value="auto">{{ t("自动") }}</option>
-              <option value="light">{{ t("日间") }}</option>
-              <option value="dark">{{ t("夜间") }}</option>
+              <option value="auto">{{ t("nav.auto") }}</option>
+              <option value="light">{{ t("nav.light") }}</option>
+              <option value="dark">{{ t("nav.dark") }}</option>
             </select>
           </div>
-          <button class="about-button notice-button" @click="openNotice">{{ t("公告") }}</button>
-          <button class="about-button" @click="openChangelog">{{ t("更新日志") }}</button>
-          <button class="about-button" @click="openAbout">{{ t("关于") }}</button>
+          <button class="about-button notice-button" @click="openNotice">{{ t("nav.announcement") }}</button>
+          <button class="about-button" @click="openChangelog">{{ t("nav.changelog") }}</button>
+          <button class="about-button" @click="openAbout">{{ t("nav.about") }}</button>
           <div class="secondary-menu">
             <button class="about-button menu-toggle" @click="showSecondaryMenu = !showSecondaryMenu">
-              {{ t("更多设置") }}
+              {{ t("nav.more_settings") }}
             </button>
             <div v-if="showSecondaryMenu" class="secondary-panel">
               <div class="secondary-item">
-                <div class="secondary-label">{{ t("性能模式") }}</div>
+                <div class="secondary-label">{{ t("nav.performance_mode") }}</div>
                 <select class="secondary-select" :value="perfPreference" @change="setPerfMode($event.target.value)">
-                  <option value="auto">{{ t("自动") }}</option>
-                  <option value="standard">{{ t("标准") }}</option>
-                  <option value="low">{{ t("低GPU") }}</option>
+                  <option value="auto">{{ t("nav.auto") }}</option>
+                  <option value="standard">{{ t("nav.standard") }}</option>
+                  <option value="low">{{ t("nav.low_gpu") }}</option>
                 </select>
                 <div v-if="perfPreference === 'auto'" class="secondary-hint">
-                  {{ t("当前自动：") }}{{ lowGpuEnabled ? t("低GPU") : t("标准") }}
+                  {{ t("nav.auto_now") }}{{ lowGpuEnabled ? t("nav.low_gpu") : t("nav.standard") }}
                 </div>
               </div>
               <div class="secondary-item secondary-desc">
-                {{ t("自动模式会根据渲染性能临时切换低GPU模式。") }}
+                {{ t("nav.auto_mode_temporarily_switches_to_low_gpu_based_on_rende") }}
               </div>
               <div class="secondary-item">
-                <div class="secondary-label">{{ t("背景显示") }}</div>
+                <div class="secondary-label">{{ t("nav.background_display") }}</div>
                 <button
                   class="ghost-button toggle-button switch-toggle"
                   :class="{ 'is-active': backgroundDisplayEnabled }"
@@ -84,7 +84,7 @@
                   :disabled="lowGpuEnabled"
                   @click="toggleBackgroundDisplayEnabled"
                 >
-                  <span class="switch-label">{{ backgroundDisplayEnabled ? t("已开启") : t("已关闭") }}</span>
+                  <span class="switch-label">{{ backgroundDisplayEnabled ? t("nav.enabled") : t("button.disabled") }}</span>
                   <span class="switch-track" :class="{ on: backgroundDisplayEnabled }">
                     <span class="switch-thumb"></span>
                   </span>
@@ -92,16 +92,16 @@
                 <div class="secondary-hint">
                   {{
                     lowGpuEnabled
-                      ? t("低GPU模式下背景固定关闭，此开关仅在标准模式生效。")
-                      : t("关闭后仅显示纯色背景。")
+                      ? t("button.background_is_forced_off_in_low_gpu_mode_this_switch_onl")
+                      : t("button.when_disabled_only_a_plain_color_background_is_shown")
                   }}
                 </div>
               </div>
               <div class="secondary-item">
-                <div class="secondary-label">{{ t("背景图片") }}</div>
+                <div class="secondary-label">{{ t("nav.background_image") }}</div>
                 <div class="secondary-actions">
                   <label class="ghost-button secondary-upload">
-                    {{ t("导入图片") }}
+                    {{ t("button.import_image") }}
                     <input type="file" accept="image/*" @change="handleBackgroundFile" />
                   </label>
                   <button
@@ -109,86 +109,76 @@
                     @click="clearCustomBackground"
                     :disabled="!customBackground && !customBackgroundApi"
                   >
-                    {{ t("恢复默认") }}
+                    {{ t("button.restore_default") }}
                   </button>
                 </div>
                 <div v-if="customBackgroundName" class="secondary-hint secondary-file">
-                  {{ t("当前：") }}{{ customBackgroundName }}
+                  {{ t("nav.current") }}{{ customBackgroundName }}
                 </div>
-                <div v-else class="secondary-hint">{{ t("未导入时使用随机背景") }}</div>
+                <div v-else class="secondary-hint">{{ t("button.use_random_background_when_no_image_is_imported") }}</div>
                 <input
                   class="secondary-input"
                   type="text"
                   v-model.trim.lazy="customBackgroundApi"
-                  :placeholder="t('自定义图片API（返回图片）')"
+                  :placeholder="t('nav.custom_image_api_returns_image')"
                 />
                 <div v-if="customBackgroundApi" class="secondary-hint secondary-file">
                   {{ t("API：") }}{{ customBackgroundApi }}
                 </div>
-                <div v-else class="secondary-hint">{{ t("未设置API时使用随机背景") }}</div>
+                <div v-else class="secondary-hint">{{ t("nav.use_random_background_when_no_api_is_set") }}</div>
                 <div v-if="customBackground" class="secondary-hint">
-                  {{ t("已导入本地图片，将优先使用本地背景。") }}
+                  {{ t("button.local_image_imported_local_background_will_be_used_first") }}
                 </div>
                 <div v-if="customBackgroundError" class="secondary-hint secondary-warning">
                   {{ customBackgroundError }}
                 </div>
               </div>
               <div class="secondary-item">
-                <div class="secondary-label">{{ t("新手教程") }}</div>
-                <button class="ghost-button" @click="startTutorial(true)">{{ t("再次体验") }}</button>
+                <div class="secondary-label">{{ t("tutorial.tutorial") }}</div>
+                <button class="ghost-button" @click="startTutorial(true)">{{ t("nav.try_again") }}</button>
               </div>
               <div class="secondary-item secondary-desc">
                 <label class="notice-skip">
                   <input type="checkbox" v-model="tutorialSkipAll" />
-                  {{ t("不再自动弹出当前版本新手教程") }}
+                  {{ t("tutorial.don_t_auto_open_this_version_s_tutorial") }}
                 </label>
+              </div>
+              <div v-if="hasOptionalFailureHistory" class="secondary-item">
+                <div class="secondary-label">{{ t("error.optional_feature_load_failed") }}</div>
+                <div class="secondary-actions">
+                  <button class="ghost-button secondary-warning-action" @click="openLatestOptionalFailureDetail">
+                    {{ t("error.view_optional_failure_details") }}
+                  </button>
+                </div>
+                <div class="secondary-hint secondary-warning">
+                  {{ t("warning.some_optional_features_could_not_be_loaded_core_page_usa") }}
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div class="hero-nav-stack">
-          <div v-if="canShowAds && isAdPortrait" class="slot-hero-shell" :aria-label="t('广告位（移动端）')">
-            <div class="slot-ad-tip">{{ t("广告位") }}</div>
-            <button
-              class="slot-close-button"
-              type="button"
-              :title="t('关闭广告')"
-              :aria-label="t('关闭广告')"
-              @click.stop="dismissAdsForSession"
-            >
-              &times;
-            </button>
-            <div v-if="adPreviewMode" class="slot-preview-banner">
-              {{ t("广告预览模式（本地）") }}
-            </div>
-            <div
-              v-else
-              class="adwork-net adwork-auto slot-provider-net slot-provider-auto"
-              data-id="1050"
-              data-placeholder="none"
-            ></div>
-          </div>
-          <nav class="main-nav hero-nav" :aria-label="t('主导航')">
+          <nav class="main-nav hero-nav" :aria-label="t('nav.main_navigation')">
           <button 
             class="nav-item" 
             :class="{ active: currentView === 'planner' }" 
             @click="setView('planner')"
           >
-            {{ t("基质规划") }}
+            {{ t("nav.essence_planner") }}
           </button>
           <button 
             class="nav-item" 
             :class="{ active: currentView === 'strategy' }" 
             @click="setView('strategy')"
           >
-            {{ t("角色攻略") }}
+            {{ t("nav.character_guide") }}
           </button>
           <button 
             class="nav-item" 
             :class="{ active: currentView === 'match' }" 
             @click="setView('match')"
           >
-            {{ t("词条对照") }}
+            {{ t("nav.trait_match") }}
           </button>
           <button 
             class="nav-item" 
@@ -199,31 +189,43 @@
               v-if="showGearRefiningNavHintDot"
               class="nav-hint-dot"
               aria-hidden="true"
-            ></span>
-            {{ t("装备精锻") }}
+            >NEW</span>
+            {{ t("nav.gear_refining") }}
+          </button>
+          <button
+            class="nav-item"
+            :class="{ active: currentView === 'rerun-ranking' }"
+            @click="setView('rerun-ranking')"
+          >
+            <span
+              v-if="showRerunRankingNavHintDot"
+              class="nav-hint-dot"
+              aria-hidden="true"
+            >NEW</span>
+            {{ t("nav.rerun_ranking") }}
           </button>
           </nav>
         </div>
       </header>
       <div v-if="showAiNotice" class="ai-notice">
         <span class="ai-chip">{{ t("AI") }}</span>
-        <span>{{ t("当前语言内容由 AI 翻译，可能存在不准确。如发现错误，请前往 GitHub 反馈。") }}</span>
+        <span>{{ t("error.this_language_is_ai_translated_and_may_be_inaccurate_if_") }}</span>
       </div>
       <div v-if="lowGpuEnabled" class="perf-status">
         <div class="perf-status-text">
-          {{ t("低GPU模式已开启") }}{{ perfPreference === "auto" ? t("（自动）") : t("（手动）") }}
+          {{ t("nav.low_gpu_mode_enabled") }}{{ perfPreference === "auto" ? t("nav.auto_2") : t("nav.manual") }}
         </div>
         <button class="ghost-button" @click.stop="showSecondaryMenu = true">
-          {{ t("更多设置") }}
+          {{ t("nav.more_settings") }}
         </button>
       </div>
       <div v-if="showPerfNotice" class="perf-notice">
         <div class="perf-notice-text">
-          {{ t("检测到当前渲染性能较低，已自动切换到低GPU模式以提升滚动流畅度（可在“更多设置”调整）。") }}
+          {{ t("error.low_rendering_performance_detected_switched_to_low_gpu_m") }}
         </div>
         <div class="perf-notice-actions">
-          <button class="ghost-button" @click="setPerfMode('standard')">{{ t("恢复效果") }}</button>
-          <button class="about-button perf-keep" @click="setPerfMode('low')">{{ t("保持低GPU") }}</button>
+          <button class="ghost-button" @click="setPerfMode('standard')">{{ t("button.restore_effects") }}</button>
+          <button class="about-button perf-keep" @click="setPerfMode('low')">{{ t("button.keep_low_gpu") }}</button>
         </div>
       </div>
       <main class="layout">
@@ -235,7 +237,7 @@
             :class="{ active: mobilePanel === 'weapons' }"
             @click="mobilePanel = 'weapons'"
           >
-            {{ t("武器选择") }} <span class="count">{{ selectedNames.length }}</span>
+            {{ t("nav.weapons") }} <span class="count">{{ selectedNames.length }}</span>
           </button>
           <button
             class="mobile-tab"
@@ -250,15 +252,15 @@
             }"
             @click="mobilePanel = 'plans'"
           >
-            {{ t("方案推荐") }} <span class="count">{{ recommendations.length }}</span>
+            {{ t("nav.plans") }} <span class="count">{{ recommendations.length }}</span>
           </button>
         </div>
         <div class="mobile-hint">
-          <span>{{ t("手机端可通过上方标签切换“武器选择 / 方案推荐”，并可下滑继续浏览列表。") }}</span>
+          <span>{{ t("nav.on_mobile_switch_between_weapons_plans_via_the_tabs_abov") }}</span>
         </div>
         <section class="panel" :class="{ 'panel-hidden': mobilePanel !== 'weapons' }">
           <div class="panel-title">
-            <h2>{{ t("武器选择器") }}</h2>
+            <h2>{{ t("nav.weapon_selector") }}</h2>
             <div v-if="isPortrait" class="panel-actions">
               <plan-config-control
                 :t="t"
@@ -278,7 +280,7 @@
           <div class="weapon-list-anchor" aria-hidden="true"></div>
           <label class="search-box">
             <span>🔍</span>
-            <input v-model="searchQuery" :placeholder="t('搜索武器 / 属性 / 角色（仅中文支持拼音/首字母）...')" />
+            <input v-model="searchQuery" :placeholder="t('nav.search_weapons_attributes_characters')" />
           </label>
 
           <div class="filter-toolbar">
@@ -292,10 +294,10 @@
                 }"
                 @click="toggleShowWeaponAttrs"
               >
-                {{ showWeaponAttrs ? t("隐藏属性/拥有/备注") : t("显示属性/拥有/备注") }}
+                {{ showWeaponAttrs ? t("nav.hide_attributes_ownership_notes") : t("nav.show_attributes_ownership_notes") }}
               </button>
               <button class="ghost-button" @click="toggleFilterPanel">
-                {{ showFilterPanel ? t("折叠属性筛选") : t("展开属性筛选") }}
+                {{ showFilterPanel ? t("nav.collapse_filters") : t("button.expand_filters") }}
               </button>
             </div>
             <button
@@ -303,26 +305,42 @@
               :disabled="!hasAttributeFilters"
               @click="clearAttributeFilters"
             >
-              {{ t("清空属性筛选") }}
+              {{ t("button.clear_attribute_filters") }}
+            </button>
+          </div>
+          <div v-if="hasPreviewWeapons" class="attr-hint weapon-attr-warning">
+            <span class="attr-hint-text weapon-attr-warning-text">
+              {{ t("error.weapon_attribute_data_preview_detected") }}
+            </span>
+            <button class="ghost-button attr-hint-dismiss weapon-attr-warning-action" @click="openWeaponAttrDataModal">
+              {{ t("button.manage_weapon_attribute_data") }}
+            </button>
+          </div>
+          <div v-if="hasDataIntegrityWeaponAttrs" class="attr-hint weapon-attr-warning">
+            <span class="attr-hint-text weapon-attr-warning-text">
+              {{ t("error.weapon_data_integrity_detected_count", { count: dataIntegrityWeaponAttrRows.length }) }}
+            </span>
+            <button class="ghost-button attr-hint-dismiss weapon-attr-warning-action" @click="openWeaponDataIntegrityDetails">
+              {{ t("button.view_data_exception_details") }}
             </button>
           </div>
           <transition name="fade-scale">
             <div v-if="showAttrHint" class="attr-hint">
               <span class="attr-hint-text">
                 {{
-                  t("提示：点击“{label}”按钮，可切换显示属性与拥有状态功能。", {
-                    label: t("显示属性/拥有/备注")
+                  t("button.tip_click_label_to_toggle_attribute_and_ownership_displa", {
+                    label: t("nav.show_attributes_ownership_notes")
                   })
                 }}
               </span>
               <button class="ghost-button attr-hint-dismiss" @click="dismissAttrHint">
-                {{ t("知道了") }}
+                {{ t("button.got_it") }}
               </button>
             </div>
           </transition>
           <div class="filter-panel" :class="{ 'is-collapsed': !showFilterPanel }">
             <div class="filter-group">
-              <div class="filter-title">{{ t("基础属性") }}</div>
+              <div class="filter-title">{{ t("nav.base_attributes") }}</div>
               <div class="filter-chips">
                 <button
                   v-for="option in s1Options"
@@ -351,7 +369,7 @@
               </div>
             </div>
             <div class="filter-group">
-              <div class="filter-title">{{ t("附加属性") }}</div>
+              <div class="filter-title">{{ t("nav.extra_attributes") }}</div>
               <div class="filter-chips">
                 <button
                   v-for="option in s2Options"
@@ -380,7 +398,7 @@
               </div>
             </div>
             <div class="filter-group">
-              <div class="filter-title">{{ t("技能属性") }}</div>
+              <div class="filter-title">{{ t("nav.skill_attributes") }}</div>
               <div class="filter-chips">
                 <button
                   v-for="option in s3OptionEntries"
@@ -407,23 +425,23 @@
                   </span>
                 </button>
               </div>
-              <div class="filter-hint">{{ t("灰色属性代表当前筛选下暂无武器") }}</div>
+              <div class="filter-hint">{{ t("error.gray_attributes_mean_no_weapons_under_current_filters") }}</div>
             </div>
           </div>
 
           <div class="tag-row">
             <div class="tag-list">
-              <span v-if="!selectedNames.length" class="tag tag-empty">{{ t("未选择任何武器") }}</span>
+              <span v-if="!selectedNames.length" class="tag tag-empty">{{ t("nav.no_weapons_selected") }}</span>
               <span
                 v-for="weapon in selectedWeaponRows"
                 :key="weapon.name"
                 class="tag"
                 :class="{ 'is-unowned': weapon.isUnowned, 'is-essence-owned': weapon.isEssenceOwned }"
-                :title="weapon.note ? \`\${t('备注：')}\${weapon.note}\` : ''"
+                :title="weapon.note ? \`\${t('nav.note')}\${weapon.note}\` : ''"
               >
                 <span class="tag-name">{{ tTerm("weapon", weapon.name) }}</span>
-                <span v-if="weapon.isUnowned" class="tag-note is-unowned">{{ t("未拥有") }}</span>
-                <span v-if="weapon.isEssenceOwned" class="tag-note is-essence-owned">{{ t("基质已有") }}</span>
+                <span v-if="weapon.isUnowned" class="tag-note is-unowned">{{ t("nav.not_owned") }}</span>
+                <span v-if="weapon.isEssenceOwned" class="tag-note is-essence-owned">{{ t("nav.essence_owned") }}</span>
                 <button @click.stop="toggleWeapon(weapon, 'tag')">✕</button>
               </span>
             </div>
@@ -433,10 +451,10 @@
                 @click="selectAllWeapons"
                 :disabled="!filteredWeapons.length || allFilteredSelected"
               >
-                {{ t("全选武器") }}
+                {{ t("nav.select_all_weapons") }}
               </button>
               <button class="ghost-button tag-clear" @click="clearSelection" :disabled="!selectedNames.length">
-                {{ t("清空已选武器") }}
+                {{ t("button.clear_selected_weapons") }}
               </button>
             </div>
           </div>
@@ -451,7 +469,7 @@
               v-for="weapon in visibleFilteredWeapons"
               :key="weapon.name"
               class="weapon-item"
-              v-memo="[locale, localeRenderVersion, selectedNameSet.has(weapon.name), isWeaponOwned(weapon.name), isEssenceOwned(weapon.name), selectorHiddenMemoKey]"
+              v-memo="[locale, localeRenderVersion, selectedNameSet.has(weapon.name), isWeaponOwned(weapon.name), isEssenceOwned(weapon.name), weaponUpBadgeMemoKey, selectorHiddenMemoKey]"
               :class="{
                 'is-selected': selectedNameSet.has(weapon.name),
                 'is-unowned': isUnowned(weapon.name),
@@ -486,8 +504,22 @@
                 />
               </div>
               <div class="weapon-band"></div>
-              <div v-if="getSelectorHiddenReason(weapon)" class="weapon-hidden-chip">
-                {{ t("被隐藏") }}
+              <div class="weapon-corner-stack">
+                <div v-if="isWeaponUpActive(weapon.name)" class="weapon-up-chip">
+                  <img
+                    class="weapon-up-chip-icon"
+                    src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIQAAAA8CAMAAACQA+KNAAAAw1BMVEX/8gD/8gD/8QD/8QD/8QH/8QH/8QH/8QH/8gL/8gP/8gP/9ib/8QH/8AH/8QH/8gz/8wL/8QD/8QX/8QD/9Av/8QFBQCTh1gX/8QD/8gH/7wH/8wb/8gF1bxv/9AH/8gCOiBWqoRD/8Ab/8AD/8wD/7wP/8AD/7gT/8QD/7Q1aVyBCQCSpohHFvAv/8gH/7wI1NCb/8wJnYx3/6glOSyK3rg6CfBjw4wL/8wL/8wCclRPUyQn/8wD/7wGpohD/7wApKSmAwyqyAAAAQHRSTlPl2M7FlIt4ZVtINQSBnm4OPuEhsRio/Oi7p1IrUfYYsfLvI+ErP7srug75/O7rnW/9UvcY++3054GB8epuUe5v8HZtSQAAApxJREFUWMPFmdlygkAQRcm+xywo2VBQowaEGIyaxCz8/1cFmIE7oVJFU0PZ/WQmL8ee7nt7WuOkZV7dH18cPRwenO+f7u2etXs3O9tbl8Ym4+Spm0HcSYjwlglinEC85Jm47Y02D9Eyc4hPAcGUieHxY3EdZ+3rFGJgbCIAYfbHeU28p5nggGjNr+75M9FFi/LVhJm36LOAuB4xXEe3PxSZAARHi6YQX0pNMECoiim6gycTQqx+ZCYmDDWR6oTaoiw1IRQT3cGTCdQEZ3eoYhVWdYfVyWKBk6U4yT53lPAi16rhHYCo9g4rzsLFiS1Oss9xKWyrTotCJ3oTfQiEv6ZlQigmRazoEIjZmuaixXW8NQeB8Fck70isXM3EqFmI+IOumNAJfQg7SGJhSwiPBAHFxDyhBeGIf3zLqqBaOca7dnMQxqv40yJMVn2IlTCwxiAiQBAUE9cRojD1IXxAUFy0nIlBExBOjZpovjCjaRIfXp3uIExWWjrhElsUELI7Bg0qJnXaxoM4bBrCt2jj3ZC8GgCEg5NI+cK1GdTxrjCwsMLKC2XGgZCk1/8gZs6qxgtMQlDGuw76Tk1NpED4Xhr2MqjxIMZ1VLooSqCY7xx4JXRCY1NDehAvZKblZbuxCEsHojUvzxMVEKtZPj8ugmAKRdKCEJmgGRjyX45AD8LsYzVAqAk4tBpLQw8CVk59lVt+jEB/amcCYgUXpVPYK32IcX4d7+SdlatgeJADQGzmLRosvU4SkfNHkaZZrOvXRGl7x7HRfSoU81Ma2IRtU3PHvdseKooZsixJpIuq3sG0LlLFiiETECvWndUcPzW8Me4xpYtKA+sxQaA7uDIBF+XcY2KykgbGvsfk+6nhr4FNGLsDss32C/ED45b/F5MPF3B+XRSlAAAAAElFTkSuQmCC"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    @load="$event.target.closest('.weapon-up-chip')?.classList.remove('is-fallback')"
+                    @error="$event.target.style.display = 'none'; $event.target.closest('.weapon-up-chip')?.classList.add('is-fallback')"
+                  />
+                  <span class="weapon-up-chip-fallback">{{ t("up_badge_text") }}</span>
+                </div>
+                <div v-if="getSelectorHiddenReason(weapon)" class="weapon-hidden-chip">
+                  {{ t("nav.hidden") }}
+                </div>
               </div>
               <div class="weapon-name">
                 <div class="weapon-title">{{ tTerm("weapon", weapon.name) }}</div>
@@ -529,8 +561,8 @@
                 <span class="rarity" :style="rarityTextStyle(tutorialWeapon.rarity)">
                   {{ tutorialWeapon.rarity }}★
                 </span>
-                <span class="badge tutorial-badge">{{ t("教学示例") }}</span>
-                <span class="badge muted" v-if="tutorialEssenceOwned">{{ t("基质已有") }}</span>
+                <span class="badge tutorial-badge">{{ t("nav.tutorial") }}</span>
+                <span class="badge muted" v-if="tutorialEssenceOwned">{{ t("nav.essence_owned") }}</span>
                 <span v-if="tutorialWeapon.short" class="weapon-short">
                   {{ tTerm("short", tutorialWeapon.short) }}
                 </span>
@@ -550,7 +582,7 @@
                   }"
                   @click.stop="toggleTutorialEssenceOwned"
                 >
-                  {{ tutorialEssenceOwned ? t("标记基质未有") : t("标记基质已有") }}
+                  {{ tutorialEssenceOwned ? t("button.mark_essence_not_owned") : t("button.mark_essence_owned") }}
                 </button>
                 <textarea
                   class="exclude-note-input"
@@ -560,7 +592,7 @@
                   }"
                   rows="1"
                   maxlength="30"
-                  :placeholder="t('备注（可选）')"
+                  :placeholder="t('warning.note_optional')"
                   :value="tutorialNote"
                   @focus="markTutorialNoteTouched(); resizeNoteTextarea($event)"
                   @input="resizeNoteTextarea($event); updateTutorialNote($event.target.value)"
@@ -629,9 +661,9 @@
                 <span class="rarity" :style="rarityTextStyle(weapon.rarity)">
                   {{ weapon.rarity }}★
                 </span>
-                <span class="badge" v-if="selectedNameSet.has(weapon.name)">{{ t("已选") }}</span>
-                <span class="badge muted" v-if="isUnowned(weapon.name)">{{ t("未拥有") }}</span>
-                <span class="badge muted" v-if="isEssenceOwned(weapon.name)">{{ t("基质已有") }}</span>
+                <span class="badge" v-if="selectedNameSet.has(weapon.name)">{{ t("nav.selected") }}</span>
+                <span class="badge muted" v-if="isUnowned(weapon.name)">{{ t("nav.not_owned") }}</span>
+                <span class="badge muted" v-if="isEssenceOwned(weapon.name)">{{ t("nav.essence_owned") }}</span>
                 <span v-if="getSelectorHiddenReason(weapon)" class="badge warn weapon-hidden-note">
                   {{ getSelectorHiddenReason(weapon) }}
                 </span>
@@ -665,21 +697,21 @@
                   :class="{ active: isWeaponOwned(weapon.name), 'intent-alert': !isWeaponOwned(weapon.name) }"
                   @click.stop="toggleWeaponOwned(weapon)"
                 >
-                  {{ isWeaponOwned(weapon.name) ? t("标记武器未有") : t("标记武器拥有") }}
+                  {{ isWeaponOwned(weapon.name) ? t("button.mark_weapon_not_owned") : t("button.mark_weapon_owned") }}
                 </button>
                 <button
                   class="exclude-toggle small"
                   :class="{ active: isEssenceOwned(weapon.name), 'intent-alert': !isEssenceOwned(weapon.name) }"
                   @click.stop="toggleEssenceOwned(weapon)"
                 >
-                  {{ isEssenceOwned(weapon.name) ? t("标记基质未有") : t("标记基质已有") }}
+                  {{ isEssenceOwned(weapon.name) ? t("button.mark_essence_not_owned") : t("button.mark_essence_owned") }}
                 </button>
                 <textarea
                   class="exclude-note-input"
                   :class="{ 'is-essence-owned': isEssenceOwned(weapon.name), 'is-unowned': isUnowned(weapon.name) }"
                   rows="1"
                   maxlength="30"
-                  :placeholder="t('备注（可选）')"
+                  :placeholder="t('warning.note_optional')"
                   :value="getWeaponNote(weapon.name)"
                   @focus="resizeNoteTextarea($event)"
                   @input="resizeNoteTextarea($event); updateWeaponNote(weapon, $event.target.value)"
@@ -696,7 +728,7 @@
 
         <section class="panel" :class="{ 'panel-hidden': mobilePanel !== 'plans' }">
           <div class="panel-title">
-            <h2>{{ t("方案推荐列表") }}</h2>
+            <h2>{{ t("nav.plan_recommendations") }}</h2>
             <div class="panel-actions">
               <plan-config-control
                 :t="t"
@@ -710,7 +742,7 @@
                 :t-strict-priority-order-options="tStrictPriorityOrderOptions"
                 @toggle="togglePlanConfig"
               ></plan-config-control>
-              <div class="pill">{{ t("已选") }} {{ selectedCount }} / {{ t("待刷") }} {{ pendingCount }} {{ t("把") }}</div>
+              <div class="pill">{{ t("nav.selected") }} {{ selectedCount }} / {{ t("nav.pending") }} {{ pendingCount }} {{ t("nav.weapons_2") }}</div>
               <button
                 v-if="extraRecommendations.length"
                 class="ghost-button"
@@ -718,57 +750,69 @@
               >
                 {{
                   showAllSchemes
-                    ? t("收起其他方案")
-                    : t("展开其他方案（{count}）", { count: extraRecommendations.length })
+                    ? t("button.collapse_other_plans")
+                    : t("button.show_other_plans_count", { count: extraRecommendations.length })
                 }}
               </button>
             </div>
           </div>
 
-          <div v-if="canShowAds && !isAdPortrait" class="card slot-inline-card slot-inline-top" :aria-label="t('广告位（桌面端）')">
-            <div class="slot-ad-tip">{{ t("广告位") }}</div>
-            <button
-              class="slot-close-button"
-              type="button"
-              :title="t('关闭广告')"
-              :aria-label="t('关闭广告')"
-              @click.stop="dismissAdsForSession"
-            >
-              &times;
-            </button>
-            <div v-if="adPreviewMode" class="slot-preview-banner">
-              {{ t("广告预览模式（本地）") }}
-            </div>
-            <div
-              v-else
-              class="adwork-net adwork-auto slot-provider-net slot-provider-auto"
-              data-id="1050"
-              data-placeholder="none"
-            ></div>
-          </div>
-
           <div v-if="!selectedCount" class="empty">
-            {{ t("请选择至少一把武器，系统将自动推荐可共刷的副本方案。") }}
+            {{ t("nav.select_at_least_one_weapon_and_the_system_will_recommend") }}
           </div>
 
           <div v-else-if="recommendationEmptyReason === 'filteredOut'" class="empty">
-            {{ t("当前筛选已隐藏全部结果，请调整筛选开关。") }}
+            {{ t("nav.item") }}
           </div>
 
           <div v-else-if="recommendationEmptyReason === 'noScheme'" class="recommendations">
             <div class="card">
               <div class="card-header">
                 <div>
-                  <div class="card-title">{{ t("当前组合无可用方案") }}</div>
-                  <div class="hint">{{ t("附加/技能属性无法统一锁定，或副本池不覆盖所需词条。") }}</div>
+                  <div class="card-title">
+                    {{
+                      recommendationDataIssue && recommendationDataIssue.kind === "dataIntegrityMissingAttr"
+                        ? t("error.no_available_plan_for_data_integrity")
+                        : t("error.no_available_plan_for_current_selection")
+                    }}
+                  </div>
+                  <div class="hint">{{ t("nav.extra_skill_attributes_cannot_be_unified_or_no_dungeon_p") }}</div>
+                  <div class="hint" v-if="recommendationDataIssue && recommendationDataIssue.weaponNames && recommendationDataIssue.weaponNames.length">
+                    {{
+                      t(
+                        recommendationDataIssue.kind === "dataIntegrityMissingAttr"
+                          ? "error.recommendation_data_integrity_issue_weapons"
+                          : "error.recommendation_data_issue_weapons",
+                        {
+                          weapons: recommendationDataIssue.weaponNames.map((name) => tTerm("weapon", name)).join(" / "),
+                        }
+                      )
+                    }}
+                  </div>
                 </div>
+              </div>
+              <div class="about-actions">
+                <button
+                  v-if="recommendationDataIssue && recommendationDataIssue.kind === 'previewMissingAttr'"
+                  class="about-button"
+                  @click="openWeaponAttrDataModal"
+                >
+                  {{ t("button.manage_weapon_attribute_data") }}
+                </button>
+                <button
+                  v-else-if="recommendationDataIssue && recommendationDataIssue.kind === 'dataIntegrityMissingAttr'"
+                  class="about-button"
+                  @click="openWeaponDataIntegrityDetails"
+                >
+                  {{ t("button.view_data_exception_details") }}
+                </button>
               </div>
 
               <div class="lock-summary" v-if="fallbackPlan">
-                <div class="lock-title">{{ t("锁定方案（仅显示冲突提示）") }}</div>
+                <div class="lock-title">{{ t("nav.locked_plan_conflicts_only") }}</div>
                 <div class="lock-items">
                   <span class="lock-chip" :class="{ warn: fallbackPlan.baseOverflow }">
-                    {{ fallbackPlan.baseOverflow ? t("基础属性冲突") : t("基础属性") }}：
+                    {{ fallbackPlan.baseOverflow ? t("nav.base_attribute_conflict") : t("nav.base_attributes") }}：
                     {{
                       (fallbackPlan.baseOverflow ? fallbackPlan.baseAllLabels : fallbackPlan.basePickLabels).join(
                         " / "
@@ -776,15 +820,15 @@
                     }}
                   </span>
                   <span class="lock-chip warn" v-if="fallbackPlan.s2Conflict">
-                    {{ t("附加属性冲突（无法统一锁定）") }}
+                    {{ t("nav.extra_attribute_conflict_cannot_unify") }}
                   </span>
                   <span class="lock-chip warn" v-if="fallbackPlan.s3Conflict">
-                    {{ t("技能属性冲突（无法统一锁定）") }}
+                    {{ t("nav.skill_attribute_conflict_cannot_unify") }}
                   </span>
                 </div>
               </div>
 
-              <div v-if="fallbackPlan" class="hint">{{ t("已选武器（冲突项标红）") }}</div>
+              <div v-if="fallbackPlan" class="hint">{{ t("nav.selected_weapons_conflicts_in_red") }}</div>
               <div v-if="fallbackPlan" class="scheme-weapon-list">
                 <div
                   v-for="weapon in fallbackPlan.weaponRows"
@@ -823,7 +867,7 @@
                     <span class="rarity" :style="rarityTextStyle(weapon.rarity)">
                       {{ weapon.rarity }}★
                     </span>
-                    <span class="badge">{{ t("已选") }}</span>
+                    <span class="badge">{{ t("nav.selected") }}</span>
                     <span v-if="weapon.short" class="weapon-short">
                       {{ tTerm("short", weapon.short) }}
                     </span>
@@ -836,13 +880,13 @@
                         conflict: weapon.baseConflict,
                       }"
                     >
-                      <span class="attr-label">{{ t("基础属性") }}：</span>{{ formatS1(weapon.s1) }}
+                      <span class="attr-label">{{ t("nav.base_attributes") }}：</span>{{ formatS1(weapon.s1) }}
                     </span>
                     <span class="attr-value" :class="{ conflict: fallbackPlan.s2Conflict }">
-                      <span class="attr-label">{{ t("附加属性") }}：</span>{{ tTerm("s2", weapon.s2) }}
+                      <span class="attr-label">{{ t("nav.extra_attributes") }}：</span>{{ tTerm("s2", weapon.s2) }}
                     </span>
                     <span class="attr-value" :class="{ conflict: fallbackPlan.s3Conflict }">
-                      <span class="attr-label">{{ t("技能属性") }}：</span>{{ tTerm("s3", weapon.s3) }}
+                      <span class="attr-label">{{ t("nav.skill_attributes") }}：</span>{{ tTerm("s3", weapon.s3) }}
                     </span>
                   </div>
                   <div class="weapon-exclude-row" @click.stop>
@@ -851,21 +895,21 @@
                       :class="{ active: isWeaponOwned(weapon.name), 'intent-alert': !isWeaponOwned(weapon.name) }"
                       @click.stop="toggleWeaponOwned(weapon)"
                     >
-                      {{ isWeaponOwned(weapon.name) ? t("标记武器未有") : t("标记武器拥有") }}
+                      {{ isWeaponOwned(weapon.name) ? t("button.mark_weapon_not_owned") : t("button.mark_weapon_owned") }}
                     </button>
                     <button
                       class="exclude-toggle small"
                       :class="{ active: isEssenceOwned(weapon.name), 'intent-alert': !isEssenceOwned(weapon.name) }"
                       @click.stop="toggleEssenceOwned(weapon)"
                     >
-                      {{ isEssenceOwned(weapon.name) ? t("标记基质未有") : t("标记基质已有") }}
+                      {{ isEssenceOwned(weapon.name) ? t("button.mark_essence_not_owned") : t("button.mark_essence_owned") }}
                     </button>
                     <textarea
                       class="exclude-note-input"
                       :class="{ 'is-essence-owned': isEssenceOwned(weapon.name), 'is-unowned': isUnowned(weapon.name) }"
                       rows="1"
                       maxlength="30"
-                      :placeholder="t('备注（可选）')"
+                      :placeholder="t('warning.note_optional')"
                       :value="getWeaponNote(weapon.name)"
                       @focus="resizeNoteTextarea($event)"
                       @input="resizeNoteTextarea($event); updateWeaponNote(weapon, $event.target.value)"

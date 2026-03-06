@@ -2,7 +2,7 @@
   const modules = (window.AppModules = window.AppModules || {});
 
   modules.initUi = function initUi(ctx, state) {
-    const { ref, onMounted, onBeforeUnmount, nextTick, watch } = ctx;
+    const { ref, onMounted, onBeforeUnmount, nextTick } = ctx;
 
     const showBackToTop = state.showBackToTop;
     const showLangMenu = state.showLangMenu;
@@ -10,11 +10,9 @@
     const showPlanConfig = state.showPlanConfig;
     const showPlanConfigHintDot = state.showPlanConfigHintDot;
     const showGearRefiningNavHintDot = state.showGearRefiningNavHintDot;
+    const showRerunRankingNavHintDot = state.showRerunRankingNavHintDot;
     const isPortrait = state.isPortrait;
-    const isAdPortrait = state.isAdPortrait;
-    const canShowAds = state.canShowAds;
     const updateLangMenuPlacement = state.updateLangMenuPlacement;
-    const loadScriptOnce = state.loadScriptOnce;
     const reportStorageIssue = (operation, key, error, meta) => {
       if (typeof state.reportStorageIssue === "function") {
         state.reportStorageIssue(operation, key, error, meta);
@@ -31,49 +29,7 @@
     const preloadBackgroundTimeoutMs = 850;
     const preloadBackgroundFadeMs = 720;
     let preloadBackgroundFadeTimer = null;
-
-    const allowedAdHosts = new Set([
-    //  "end.canmoe.com",
-    //  "127.0.0.1",
-    //  "localhost",
-    ]);
-    const providerScriptSrc = "https://cdn.adwork.net/js/makemoney.js";
     const mobileLayoutBreakpoint = 1024;
-    const adMobileBreakpoint = mobileLayoutBreakpoint;
-    const adPreviewParamKey = "adPreview";
-    const adPreviewMode = state.adPreviewMode || ref(false);
-    const adDismissedSession = state.adDismissedSession || ref(false);
-    let adScriptLoadingPromise = null;
-    let adScriptRetryTimer = null;
-    let adScriptRetryCount = 0;
-    const adScriptRetryDelaysMs = [1800, 5000];
-
-    state.adPreviewMode = adPreviewMode;
-    state.adDismissedSession = adDismissedSession;
-
-    const isLocalPreviewHost = (host) => host === "127.0.0.1" || host === "localhost" || host === "::1";
-    const resolveCurrentHost = () =>
-      (window.location && window.location.hostname ? window.location.hostname : "").toLowerCase();
-    const isAllowedAdHost = (host) => {
-      if (!host) return false;
-      return allowedAdHosts.has(host);
-    };
-    const isAdPreviewEnabledByQuery = () => {
-      if (typeof window === "undefined") return false;
-      try {
-        const params = new URLSearchParams(window.location.search || "");
-        const value = (params.get(adPreviewParamKey) || "").trim().toLowerCase();
-        return value === "1" || value === "true" || value === "yes" || value === "on";
-      } catch (error) {
-        return false;
-      }
-    };
-    const syncAdPreviewFlags = () => {
-      if (typeof window === "undefined") return;
-      const host = resolveCurrentHost();
-      const local = isLocalPreviewHost(host);
-      adPreviewMode.value = local && isAdPreviewEnabledByQuery();
-    };
 
     const readStorageValue = (key) => {
       if (!key) return "";
@@ -120,12 +76,22 @@
 
     const runtimeWarningLogLimit = 20;
     const runtimeWarningDedupWindowMs = 4000;
+    const optionalFailureNotificationDedupWindowMs = 10000;
+    const optionalFailureVisibleLimit = 2;
+    const optionalFailureToastDurationMs = 6500;
     const optionalFailureQueueKey = "__bootOptionalLoadFailures";
     const optionalFailureEventName = "planner:optional-resource-failed";
     let optionalFailurePollTimer = null;
+    const optionalFailureToastTimers = new Map();
     let lastRuntimeWarningSignature = "";
     let lastRuntimeWarningAt = 0;
-    const seenOptionalFailureSignatures = new Set();
+    const optionalFailureLastSeenAt = new Map();
+    const optionalFailureNotices = state.optionalFailureNotices || ref([]);
+    const optionalFailureNotice = state.optionalFailureNotice || ref(null);
+    const optionalFailureHistory = state.optionalFailureHistory || ref([]);
+    const hasOptionalFailureHistory = state.hasOptionalFailureHistory || ref(false);
+    hasOptionalFailureHistory.value =
+      Array.isArray(optionalFailureHistory.value) && optionalFailureHistory.value.length > 0;
     const nowIsoString = () => new Date().toISOString();
     const appUtils =
       typeof window !== "undefined" && window.AppUtils && typeof window.AppUtils === "object"
@@ -147,10 +113,17 @@
       const scope = meta && meta.scope ? String(meta.scope) : "init-ui";
       const operation = meta && meta.operation ? String(meta.operation) : "runtime.init";
       const key = meta && meta.key ? String(meta.key) : "app.ui:onMounted";
-      const title = meta && meta.title ? String(meta.title) : "页面初始化异常";
+      const title =
+        meta && meta.title
+          ? String(meta.title)
+          : typeof state.t === "function"
+          ? state.t("error.page_init_title")
+          : "页面初始化异常";
       const summary =
         meta && meta.summary
           ? String(meta.summary)
+          : typeof state.t === "function"
+          ? state.t("error.page_init_summary")
           : "页面初始化阶段发生异常，部分功能可能不可用。";
       return {
         id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
@@ -182,12 +155,141 @@
       }
       return lines.join("\n");
     };
+    const syncOptionalFailurePrimaryNotice = () => {
+      if (!optionalFailureNotice || !optionalFailureNotices) return;
+      const list = Array.isArray(optionalFailureNotices.value) ? optionalFailureNotices.value : [];
+      optionalFailureNotice.value = list.length ? list[0] : null;
+    };
+    const setVisibleOptionalFailureNotices = (nextList) => {
+      if (!optionalFailureNotices) return;
+      const list = Array.isArray(nextList) ? nextList.slice(0, optionalFailureVisibleLimit) : [];
+      optionalFailureNotices.value = list;
+      syncOptionalFailurePrimaryNotice();
+    };
+    const clearOptionalFailureToastTimer = (noticeId) => {
+      const key = String(noticeId || "");
+      if (!key) return;
+      const timer = optionalFailureToastTimers.get(key);
+      if (!timer) return;
+      clearTimeout(timer);
+      optionalFailureToastTimers.delete(key);
+    };
+    const clearAllOptionalFailureToastTimers = () => {
+      for (const timer of optionalFailureToastTimers.values()) {
+        clearTimeout(timer);
+      }
+      optionalFailureToastTimers.clear();
+    };
+    const removeVisibleOptionalFailureNotice = (noticeId) => {
+      if (!optionalFailureNotices) return;
+      const key = String(noticeId || "");
+      if (!key) {
+        setVisibleOptionalFailureNotices([]);
+        return;
+      }
+      const current = Array.isArray(optionalFailureNotices.value) ? optionalFailureNotices.value : [];
+      const next = current.filter((item) => String((item && item.id) || "") !== key);
+      setVisibleOptionalFailureNotices(next);
+    };
+    const scheduleOptionalFailureAutoDismiss = (noticeId) => {
+      const key = String(noticeId || "");
+      if (!key) return;
+      clearOptionalFailureToastTimer(key);
+      const timer = setTimeout(() => {
+        optionalFailureToastTimers.delete(key);
+        removeVisibleOptionalFailureNotice(key);
+      }, optionalFailureToastDurationMs);
+      optionalFailureToastTimers.set(key, timer);
+    };
+    const dismissOptionalFailureNotice = (noticeId) => {
+      if (!optionalFailureNotices) return;
+      if (!noticeId) {
+        const first =
+          Array.isArray(optionalFailureNotices.value) && optionalFailureNotices.value.length
+            ? optionalFailureNotices.value[0]
+            : null;
+        if (!first || !first.id) return;
+        clearOptionalFailureToastTimer(first.id);
+        removeVisibleOptionalFailureNotice(first.id);
+        return;
+      }
+      clearOptionalFailureToastTimer(noticeId);
+      removeVisibleOptionalFailureNotice(noticeId);
+    };
+    const pushOptionalFailureNotice = (entry, meta) => {
+      if (!optionalFailureNotices || !optionalFailureHistory) return;
+      const signature = String((meta && meta.optionalSignature) || entry.key || "").trim();
+      const notice = {
+        id: entry.id,
+        logId: entry.id,
+        occurredAt: entry.occurredAt || nowIsoString(),
+        title: entry.title,
+        summary: entry.summary,
+        note: entry.note || "",
+        signature,
+      };
+      const nextHistory = [notice].concat(
+        Array.isArray(optionalFailureHistory.value) ? optionalFailureHistory.value : []
+      );
+      optionalFailureHistory.value = nextHistory.slice(0, runtimeWarningLogLimit);
+      hasOptionalFailureHistory.value = optionalFailureHistory.value.length > 0;
+      const now = Date.now();
+      if (signature) {
+        const lastAt = optionalFailureLastSeenAt.get(signature) || 0;
+        if (now - lastAt <= optionalFailureNotificationDedupWindowMs) {
+          return;
+        }
+        optionalFailureLastSeenAt.set(signature, now);
+      }
+      const current = Array.isArray(optionalFailureNotices.value) ? optionalFailureNotices.value : [];
+      const withoutSameSignature = signature
+        ? current.filter((item) => String((item && item.signature) || "") !== signature)
+        : current.slice();
+      const nextVisible = [notice].concat(withoutSameSignature).slice(0, optionalFailureVisibleLimit);
+      const dropped = [notice].concat(withoutSameSignature).slice(optionalFailureVisibleLimit);
+      dropped.forEach((item) => {
+        if (item && item.id) {
+          clearOptionalFailureToastTimer(item.id);
+        }
+      });
+      setVisibleOptionalFailureNotices(nextVisible);
+      scheduleOptionalFailureAutoDismiss(notice.id);
+    };
+    const resolveRuntimeWarningLogById = (logId) => {
+      if (!state.runtimeWarningLogs || !Array.isArray(state.runtimeWarningLogs.value)) return null;
+      const idText = String(logId || "");
+      return state.runtimeWarningLogs.value.find((item) => String((item && item.id) || "") === idText) || null;
+    };
+    const openOptionalFailureDetailByLogId = (logId) => {
+      const target = resolveRuntimeWarningLogById(logId);
+      if (target && typeof state.openUnifiedExceptionFromLog === "function") {
+        state.openUnifiedExceptionFromLog(target);
+      } else if (target && state.runtimeWarningCurrent && state.showRuntimeWarningModal) {
+        state.runtimeWarningCurrent.value = target;
+        if (state.runtimeWarningPreviewText) {
+          state.runtimeWarningPreviewText.value = buildRuntimeWarningPreviewText(target);
+        }
+        state.showRuntimeWarningModal.value = true;
+      } else if (state.showRuntimeWarningModal) {
+        state.showRuntimeWarningModal.value = true;
+      }
+      dismissOptionalFailureNotice();
+    };
+    const openLatestOptionalFailureDetail = () => {
+      const first =
+        optionalFailureHistory && Array.isArray(optionalFailureHistory.value)
+          ? optionalFailureHistory.value[0]
+          : null;
+      if (!first) return;
+      openOptionalFailureDetailByLogId(first.logId);
+    };
     const showUiInitWarning = (error, meta) => {
       const runtimeWarningCurrent = state.runtimeWarningCurrent;
       const runtimeWarningLogs = state.runtimeWarningLogs;
       const runtimeWarningPreviewText = state.runtimeWarningPreviewText;
       const showRuntimeWarningModal = state.showRuntimeWarningModal;
       const runtimeWarningIgnored = state.runtimeWarningIgnored;
+      const asToast = Boolean(meta && meta.asToast);
       if (
         !runtimeWarningCurrent ||
         !runtimeWarningLogs ||
@@ -197,13 +299,17 @@
         return;
       }
       const forceShow = Boolean(meta && meta.forceShow);
-      if (!forceShow && runtimeWarningIgnored && runtimeWarningIgnored.value) {
+      if (!asToast && !forceShow && runtimeWarningIgnored && runtimeWarningIgnored.value) {
         return;
       }
       const entry = buildRuntimeWarningEntry(error, meta);
       const signature = `${entry.operation}|${entry.key}|${entry.errorName}|${entry.errorMessage}`;
+      const isOptionalToast = Boolean(
+        asToast && meta && String(meta.optionalSignature || "").trim()
+      );
       const now = Date.now();
       if (
+        !isOptionalToast &&
         signature === lastRuntimeWarningSignature &&
         now - lastRuntimeWarningAt <= runtimeWarningDedupWindowMs
       ) {
@@ -217,7 +323,14 @@
         Array.isArray(runtimeWarningLogs.value) ? runtimeWarningLogs.value : []
       );
       runtimeWarningLogs.value = nextLogs.slice(0, runtimeWarningLogLimit);
+      if (asToast) {
+        pushOptionalFailureNotice(entry, meta);
+        return;
+      }
       showRuntimeWarningModal.value = true;
+    };
+    const reportRuntimeWarning = (error, meta) => {
+      showUiInitWarning(error, meta);
     };
     const flushBootOptionalFailureQueue = (incomingItems) => {
       const queued =
@@ -234,76 +347,72 @@
       queued.forEach((item) => {
         if (!item || typeof item !== "object") return;
         const featureKey = String(item.featureKey || "").trim();
-        const resourceLabel = String(item.label || item.src || "").trim();
-        const signature = `${featureKey}|${resourceLabel}`;
-        if (!resourceLabel || seenOptionalFailureSignatures.has(signature)) return;
-        seenOptionalFailureSignatures.add(signature);
+        const resourceLabel = String(item.resource || item.resourceLabel || item.label || item.src || "").trim();
+        const signature = String(item.signature || `${featureKey}|${resourceLabel}`).trim();
+        if (!resourceLabel || !signature) return;
         normalized.push({
+          occurredAt: String(item.occurredAt || nowIsoString()),
+          signature,
           featureKey,
           featureLabel: String(item.featureLabel || "").trim(),
           resourceLabel,
         });
       });
       if (!normalized.length) return;
-      const featureLabels = Array.from(
-        new Set(
-          normalized
-            .filter((item) => item.featureKey || item.featureLabel)
-            .map((item) => {
-              const featureKey = item.featureKey;
-              if (typeof state.t !== "function") return featureKey || item.featureLabel;
-              if (!featureKey) return item.featureLabel;
-              const i18nKey = `optional_feature_${featureKey}`;
-              const translated = state.t(i18nKey);
-              if (translated && translated !== i18nKey) return translated;
-              return item.featureLabel || featureKey;
+      normalized.forEach((item) => {
+        const featureLabel = (() => {
+          if (!item.featureKey && !item.featureLabel) return "";
+          if (typeof state.t !== "function") return item.featureKey || item.featureLabel || "";
+          if (!item.featureKey) return item.featureLabel || "";
+          const i18nKey = `optional_feature_${item.featureKey}`;
+          const translated = state.t(i18nKey);
+          if (translated && translated !== i18nKey) return translated;
+          return item.featureLabel || item.featureKey;
+        })();
+        const detailLines = [];
+        if (featureLabel && typeof state.t === "function") {
+          detailLines.push(
+            state.t("warning.affected_features_features", {
+              features: featureLabel,
             })
-        )
-      );
-      const resourceLabels = Array.from(new Set(normalized.map((item) => item.resourceLabel)));
-      const detailLines = [];
-      if (featureLabels.length && typeof state.t === "function") {
-        detailLines.push(
-          state.t("失败功能：{features}", {
-            features: featureLabels.join(", "),
-          })
-        );
-      }
-      if (resourceLabels.length && typeof state.t === "function") {
-        detailLines.push(
-          state.t("失败资源：{resources}", {
-            resources: resourceLabels.join(", "),
-          })
-        );
-      }
-      if (typeof state.t === "function") {
-        detailLines.push(state.t("影响说明：仅影响可选功能，不影响核心功能。"));
-      }
-      const firstFeature = featureLabels[0] || "";
-      const firstResource = resourceLabels[0] || "optional-resource";
-      const messageParts = [];
-      if (firstFeature) {
-        messageParts.push(firstFeature);
-      }
-      if (firstResource) {
-        messageParts.push(firstResource);
-      }
-      const error = new Error(messageParts.join(" / ") || "optional resource failed");
-      error.name = "OptionalResourceLoadError";
-      showUiInitWarning(error, {
-        scope: "boot.optional-resource",
-        operation: "optional.load",
-        key: resourceLabels.join(", ") || "optional-resource",
-        title:
-          typeof state.t === "function"
-            ? state.t("可选功能加载失败")
-            : "可选功能加载失败",
-        summary:
-          typeof state.t === "function"
-            ? state.t("部分可选功能未能加载，页面主体仍可继续使用。")
-            : "部分可选功能未能加载，页面主体仍可继续使用。",
-        note: detailLines.join("\n"),
-        forceShow: true,
+          );
+        }
+        if (item.resourceLabel && typeof state.t === "function") {
+          detailLines.push(
+            state.t("warning.failed_resources_resources", {
+              resources: item.resourceLabel,
+            })
+          );
+        }
+        if (typeof state.t === "function") {
+          detailLines.push(state.t("optional.impact_optional_features_only_core_functionality_remains"));
+        }
+        const messageParts = [];
+        if (featureLabel) {
+          messageParts.push(featureLabel);
+        }
+        if (item.resourceLabel) {
+          messageParts.push(item.resourceLabel);
+        }
+        const error = new Error(messageParts.join(" / ") || "optional resource failed");
+        error.name = "OptionalResourceLoadError";
+        showUiInitWarning(error, {
+          scope: "boot.optional-resource",
+          operation: "optional.load",
+          key: item.signature,
+          title:
+            typeof state.t === "function"
+              ? state.t("error.optional_feature_load_failed")
+              : "可选功能加载失败",
+          summary:
+            typeof state.t === "function"
+              ? state.t("warning.some_optional_features_could_not_be_loaded_core_page_usa")
+              : "部分可选功能未能加载，页面主体仍可继续使用。",
+          note: detailLines.join("\n"),
+          asToast: true,
+          optionalSignature: item.signature,
+          occurredAt: item.occurredAt || nowIsoString(),
+        });
       });
     };
     const handleOptionalFailureEvent = (event) => {
@@ -453,106 +562,6 @@
       });
     };
 
-    const evaluateAdVisibility = () => {
-      if (typeof window === "undefined") {
-        canShowAds.value = false;
-        return;
-      }
-      if (adDismissedSession.value) {
-        canShowAds.value = false;
-        return;
-      }
-      if (adPreviewMode.value) {
-        canShowAds.value = true;
-        return;
-      }
-      const host = resolveCurrentHost();
-      canShowAds.value = isAllowedAdHost(host);
-    };
-
-    const handleAdFailed = () => {
-      canShowAds.value = false;
-    };
-
-    const hasRenderedAdSlotContainer = () => {
-      if (typeof document === "undefined") return false;
-      return Boolean(document.querySelector(".slot-provider-net, .adwork-net"));
-    };
-
-    const clearAdScriptRetry = () => {
-      if (!adScriptRetryTimer) return;
-      clearTimeout(adScriptRetryTimer);
-      adScriptRetryTimer = null;
-    };
-
-    const scheduleAdScriptRetry = () => {
-      if (adPreviewMode.value) return;
-      if (adScriptRetryTimer) return;
-      if (adScriptRetryCount >= adScriptRetryDelaysMs.length) return;
-      const host = resolveCurrentHost();
-      if (!isAllowedAdHost(host)) return;
-      const delay = adScriptRetryDelaysMs[adScriptRetryCount];
-      adScriptRetryCount += 1;
-      adScriptRetryTimer = setTimeout(() => {
-        adScriptRetryTimer = null;
-        window.__slotProviderScriptError = false;
-        evaluateAdVisibility();
-        if (canShowAds.value) {
-          ensureAdScriptLoaded();
-        }
-      }, delay);
-    };
-
-    const ensureAdScriptLoaded = () => {
-      if (typeof window === "undefined" || typeof document === "undefined") {
-        return Promise.resolve(false);
-      }
-      if (adPreviewMode.value) {
-        return Promise.resolve(false);
-      }
-      if (!canShowAds.value) {
-        return Promise.resolve(false);
-      }
-      if (!hasRenderedAdSlotContainer()) {
-        return Promise.resolve(false);
-      }
-      if (window.__slotProviderScriptReady) {
-        return Promise.resolve(true);
-      }
-      if (adScriptLoadingPromise) {
-        return adScriptLoadingPromise;
-      }
-      const loadTask =
-        typeof loadScriptOnce === "function"
-          ? loadScriptOnce(providerScriptSrc)
-          : new Promise((resolve, reject) => {
-              const script = document.createElement("script");
-              script.src = providerScriptSrc;
-              script.async = true;
-              script.onload = resolve;
-              script.onerror = reject;
-              document.body.appendChild(script);
-            });
-      adScriptLoadingPromise = loadTask
-        .then(() => {
-          window.__slotProviderScriptReady = true;
-          window.__slotProviderScriptError = false;
-          adScriptRetryCount = 0;
-          clearAdScriptRetry();
-          return true;
-        })
-        .catch(() => {
-          window.__slotProviderScriptError = true;
-          scheduleAdScriptRetry();
-          window.dispatchEvent(new Event("slotfeed:failed"));
-          return false;
-        })
-        .finally(() => {
-          adScriptLoadingPromise = null;
-        });
-      return adScriptLoadingPromise;
-    };
-
     const resolveTheme = (mode) => {
       if (mode === "light" || mode === "dark") return mode;
       if (typeof window === "undefined" || !window.matchMedia) return "dark";
@@ -613,7 +622,6 @@
       } else {
         isPortrait.value = window.innerHeight >= window.innerWidth;
       }
-      isAdPortrait.value = window.innerWidth <= adMobileBreakpoint;
       if (showLangMenu.value && updateLangMenuPlacement) {
         if (typeof nextTick === "function") {
           nextTick(updateLangMenuPlacement);
@@ -720,6 +728,20 @@
         });
       }
     };
+    const markRerunRankingNavHintSeen = () => {
+      if (!showRerunRankingNavHintDot.value) return;
+      showRerunRankingNavHintDot.value = false;
+      try {
+        localStorage.setItem(
+          state.rerunRankingNavHintStorageKey,
+          state.rerunRankingNavHintVersion
+        );
+      } catch (error) {
+        reportStorageIssue("storage.write", state.rerunRankingNavHintStorageKey, error, {
+          scope: "ui.rerun-ranking-nav-hint-write",
+        });
+      }
+    };
 
     const togglePlanConfig = () => {
       const nextOpen = !showPlanConfig.value;
@@ -727,11 +749,6 @@
       if (nextOpen) {
         markPlanConfigHintSeen();
       }
-    };
-
-    const dismissAdsForSession = () => {
-      adDismissedSession.value = true;
-      canShowAds.value = false;
     };
 
     const handleDocClick = (event) => {
@@ -808,7 +825,6 @@
         }, 1200);
         bindSystemThemeListener();
         applyTheme(state.themePreference.value || "auto");
-        syncAdPreviewFlags();
         updateViewportOrientation();
         window.addEventListener("resize", updateViewportOrientation);
         updateViewportSafeBottom();
@@ -818,17 +834,9 @@
           window.visualViewport.addEventListener("scroll", scheduleViewportSafeBottom);
         }
         if (typeof window !== "undefined") {
-          if (!window.__slotProviderScriptReady) {
-            window.__slotProviderScriptError = false;
-          }
           backToTopLastScroll = window.scrollY || window.pageYOffset || 0;
           updateBackToTopVisibility();
           window.addEventListener("scroll", handleBackToTopScroll, { passive: true });
-          evaluateAdVisibility();
-          window.addEventListener("slotfeed:failed", handleAdFailed);
-          if (canShowAds.value) {
-            runAfterLayout(ensureAdScriptLoaded);
-          }
         }
         document.addEventListener("click", handleDocClick);
         document.addEventListener("keydown", handleDocKeydown);
@@ -842,25 +850,6 @@
         runAfterLayout(finalizePreload);
       }
     });
-
-    watch([canShowAds, isAdPortrait], () => {
-      if (canShowAds.value) {
-        runAfterLayout(ensureAdScriptLoaded);
-      }
-    });
-
-    watch(
-      () => (state.currentView ? state.currentView.value : ""),
-      (view) => {
-        if (view !== "planner") return;
-        const refreshAdSlotAfterViewSwitch = () => {
-          if (canShowAds.value) {
-            ensureAdScriptLoaded();
-          }
-        };
-        runAfterLayout(refreshAdSlotAfterViewSwitch);
-      }
-    );
 
     onBeforeUnmount(() => {
       if (removeMediaThemeListener) {
@@ -880,15 +869,14 @@
       }
       if (typeof window !== "undefined") {
         window.removeEventListener("scroll", handleBackToTopScroll);
-        window.removeEventListener("slotfeed:failed", handleAdFailed);
         window.removeEventListener(optionalFailureEventName, handleOptionalFailureEvent);
       }
-      clearAdScriptRetry();
       clearBackToTopTimer();
       if (optionalFailurePollTimer) {
         clearInterval(optionalFailurePollTimer);
         optionalFailurePollTimer = null;
       }
+      clearAllOptionalFailureToastTimers();
       document.removeEventListener("click", handleDocClick);
       document.removeEventListener("keydown", handleDocKeydown);
       if (preloadBackgroundFadeTimer) {
@@ -900,17 +888,31 @@
       }
     });
 
+    syncOptionalFailurePrimaryNotice();
+    state.reportRuntimeWarning = reportRuntimeWarning;
     state.scrollToTop = scrollToTop;
     state.setThemeMode = setThemeMode;
     state.togglePlanConfig = togglePlanConfig;
     state.markGearRefiningNavHintSeen = markGearRefiningNavHintSeen;
-    state.dismissAdsForSession = dismissAdsForSession;
+    state.markRerunRankingNavHintSeen = markRerunRankingNavHintSeen;
     state.dismissRuntimeWarning = dismissRuntimeWarning;
     state.ignoreRuntimeWarnings = ignoreRuntimeWarnings;
     state.requestIgnoreRuntimeWarnings = requestIgnoreRuntimeWarnings;
     state.cancelIgnoreRuntimeWarnings = cancelIgnoreRuntimeWarnings;
     state.confirmIgnoreRuntimeWarnings = confirmIgnoreRuntimeWarnings;
+    state.optionalFailureNotices = optionalFailureNotices;
+    state.optionalFailureNotice = optionalFailureNotice;
+    state.optionalFailureHistory = optionalFailureHistory;
+    state.hasOptionalFailureHistory = hasOptionalFailureHistory;
+    state.dismissOptionalFailureNotice = dismissOptionalFailureNotice;
+    state.openOptionalFailureDetailByLogId = openOptionalFailureDetailByLogId;
+    state.openLatestOptionalFailureDetail = openLatestOptionalFailureDetail;
     state.reloadBypassCache = reloadBypassCache;
     state.exportRuntimeDiagnosticBundle = exportRuntimeDiagnosticBundle;
   };
+  modules.initUi.required = ["initState"];
+  modules.initUi.optional = ["initI18n", "initSearch"];
+  modules.initUi.requiredProviders = [];
+  modules.initUi.optionalProviders = [];
+  modules.initUi.provides = ["reportRuntimeWarning"];
 })();

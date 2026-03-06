@@ -10,6 +10,7 @@
     state.matchSourceName = ref("");
     state.schemeBaseSelections = ref({});
     state.weaponMarks = ref({});
+    state.weaponAttrOverrides = ref({});
     state.showAbout = ref(false);
     state.showSecondaryMenu = ref(false);
 
@@ -17,6 +18,14 @@
     state.contentLoaded = ref(Boolean(window.CONTENT));
     state.charactersLoading = ref(false);
     state.charactersLoaded = ref(Array.isArray(window.characters) && window.characters.length > 0);
+    state.upScheduleRawSource = window.WEAPON_UP_SCHEDULES && typeof window.WEAPON_UP_SCHEDULES === "object"
+      ? window.WEAPON_UP_SCHEDULES
+      : {};
+    state.upScheduleNormalized = ref({});
+    state.upScheduleIssues = ref([]);
+    state.weaponUpByWeapon = ref({});
+    state.weaponUpIssues = ref([]);
+    state.getWeaponUpWindowAt = () => ({});
 
     state.weaponGridTopSpacer = ref(0);
     state.weaponGridBottomSpacer = ref(0);
@@ -32,6 +41,7 @@
     state.tutorialStorageKey = "planner-tutorial:v1";
     state.uiStateStorageKey = "planner-ui-state:v1";
     state.attrHintStorageKey = "planner-attr-hint:v1";
+    state.weaponAttrOverridesStorageKey = "weapon-attr-overrides:v1";
     state.noticeSkipKey = "announcement:skip";
     state.legacyNoticePrefix = "announcement:skip:";
     state.perfModeStorageKey = "planner-perf-mode:v1";
@@ -46,6 +56,9 @@
     state.gearRefiningNavHintStorageKey = "planner-gear-refining-nav-hint:v1";
     // 更新装备精锻导航提示时递增该版本号，可让红点对所有用户重新显示一次。
     state.gearRefiningNavHintVersion = "1";
+    state.rerunRankingNavHintStorageKey = "planner-rerun-ranking-nav-hint:v1";
+    // 更新复刻排行导航提示时递增该版本号，可让红点对所有用户重新显示一次。
+    state.rerunRankingNavHintVersion = "1";
 
     state.lowGpuEnabled = ref(false);
     state.perfPreference = ref("auto");
@@ -74,8 +87,10 @@
     state.filterPanelManuallySet = ref(false);
     state.showAllSchemes = ref(false);
     state.showPlanConfig = ref(false);
+    state.showWeaponAttrDataModal = ref(false);
     state.showPlanConfigHintDot = ref(false);
     state.showGearRefiningNavHintDot = ref(false);
+    state.showRerunRankingNavHintDot = ref(false);
     state.recommendationConfig = ref({
       hideEssenceOwnedWeapons: false,
       hideEssenceOwnedOwnedOnly: false,
@@ -153,17 +168,8 @@
     ];
     state.conflictOpenMap = ref({});
     state.showBackToTop = ref(false);
-    state.canShowAds = ref(false);
 
     state.legacyMigrationMarks = ref({});
-    state.showMigrationModal = ref(false);
-    state.migrationMappingMode = ref("essenceOwned");
-    state.migrationConflictStrategy = ref("fillMissing");
-    state.showMigrationConfirmModal = ref(false);
-    state.migrationConfirmAction = ref("");
-    state.migrationConfirmCountdown = ref(0);
-    state.migrationPreviewExpanded = ref(false);
-    state.migrationModalScrollable = ref(false);
     state.showStorageErrorModal = ref(false);
     state.storageErrorIgnored = ref(false);
     state.storageErrorCurrent = ref(null);
@@ -214,7 +220,6 @@
     state.tutorialCollapseHighlightSeen = ref(false);
     state.tutorialManualAdvanceHoldIndex = ref(-1);
     state.isPortrait = ref(false);
-    state.isAdPortrait = ref(false);
 
     state.tutorialTargetWeaponName = "沧溟星梦";
     state.tutorialTargetDungeonId = "energy";

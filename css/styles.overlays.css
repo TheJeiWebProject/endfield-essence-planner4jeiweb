@@ -848,9 +848,10 @@
       }
 
       .storage-error-card {
-        width: min(760px, 94vw);
+        width: min(760px, calc(100vw - 32px));
         max-height: min(84vh, 760px);
         overflow: auto;
+        scrollbar-gutter: stable both-edges;
         border-color: rgba(243, 108, 108, 0.42);
         background: rgba(26, 14, 18, 0.84);
         box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
@@ -934,6 +935,10 @@
         list-style: none;
         display: grid;
         gap: 6px;
+        max-height: min(28vh, 280px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-right: 4px;
       }
 
       .storage-error-log-item {
@@ -979,6 +984,16 @@
         flex-wrap: wrap;
         gap: 8px;
         justify-content: flex-end;
+      }
+
+      .storage-error-card > .storage-error-actions {
+        position: sticky;
+        bottom: -1px;
+        z-index: 1;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        background: linear-gradient(180deg, rgba(26, 14, 18, 0.2) 0%, rgba(26, 14, 18, 0.92) 34%);
       }
 
       .storage-clear-actions {
@@ -1046,9 +1061,152 @@
         color: #d9fffb;
       }
 
+      .about-overlay.weapon-attr-overlay {
+        z-index: 46;
+      }
+
+      .weapon-attr-card {
+        width: min(860px, calc(100vw - 24px));
+        max-height: min(84vh, 760px);
+        overflow: auto;
+        border-color: rgba(255, 171, 86, 0.45);
+        background: rgba(26, 18, 12, 0.92);
+      }
+
+      .weapon-attr-empty {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px dashed rgba(255, 255, 255, 0.16);
+        color: #f2dfc6;
+      }
+
+      .weapon-attr-disclaimer {
+        margin-top: 8px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 108, 108, 0.48);
+        background: rgba(128, 20, 20, 0.22);
+        color: #ffe1e1;
+      }
+
+      .weapon-attr-disclaimer-title {
+        font-size: 12px;
+        font-weight: 800;
+        color: #ffd7d7;
+        margin-bottom: 4px;
+      }
+
+      .weapon-attr-disclaimer p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .weapon-attr-list {
+        margin-top: 12px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .weapon-attr-item {
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 10px 12px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .weapon-attr-item-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px 10px;
+      }
+
+      .weapon-attr-item-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff4e6;
+      }
+
+      .weapon-attr-item-sub {
+        font-size: 11px;
+        color: #e2c9ab;
+      }
+
+      .weapon-attr-item-preview-badge {
+        font-size: 11px;
+        font-weight: 700;
+        color: #ffe7c7;
+        border: 1px solid rgba(255, 182, 122, 0.45);
+        border-radius: 999px;
+        padding: 2px 8px;
+        background: rgba(255, 173, 97, 0.12);
+      }
+
+      .weapon-attr-item-status {
+        font-size: 11px;
+        font-weight: 700;
+        color: #ffd7ad;
+        border: 1px solid rgba(255, 182, 122, 0.45);
+        border-radius: 999px;
+        padding: 2px 8px;
+        background: rgba(255, 173, 97, 0.14);
+      }
+
+      .weapon-attr-item-status.is-resolved {
+        color: #cffff1;
+        border-color: rgba(77, 214, 201, 0.42);
+        background: rgba(77, 214, 201, 0.13);
+      }
+
+      .weapon-attr-item-missing {
+        font-size: 12px;
+        color: #f7debf;
+      }
+
+      .weapon-attr-editor-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .weapon-attr-editor-field {
+        display: grid;
+        gap: 4px;
+      }
+
+      .weapon-attr-editor-field > span {
+        font-size: 11px;
+        color: #dac1a5;
+      }
+
+      .weapon-attr-editor-field > select {
+        width: 100%;
+        min-height: 30px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(12, 18, 28, 0.74);
+        color: #eff7ff;
+        padding: 4px 8px;
+      }
+
+      .weapon-attr-editor-field > select:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .weapon-attr-item-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
       .version-debug-badge-wrap {
         position: fixed;
-        bottom: calc(8px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px));
+        top: calc(8px + env(safe-area-inset-top, 0px));
         left: 8px;
         pointer-events: auto;
         z-index: 41;
@@ -1083,7 +1241,8 @@
       .version-debug-badge-panel-float {
         position: absolute;
         left: 0;
-        bottom: calc(100% + 8px);
+        top: calc(100% + 8px);
+        bottom: auto;
         width: fit-content;
         min-width: 216px;
         max-width: min(286px, calc(100vw - 16px));
@@ -1135,7 +1294,7 @@
       .version-debug-copy-tip {
         position: fixed;
         left: 10px;
-        bottom: calc(34px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px));
+        top: calc(34px + env(safe-area-inset-top, 0px));
         max-width: min(70vw, 220px);
         padding: 2px 6px;
         border-radius: 8px;
@@ -1158,13 +1317,80 @@
         font-size: 11px;
       }
 
+      .planner-bottom-right-overlays {
+        --overlay-right-gap: 14px;
+        --overlay-bottom-base: calc(
+          14px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px)
+        );
+        --overlay-top-base: calc(14px + env(safe-area-inset-top, 0px));
+        --overlay-update-base: calc(
+          236px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px)
+        );
+        --optional-toast-stack-gap: 64px;
+      }
+
       .update-toast {
         position: fixed;
-        right: 14px;
-        bottom: calc(14px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px));
+        right: var(--overlay-right-gap, 14px);
+        bottom: var(
+          --overlay-bottom-base,
+          calc(14px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px))
+        );
         width: min(440px, calc(100vw - 28px));
         z-index: 39;
         pointer-events: none;
+      }
+
+      .update-version-toast {
+        z-index: 39;
+      }
+
+      .optional-failure-toast {
+        z-index: 40;
+        width: min(304px, calc(100vw - 26px));
+      }
+
+      .optional-failure-toast.optional-failure-toast-0 {
+        top: var(--overlay-top-base);
+        bottom: auto;
+      }
+
+      .optional-failure-toast.optional-failure-toast-1 {
+        top: calc(var(--overlay-top-base) + var(--optional-toast-stack-gap));
+        bottom: auto;
+      }
+
+      .planner-bottom-right-overlays.has-update-toast .optional-failure-toast.optional-failure-toast-0 {
+        top: var(--overlay-top-base);
+        bottom: auto;
+      }
+
+      .planner-bottom-right-overlays.has-update-toast .optional-failure-toast.optional-failure-toast-1 {
+        top: calc(var(--overlay-top-base) + var(--optional-toast-stack-gap));
+        bottom: auto;
+      }
+
+      .optional-failure-close-button {
+        width: 28px;
+        height: 28px;
+        min-height: 28px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 224, 148, 0.55);
+        background: rgba(68, 52, 18, 0.92);
+        color: #ffe7b6;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        pointer-events: auto;
+      }
+
+      .optional-failure-close-button:hover {
+        border-color: rgba(255, 204, 112, 0.78);
+        color: #fff2d8;
       }
 
       .update-toast-card {
@@ -1188,6 +1414,68 @@
       .update-check-desc {
         margin-top: 8px;
         color: #d6e6f7;
+      }
+
+      .optional-failure-toast-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 9px;
+        border-radius: 12px;
+        border-color: rgba(255, 224, 148, 0.52);
+        background: rgba(78, 58, 14, 0.94);
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+        cursor: pointer;
+      }
+
+      .optional-failure-toast-main {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .optional-failure-toast-icon {
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 224, 148, 0.62);
+        color: #ffe2ab;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 18px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .optional-failure-toast-text {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+
+      .optional-failure-toast-text strong {
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      .optional-failure-toast-text span {
+        color: #ffe7bf;
+        font-size: 11px;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .optional-failure-toast-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        flex: 0 0 auto;
       }
 
       .update-version-grid {
@@ -1255,11 +1543,69 @@
         color: #e6e9ef;
       }
 
-      [data-theme="light"] .about-card.storage-confirm-card {
-        border-color: rgba(243, 108, 108, 0.42);
-        background: rgba(26, 14, 18, 0.92);
-        color: #e6e9ef;
-      }
+[data-theme="light"] .about-card.storage-confirm-card {
+  border-color: rgba(243, 108, 108, 0.42);
+  background: rgba(26, 14, 18, 0.92);
+  color: #e6e9ef;
+}
+
+[data-theme="light"] .about-card.weapon-attr-card {
+  border-color: rgba(227, 142, 45, 0.42);
+  background: rgba(255, 248, 237, 0.98);
+  color: #1f2f43;
+}
+
+[data-theme="light"] .weapon-attr-item {
+  border-color: rgba(22, 44, 72, 0.14);
+  background: rgba(244, 248, 255, 0.86);
+}
+
+[data-theme="light"] .weapon-attr-disclaimer {
+  border-color: rgba(220, 84, 84, 0.44);
+  background: rgba(255, 226, 226, 0.88);
+  color: #6f1f1f;
+}
+
+[data-theme="light"] .weapon-attr-disclaimer-title {
+  color: #862525;
+}
+
+[data-theme="light"] .weapon-attr-item-title {
+  color: #2b3e56;
+}
+
+[data-theme="light"] .weapon-attr-item-sub,
+[data-theme="light"] .weapon-attr-editor-field > span {
+  color: #6c7f97;
+}
+
+[data-theme="light"] .weapon-attr-item-missing {
+  color: #7a511d;
+}
+
+[data-theme="light"] .weapon-attr-item-preview-badge {
+  color: #8a4f12;
+  border-color: rgba(227, 142, 45, 0.46);
+  background: rgba(255, 171, 86, 0.16);
+}
+
+[data-theme="light"] .weapon-attr-item-status {
+  color: #8a4f12;
+  border-color: rgba(227, 142, 45, 0.48);
+  background: rgba(255, 171, 86, 0.2);
+}
+
+[data-theme="light"] .weapon-attr-item-status.is-resolved {
+  color: #0f6a62;
+  border-color: rgba(31, 200, 183, 0.45);
+  background: rgba(31, 200, 183, 0.14);
+}
+
+[data-theme="light"] .weapon-attr-editor-field > select {
+  border-color: rgba(22, 44, 72, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  color: #1f3a56;
+}
 
       [data-theme="light"] .version-debug-badge {
         border-color: rgba(22, 44, 72, 0.18);
@@ -1289,9 +1635,21 @@
       }
 
       @media (max-width: 640px) {
+        .planner-bottom-right-overlays {
+          --overlay-right-gap: 8px;
+          --overlay-bottom-base: calc(
+            8px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px)
+          );
+          --overlay-top-base: calc(52px + env(safe-area-inset-top, 0px));
+          --overlay-update-base: calc(
+            220px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px)
+          );
+          --optional-toast-stack-gap: 60px;
+        }
+
         .version-debug-badge-wrap {
           left: 6px;
-          bottom: calc(6px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px));
+          top: calc(6px + env(safe-area-inset-top, 0px));
         }
 
         .version-debug-badge {
@@ -1302,7 +1660,7 @@
 
         .version-debug-copy-tip {
           left: 8px;
-          bottom: calc(30px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px));
+          top: calc(30px + env(safe-area-inset-top, 0px));
           max-width: min(58vw, 170px);
           padding: 2px 5px;
         }
@@ -1328,9 +1686,16 @@
         }
 
         .update-toast {
-          right: 8px;
-          bottom: calc(8px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px));
+          right: var(--overlay-right-gap, 8px);
+          bottom: var(
+            --overlay-bottom-base,
+            calc(8px + env(safe-area-inset-bottom, 0px) + var(--viewport-safe-bottom, 0px))
+          );
           width: calc(100vw - 16px);
+        }
+
+        .optional-failure-toast {
+          width: min(252px, calc(100vw - 18px));
         }
 
         .update-toast-card {
@@ -1363,6 +1728,22 @@
           padding: 6px 10px;
           font-size: 12px;
         }
+
+        .optional-failure-close-button {
+          width: 26px;
+          height: 26px;
+          min-height: 26px;
+        }
+
+        .weapon-attr-card {
+          width: min(96vw, 860px);
+          max-height: min(86vh, 760px);
+          padding: 16px 14px;
+        }
+
+        .weapon-attr-editor-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       [data-theme="light"] .update-toast-card {
@@ -1378,6 +1759,27 @@
 
       [data-theme="light"] .update-check-desc {
         color: #4a617b;
+      }
+
+      [data-theme="light"] .optional-failure-toast-card {
+        border-color: rgba(218, 160, 57, 0.58);
+        background: rgba(255, 234, 189, 0.96);
+        color: #5d4510;
+      }
+
+      [data-theme="light"] .optional-failure-toast-icon {
+        border-color: rgba(218, 160, 57, 0.64);
+        color: #8f6a13;
+      }
+
+      [data-theme="light"] .optional-failure-toast-text span {
+        color: #7f6320;
+      }
+
+      [data-theme="light"] .optional-failure-close-button {
+        border-color: rgba(218, 160, 57, 0.58);
+        background: rgba(255, 242, 214, 0.94);
+        color: #7b5b18;
       }
 
       [data-theme="light"] .update-version-grid {
@@ -1488,6 +1890,11 @@
         border-color: rgba(255, 188, 106, 0.55);
         background: rgba(255, 188, 106, 0.18);
         color: #ffe8bf;
+      }
+
+      [data-theme="light"] .storage-error-card > .storage-error-actions {
+        border-top-color: rgba(255, 255, 255, 0.14);
+        background: linear-gradient(180deg, rgba(26, 14, 18, 0.12) 0%, rgba(26, 14, 18, 0.9) 34%);
       }
 
       [data-theme="light"] .storage-error-actions .migration-action.migration-action-warn:hover {
