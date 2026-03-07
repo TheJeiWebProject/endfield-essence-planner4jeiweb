@@ -126,7 +126,7 @@
                     {{ t("nav.base_attributes") }}：{{
                       card.basePickLabels
                         .map((label) =>
-                          label === "请手动选择" || label === "任意属性" ? t(label) : formatS1(label)
+                          label === "请手动选择" ? t(label) : label === "任意属性" ? tTerm("misc", label) : formatS1(label)
                         )
                         .join(" / ")
                     }}

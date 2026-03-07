@@ -45,6 +45,8 @@
 - 新增可选脚本时，默认只需在 `optionalScriptConfigs` 增加一项；无需再单独写一段专用加载代码。
 - 配置项说明（每个资源一条）：
   - `featureKey`：功能标识（用于弹窗文案映射 `optional_feature_{featureKey}`）。
+  - `t()` 直译 UI 文案必须放在 `data/i18n/*.js` 的 `strings`；`tTerm(category, value)` 术语必须放在 `terms.<category>`，不要把“任意属性”这类术语塞进 `terms.character`。
+  - 新增或调整 i18n 后，执行 `node scripts/verify-i18n-key-placement.mjs` 与 `node tests/custom/task2-i18n-key-placement.test.cjs`；缺失 key、放错分类、跨语言放置不一致均视为阻断。
   - `timeoutMs`：单次加载超时（毫秒，默认 `12000`）。
   - `retryDelayMs`：重试间隔（毫秒，默认 `1200`）。
   - `maxRetries`：重试次数（默认 `1`，即最多尝试 2 次）。
@@ -107,10 +109,14 @@
   - `node --check js/templates.main.03.js`
   - `node --check js/templates.main.04.js`
   - `node --check scripts/verify-doc-manifest-consistency.mjs`
+  - `node --check scripts/verify-i18n-key-placement.mjs`
 - 文档门禁检查：
   - `node scripts/verify-doc-manifest-consistency.mjs`
   - `node tests/phase-07-01/task1-doc-manifest-sync.test.cjs`
   - `node tests/phase-07-01/task2-phase6-guardrail-doc-coverage.test.cjs`
+- i18n 放置校验：
+  - `node scripts/verify-i18n-key-placement.mjs`
+  - `node tests/custom/task2-i18n-key-placement.test.cjs`
 - Phase 8 硬门禁（失败即阻断）：
   - `node tests/phase-08-04/task1-phase8-gate-manifest.test.cjs`
   - `node tests/phase-08-04/task2-phase8-hard-gate-behavior.test.cjs`
@@ -126,7 +132,7 @@
   - 仅对改动文件执行 `node --check <file>`。
   - 仅执行受影响模块对应的 `tests/phase-**/**.test.cjs`。
 - 提交前（功能完成）：
-  - 执行本节“语法检查”与“文档门禁检查”。
+  - 除受影响模块测试外，补跑一次 i18n 放置校验，确认无缺失 key、错放分类或跨语言放置漂移。
   - 至少执行一次 `node scripts/phase-08-gate.mjs`，确保硬门禁全绿。
 - 发版前（发布门禁）：
   - 执行 `node scripts/phase-08-gate.mjs`。

@@ -1,6 +1,8 @@
 window.I18N = window.I18N || {};
 window.I18N["en"] = {
   "strings": {
+    "preload_title": "少女祈祷中 / A Maiden at Prayer...",
+    "preload_note": "First load or hard refresh may be a bit slow",
     "搜索武器 / 属性 / 角色...": "Search weapons / attributes / characters...",
     "搜索武器 / 属性 / 角色（仅中文支持拼音/首字母）...": "Search weapons / attributes / characters...",
     "搜索武器...": "Search weapons...",
@@ -275,8 +277,6 @@ window.I18N["en"] = {
     "与当前方案属性不兼容": "Incompatible with current plan attributes",
     "未知来源": "Unknown source",
     "请手动选择": "Select manually",
-    "任意": "Any",
-    "任意属性": "Any Attribute",
     "点击选择基础属性": "Click to choose base attributes",
     "查看属性 / 排除 / 备注": "View attributes / exclude / notes",
     "点击“{label}”按钮，切换到属性视图。": "Click “{label}” to switch to the attributes view.",

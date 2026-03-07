@@ -44,6 +44,12 @@ Derived outputs（构建产出）：
 
 完整执行清单、启动链约束、Phase 6 继承治理与 Phase 7 文档门禁，请以 [AGENTS.md](./AGENTS.md) 为唯一真源。
 
+## i18n 放置校验
+- `node scripts/verify-i18n-key-placement.mjs`
+- `node tests/custom/task2-i18n-key-placement.test.cjs`
+
+该校验会阻断缺失 key、错误分类放置与跨语言放置漂移；重复放置与未使用 i18n 仅输出告警，方便后续整理。 
+
 本 README 仅保留项目摘要，不再重复维护完整执行 checklist。
 
 ## 核心数据位置（摘要）
