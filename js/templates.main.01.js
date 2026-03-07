@@ -268,6 +268,9 @@
                 :recommendation-config="recommendationConfig"
                 :show-plan-config="showPlanConfig"
                 :show-plan-config-hint-dot="showPlanConfigHintDot"
+                :show-weapon-attrs="showWeaponAttrs"
+                :show-weapon-ownership="showWeaponOwnership"
+                :toggle-show-weapon-ownership="toggleShowWeaponOwnership"
                 :region-options="regionOptions"
                 :t-region-priority-mode-options="tRegionPriorityModeOptions"
                 :t-ownership-priority-mode-options="tOwnershipPriorityModeOptions"
@@ -469,7 +472,7 @@
               v-for="weapon in visibleFilteredWeapons"
               :key="weapon.name"
               class="weapon-item"
-              v-memo="[locale, localeRenderVersion, selectedNameSet.has(weapon.name), isWeaponOwned(weapon.name), isEssenceOwned(weapon.name), weaponUpBadgeMemoKey, selectorHiddenMemoKey]"
+              v-memo="[locale, localeRenderVersion, selectedNameSet.has(weapon.name), isWeaponOwned(weapon.name), isEssenceOwned(weapon.name), weaponUpBadgeMemoKey, selectorHiddenMemoKey, showWeaponOwnership]"
               :class="{
                 'is-selected': selectedNameSet.has(weapon.name),
                 'is-unowned': isUnowned(weapon.name),
@@ -521,6 +524,16 @@
                   {{ t("nav.hidden") }}
                 </div>
               </div>
+              <span
+                v-if="showWeaponOwnership"
+                class="weapon-ownership-badge"
+                :class="{
+                  'is-owned': isWeaponOwned(weapon.name),
+                  'is-unowned': isUnowned(weapon.name),
+                }"
+              >
+                {{ isWeaponOwned(weapon.name) ? t("badge.owned") : t("nav.not_owned") }}
+              </span>
               <div class="weapon-name">
                 <div class="weapon-title">{{ tTerm("weapon", weapon.name) }}</div>
               </div>
@@ -736,6 +749,9 @@
                 :recommendation-config="recommendationConfig"
                 :show-plan-config="showPlanConfig"
                 :show-plan-config-hint-dot="showPlanConfigHintDot"
+                :show-weapon-attrs="showWeaponAttrs"
+                :show-weapon-ownership="showWeaponOwnership"
+                :toggle-show-weapon-ownership="toggleShowWeaponOwnership"
                 :region-options="regionOptions"
                 :t-region-priority-mode-options="tRegionPriorityModeOptions"
                 :t-ownership-priority-mode-options="tOwnershipPriorityModeOptions"

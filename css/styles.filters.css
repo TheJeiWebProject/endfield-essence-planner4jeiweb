@@ -17,6 +17,15 @@
         margin-left: auto;
       }
 
+      .tag-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        width: 100%;
+        justify-content: flex-end;
+      }
+
       .weapon-attr-warning {
         width: 100%;
         margin: 4px 0 12px;
