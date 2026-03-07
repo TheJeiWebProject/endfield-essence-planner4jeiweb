@@ -1066,11 +1066,30 @@
       }
 
       .weapon-attr-card {
-        width: min(860px, calc(100vw - 24px));
+        display: flex;
+        flex-direction: column;
+        width: min(860px, 100%);
         max-height: min(84vh, 760px);
-        overflow: auto;
+        overflow: hidden;
         border-color: rgba(255, 171, 86, 0.45);
         background: rgba(26, 18, 12, 0.92);
+      }
+
+      .weapon-attr-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        padding-right: 4px;
+      }
+
+      .weapon-attr-card > .about-actions {
+        flex: 0 0 auto;
+        margin-top: 12px;
+        padding-top: 10px;
+        padding-bottom: 4px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        background: linear-gradient(180deg, rgba(26, 18, 12, 0.18) 0%, rgba(26, 18, 12, 0.92) 34%);
       }
 
       .weapon-attr-empty {
@@ -1555,6 +1574,11 @@
   color: #1f2f43;
 }
 
+[data-theme="light"] .weapon-attr-card > .about-actions {
+  border-top-color: rgba(22, 44, 72, 0.14);
+  background: linear-gradient(180deg, rgba(255, 248, 237, 0.14) 0%, rgba(255, 248, 237, 0.98) 34%);
+}
+
 [data-theme="light"] .weapon-attr-item {
   border-color: rgba(22, 44, 72, 0.14);
   background: rgba(244, 248, 255, 0.86);
@@ -1736,7 +1760,7 @@
         }
 
         .weapon-attr-card {
-          width: min(96vw, 860px);
+          width: 100%;
           max-height: min(86vh, 760px);
           padding: 16px 14px;
         }

@@ -293,17 +293,18 @@
       <transition name="fade-scale">
         <div v-if="showWeaponAttrDataModal" class="about-overlay weapon-attr-overlay" @click.self="closeWeaponAttrDataModal">
           <div class="about-card weapon-attr-card">
-            <h3>{{ t("modal.weapon_attribute_data_fix_title") }}</h3>
-            <p>{{ t("modal.weapon_attribute_data_fix_desc") }}</p>
-            <p class="storage-clear-confirm-warning">{{ t("modal.weapon_attribute_data_fix_tip") }}</p>
-            <div class="weapon-attr-disclaimer">
-              <div class="weapon-attr-disclaimer-title">{{ t("modal.weapon_attribute_data_fix_disclaimer_title") }}</div>
-              <p>{{ t("modal.weapon_attribute_data_fix_disclaimer") }}</p>
-            </div>
-            <div v-if="!weaponAttrIssueRows.length" class="weapon-attr-empty">
-              {{ t("modal.weapon_attribute_data_fix_empty") }}
-            </div>
-            <div v-else class="weapon-attr-list">
+            <div class="weapon-attr-body">
+              <h3>{{ t("modal.weapon_attribute_data_fix_title") }}</h3>
+              <p>{{ t("modal.weapon_attribute_data_fix_desc") }}</p>
+              <p class="storage-clear-confirm-warning">{{ t("modal.weapon_attribute_data_fix_tip") }}</p>
+              <div class="weapon-attr-disclaimer">
+                <div class="weapon-attr-disclaimer-title">{{ t("modal.weapon_attribute_data_fix_disclaimer_title") }}</div>
+                <p>{{ t("modal.weapon_attribute_data_fix_disclaimer") }}</p>
+              </div>
+              <div v-if="!weaponAttrIssueRows.length" class="weapon-attr-empty">
+                {{ t("modal.weapon_attribute_data_fix_empty") }}
+              </div>
+              <div v-else class="weapon-attr-list">
               <article v-for="row in weaponAttrIssueRows" :key="row.name" class="weapon-attr-item">
                 <div class="weapon-attr-item-head">
                   <div>
@@ -383,9 +384,10 @@
                   </button>
                 </div>
               </article>
+              </div>
             </div>
             <div class="about-actions">
-              <button class="about-button" @click="closeWeaponAttrDataModal">{{ t("button.got_it") }}</button>
+              <button class="about-button" @click="closeWeaponAttrDataModal">{{ t("plan_config.close") }}</button>
             </div>
           </div>
         </div>

@@ -42,4 +42,6 @@ window.SPONSORS = [
   { name: "呆呆王", amount: "CNY 33.30", note: "我喜欢你（づ￣3￣）づ╭❤～", date: "2026-03-05" },
   { name: "匿名", amount: "CNY 5.00", note: "好用,支持👍", date: "2026-03-06" },
   { name: "ʕ·ᴥ·ʔ", amount: "CNY 6.66", note: "感谢🙏🏻", date: "2026-03-06" },
+  { name: "轻舟", amount: "CNY 3.25", note: "一定要做下去喵,支持一下喵", date: "2026-03-07" },
+  { name: "匿名", amount: "CNY 5.00", note: "此留言因包含谐音被过滤", date: "2026-03-07" },
 ];

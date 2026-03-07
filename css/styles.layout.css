@@ -328,14 +328,16 @@
 
       html.legacy-scrollbar-hidden .panel,
       html.legacy-scrollbar-hidden .weapon-list,
-      html.legacy-scrollbar-hidden .match-weapon-grid {
+      html.legacy-scrollbar-hidden .match-weapon-grid,
+      html.legacy-scrollbar-hidden .weapon-attr-body {
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
 
       html.legacy-scrollbar-hidden .panel::-webkit-scrollbar,
       html.legacy-scrollbar-hidden .weapon-list::-webkit-scrollbar,
-      html.legacy-scrollbar-hidden .match-weapon-grid::-webkit-scrollbar {
+      html.legacy-scrollbar-hidden .match-weapon-grid::-webkit-scrollbar,
+      html.legacy-scrollbar-hidden .weapon-attr-body::-webkit-scrollbar {
         width: 0;
         height: 0;
         display: none;
