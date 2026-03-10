@@ -7,4 +7,4 @@ error
 node_modules
 test-results
 tools/quasar-plugin/public/legacy/
-tools/quasar-plugin/dist/legacy/
+tools/quasar-plugin/dist/

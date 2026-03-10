@@ -1,8 +1,10 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { fileURLToPath } from 'node:url';
 
-const rootDir = process.cwd();
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(currentDir, '..');
 const sourceDataDir = path.join(rootDir, 'data');
 const targetDataDir = path.join(rootDir, 'tools', 'quasar-plugin', 'src', 'data');
 const legacyPublicDir = path.join(rootDir, 'tools', 'quasar-plugin', 'public', 'legacy');

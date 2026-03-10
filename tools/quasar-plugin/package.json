@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "copy:legacy": "node ./scripts/copy-legacy-assets.mjs",
-    "prebuild": "pnpm run copy:legacy",
-    "build": "vite build",
+    "sync:data": "node ../../scripts/sync-quasar-plugin-data.mjs",
+    "generate:cors": "node ./scripts/generate-cors-config.mjs",
+    "prebuild": "pnpm run sync:data && pnpm run copy:legacy && pnpm run generate:cors",
+    "build": "pnpm run prebuild && vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test:run": "vitest run --passWithNoTests"

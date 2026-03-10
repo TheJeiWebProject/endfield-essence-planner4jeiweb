@@ -209,7 +209,14 @@ window.CONTENT = {
     },
   },
   embed: {
-    officialHosts: ["end.canmoe.com"],
+    officialHosts: [
+      "end.canmoe.com",
+      "jei.mic.run",
+      "cnjeiweb.sirrus.cc",
+      "jeiweb.sirrus.cc",
+      "fastjeiweb.sirrus.cc",
+      "jei.arcwolf.top",
+    ],
     allowedHosts: ["elysium-stack.cn"],
     icpHosts: ["end.canmoe.com"],
   },
