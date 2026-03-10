@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-03-10T20:28:30.518Z",
+  "targetDataDir": "D:\\Projcets\\endfield-essence-planner4jeiweb\\tools\\quasar-plugin\\src\\data",
+  "summary": [
+    {
+      "source": "weapons.js",
+      "target": "weapons.json",
+      "count": 61
+    },
+    {
+      "source": "dungeons.js",
+      "target": "dungeons.json",
+      "count": 5
+    },
+    {
+      "source": "gears.js",
+      "target": "gears.json",
+      "count": 74
+    },
+    {
+      "source": "characters.js",
+      "target": "characters.json",
+      "count": 0
+    },
+    {
+      "source": "up-schedules.js",
+      "target": "up-schedules.json",
+      "count": 5
+    },
+    {
+      "source": "weapon-images.js",
+      "target": "weapon-images.json",
+      "count": 57
+    },
+    {
+      "source": "content.js",
+      "target": "content.json",
+      "count": 5
+    }
+  ],
+  "i18n": {
+    "locales": [
+      "en",
+      "ja",
+      "zh-CN",
+      "zh-TW"
+    ]
+  }
+}

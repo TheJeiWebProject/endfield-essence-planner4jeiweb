@@ -2,6 +2,10 @@
   "name": "endfield-essence-planner",
   "private": true,
   "scripts": {
+    "sync:plugin-data": "node scripts/sync-quasar-plugin-data.mjs",
+    "plugin:dev": "pnpm run sync:plugin-data && pnpm --dir tools/quasar-plugin dev",
+    "plugin:build": "pnpm run sync:plugin-data && pnpm --dir tools/quasar-plugin build",
+    "plugin:test": "pnpm --dir tools/quasar-plugin test:run",
     "test:phase-08-03:e2e": "playwright test tests/phase-08-03/e2e/startup-and-fallback.spec.cjs --config playwright.config.cjs",
     "test:phase-08-03:task1": "node tests/phase-08-03/task1-browser-smoke-gate.test.cjs",
     "test:phase-08-03:task3": "node tests/phase-08-03/task3-up-rerun-critical-path.test.cjs"

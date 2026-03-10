@@ -686,19 +686,21 @@
         const params = new URLSearchParams(window.location.search || "");
         const view = params.get("view") || "planner";
         const characterId = params.get("operator");
+        const matchSource = params.get("matchSource");
+        const gearName = params.get("gearName");
         const hasWeaponParam = params.has("weapons") || params.has("weapon");
         const weaponNames = hasWeaponParam ? parseWeaponNames(params) : [];
         if (view === "strategy") {
           return { view: "strategy", characterId, weaponNames, hasWeaponParam };
         }
         if (view === "gear-refining") {
-          return { view: "gear-refining", weaponNames, hasWeaponParam };
+          return { view: "gear-refining", weaponNames, hasWeaponParam, gearName };
         }
         if (view === "rerun-ranking") {
           return { view: "rerun-ranking" };
         }
         if (view === "match") {
-          return { view: "match" };
+          return { view: "match", matchSource };
         }
         return { view: "planner", weaponNames, hasWeaponParam };
       };
@@ -711,6 +713,14 @@
         state.currentView.value = route.view || "planner";
         if (route.view === "strategy") {
           state.selectedCharacterId.value = route.characterId || null;
+        }
+        if (route.view === "match") {
+          state.matchSourceName.value = route.matchSource || "";
+        }
+        if (route.view === "gear-refining") {
+          if (route.gearName) {
+            state.selectedGearRefiningGearName.value = route.gearName;
+          }
         }
         if (route.view === "planner" && route.hasWeaponParam) {
           state.selectedNames.value = Array.isArray(route.weaponNames) ? route.weaponNames : [];
@@ -727,6 +737,14 @@
         if (view === "strategy") {
           const id = state.selectedCharacterId.value;
           if (id) params.set("operator", id);
+        }
+        if (view === "match") {
+          const source = state.matchSourceName.value;
+          if (source) params.set("matchSource", source);
+        }
+        if (view === "gear-refining") {
+          const gearName = state.selectedGearRefiningGearName.value;
+          if (gearName) params.set("gearName", gearName);
         }
         if (view === "planner") {
           const selected = Array.isArray(state.selectedNames.value)
@@ -855,11 +873,19 @@
         document.documentElement.classList.remove("legacy-scrollbar-hidden");
       });
 
-      watch([state.currentView, state.selectedCharacterId], () => {
-        syncLegacyScrollbarMode();
-        syncQuery(false);
-        trackPageview();
-      });
+      watch(
+        [
+          state.currentView,
+          state.selectedCharacterId,
+          state.matchSourceName,
+          state.selectedGearRefiningGearName,
+        ],
+        () => {
+          syncLegacyScrollbarMode();
+          syncQuery(false);
+          trackPageview();
+        }
+      );
 
       watch(
         state.selectedNames,
