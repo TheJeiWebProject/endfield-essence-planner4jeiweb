@@ -1,5 +1,5 @@
 <template>
-  <div class="planner-layout">
+  <div class="planner-layout single-column">
     <q-card flat bordered class="panel-card">
       <q-card-section class="row items-center justify-between">
         <div class="text-subtitle1">复刻排行</div>

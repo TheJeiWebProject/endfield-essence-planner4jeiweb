@@ -125,6 +125,10 @@ body.body--light .panel-card .q-placeholder {
   
   @media (min-width: 900px) {
     grid-template-columns: 4fr 3fr;
+    
+    &.single-column {
+      grid-template-columns: 1fr;
+    }
   }
 }
 
