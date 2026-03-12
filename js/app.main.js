@@ -1152,6 +1152,31 @@
       };
       state.openUnifiedExceptionFromLog = openUnifiedExceptionFromLog;
 
+      if (!state.showFaq) {
+        state.showFaq = ref(false);
+      }
+      if (!state.faqContent) {
+        state.faqContent = computed(() => ({
+          title: "常见问题",
+          emptyText: "暂无常见问题",
+          items: [],
+        }));
+      }
+      if (!state.faqItems) {
+        state.faqItems = computed(() => []);
+      }
+      const openFaq =
+        typeof state.openFaq === "function"
+          ? state.openFaq
+          : async () => {
+              if (state.showFaq && state.showFaq.value !== undefined) {
+                state.showFaq.value = true;
+              }
+              if (typeof state.ensureContentLoaded === "function") {
+                await state.ensureContentLoaded({ withSponsors: false });
+              }
+            };
+
       return {
         currentView: state.currentView,
         setView: (view) => {
@@ -1363,8 +1388,11 @@
         formatNoticeItem: state.formatNoticeItem,
         changelog: state.changelog,
         aboutContent: state.aboutContent,
+        faqContent: state.faqContent,
+        faqItems: state.faqItems,
         contentLoading: state.contentLoading,
         showAbout: state.showAbout,
+        showFaq: state.showFaq,
         showNotice: state.showNotice,
         showChangelog: state.showChangelog,
         hasLegacyMigrationData: state.hasLegacyMigrationData,
@@ -1430,6 +1458,7 @@
         openNotice: state.openNotice,
         openChangelog: state.openChangelog,
         openAbout: state.openAbout,
+        openFaq,
         closeNotice: state.closeNotice,
         appReady: state.appReady,
         mobilePanel: state.mobilePanel,

@@ -6,5 +6,6 @@ error
 .claude
 node_modules
 test-results
-tools/quasar-plugin/public/legacy/
+pictools/quasar-plugin/public/legacy/
 tools/quasar-plugin/dist/
+pic

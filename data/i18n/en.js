@@ -154,7 +154,9 @@ window.I18N["en"] = {
       "四号谷地·源石研究园": "Valley IV - Originium Science Park",
       "四号谷地·供能高地": "Valley IV - Power Plateau",
       "四号谷地·矿脉源区": "Valley IV - Origin Lodespring",
-      "武陵城": "Wuling City"
+      "武陵": "Wuling",
+      "武陵·武陵城": "Wuling - Wuling City",
+      "武陵·清波寨": "Wuling - Qingbo Stockade"
     },
     "weapon": {
       "不知归": "Never Rest",
@@ -448,7 +450,7 @@ Object.assign(window.I18N["en"].strings, {
   "nav.extra_attribute_conflict_cannot_unify": "Extra attribute conflict (cannot unify)",
   "nav.extra_attributes": "Extra Attributes",
   "nav.extra_skill_attributes_cannot_be_unified_or_no_dungeon_p": "Current selection includes unreleased weapons. Confirm or fill attributes before recommendation.",
-  "nav.gear_refining": "Gear Refining",
+  "nav.gear_refining": "Refining Plan",
   "nav.hidden": "Hidden",
   "nav.hide_attributes_ownership_notes": "Hide attributes / ownership / notes",
   "nav.item": "Your current filters are hiding all results. Please adjust your filter settings.",
@@ -458,7 +460,7 @@ Object.assign(window.I18N["en"].strings, {
   "nav.low_gpu_mode_enabled": "Low GPU mode enabled",
   "nav.main_navigation": "Main Navigation",
   "nav.manual": "(Manual)",
-  "nav.more_settings": "More Settings",
+  "nav.more_settings": "Settings",
   "nav.no_weapons_under_current_filters": "No weapons under current filters",
   "nav.no_weapons_selected": "No weapons selected",
   "nav.none": "None",

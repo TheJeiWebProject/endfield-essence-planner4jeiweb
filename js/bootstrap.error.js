@@ -17,6 +17,112 @@
     }
     return value;
   };
+  var resolveBootDiagnosticExportUtils = function () {
+    var protocolUtils = readBootProtocol("bootDiagnosticExportUtils");
+    if (protocolUtils) {
+      return protocolUtils;
+    }
+    return globalObject && globalObject.__BOOT_DIAGNOSTIC_EXPORT_UTILS__
+      ? globalObject.__BOOT_DIAGNOSTIC_EXPORT_UTILS__
+      : null;
+  };
+  var readBootDiagnosticIsoTime = function () {
+    var utils = resolveBootDiagnosticExportUtils();
+    if (utils && typeof utils.nowIsoString === "function") {
+      return utils.nowIsoString();
+    }
+    return new Date().toISOString();
+  };
+  var resolveBootDiagnosticBuilder = function () {
+    var protocolBuilder = readBootProtocol("buildBootDiagnosticBundle");
+    if (typeof protocolBuilder === "function") {
+      return protocolBuilder;
+    }
+    return globalObject && typeof globalObject.__buildBootDiagnosticBundle === "function"
+      ? globalObject.__buildBootDiagnosticBundle
+      : null;
+  };
+  var resolveBootDiagnosticExporter = function () {
+    var protocolExporter = readBootProtocol("exportBootDiagnosticBundle");
+    if (typeof protocolExporter === "function") {
+      return protocolExporter;
+    }
+    return globalObject && typeof globalObject.__exportBootDiagnosticBundle === "function"
+      ? globalObject.__exportBootDiagnosticBundle
+      : null;
+  };
+  var buildBootDiagnosticFilename = function () {
+    var utils = resolveBootDiagnosticExportUtils();
+    if (utils && typeof utils.buildFilename === "function") {
+      return utils.buildFilename();
+    }
+    return "planner-boot-diagnostic.json";
+  };
+  var triggerJsonDownload = function (filename, payload) {
+    var utils = resolveBootDiagnosticExportUtils();
+    if (utils && typeof utils.triggerJsonDownload === "function") {
+      return utils.triggerJsonDownload(filename, payload);
+    }
+    return false;
+  };
+  var buildMinimalBootDiagnosticPayload = function (payload) {
+    var safePayload = payload && typeof payload === "object" ? payload : {};
+    return {
+      exportedAt: readBootDiagnosticIsoTime(),
+      location: typeof globalObject !== "undefined" && globalObject.location ? globalObject.location.href : "",
+      referrer: typeof document !== "undefined" ? document.referrer || "" : "",
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+      language: typeof navigator !== "undefined" ? navigator.language || "" : "",
+      online:
+        typeof navigator !== "undefined" && typeof navigator.onLine === "boolean"
+          ? navigator.onLine
+          : null,
+      documentReadyState: typeof document !== "undefined" ? document.readyState : "",
+      errorContext: {
+        title: String(safePayload.title || ""),
+        summary: String(safePayload.summary || ""),
+        details: Array.isArray(safePayload.details) ? safePayload.details.filter(Boolean).map(String) : [],
+        suggestions: Array.isArray(safePayload.suggestions)
+          ? safePayload.suggestions.filter(Boolean).map(String)
+          : [],
+      },
+    };
+  };
+  var exportBootDiagnostics = function (payload) {
+    var safePayload = payload && typeof payload === "object" ? payload : {};
+    var exporter = resolveBootDiagnosticExporter();
+    if (typeof exporter === "function") {
+      try {
+        var exportResult = exporter(safePayload);
+        if (!exportResult || exportResult.downloaded !== false) {
+          return exportResult;
+        }
+      } catch (error) {
+        if (typeof console !== "undefined" && typeof console.warn === "function") {
+          console.warn("[bootstrap.error] exportBootDiagnosticBundle failed, falling back to local download.");
+        }
+      }
+    }
+    var builder = resolveBootDiagnosticBuilder();
+    var diagnosticPayload = null;
+    if (typeof builder === "function") {
+      try {
+        diagnosticPayload = builder(safePayload);
+      } catch (error) {
+        diagnosticPayload = null;
+      }
+    }
+    if (!diagnosticPayload) {
+      diagnosticPayload = buildMinimalBootDiagnosticPayload(safePayload);
+    }
+    var filename = buildBootDiagnosticFilename();
+    var downloaded = triggerJsonDownload(filename, diagnosticPayload);
+    return {
+      filename: filename,
+      payload: diagnosticPayload,
+      downloaded: downloaded,
+    };
+  };
 
   var ensureErrorRenderer = function (options) {
     var existingRenderer = readBootProtocol("renderBootError");
@@ -149,6 +255,21 @@
       });
       actionRow.appendChild(refreshButton);
 
+      var exportButton = document.createElement("button");
+      exportButton.type = "button";
+      exportButton.style.cssText =
+        "cursor:pointer;border:1px solid rgba(255,255,255,0.45);border-radius:999px;padding:6px 14px;background:rgba(12,18,28,0.9);color:#fff;";
+      exportButton.textContent = bt("action_export_diag");
+      exportButton.addEventListener("click", function () {
+        exportBootDiagnostics({
+          title: title,
+          summary: summary,
+          details: details,
+          suggestions: suggestions,
+        });
+      });
+      actionRow.appendChild(exportButton);
+
       var feedbackLink = document.createElement("a");
       feedbackLink.href = "https://github.com/cmyyx/endfield-essence-planner/issues";
       feedbackLink.target = "_blank";
@@ -253,6 +374,33 @@
           bt("error_detail_failed_reason", { reason: bt("error_reason_stalled") }),
           bt("error_hint_flaky"),
         ],
+        suggestions: [bt("suggestion_retry"), bt("suggestion_hard_refresh"), bt("suggestion_issue_screenshot")],
+      });
+      return;
+    }
+
+    if (resourceMeta && resourceMeta.kind === "manifest") {
+      var manifestReason = resourceMeta && resourceMeta.reason ? String(resourceMeta.reason) : "";
+      var manifestDetails = [
+        bt(
+          manifestReason === "invalid-script-chain"
+            ? "error_detail_manifest_chain_invalid"
+            : "error_detail_missing_chain"
+        ),
+        bt("error_detail_confirm_chain"),
+      ];
+      if (status) {
+        manifestDetails.push(
+          bt("error_detail_http_status", {
+            status: status,
+            hint: statusHint ? " (" + statusHint + ")" : "",
+          })
+        );
+      }
+      renderBootError({
+        title: bt("error_title_resource"),
+        summary: bt("error_summary_manifest_invalid"),
+        details: manifestDetails,
         suggestions: [bt("suggestion_retry"), bt("suggestion_hard_refresh"), bt("suggestion_issue_screenshot")],
       });
       return;
