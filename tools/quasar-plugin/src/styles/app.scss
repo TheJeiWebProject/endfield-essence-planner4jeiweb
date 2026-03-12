@@ -8,9 +8,33 @@ body,
 }
 
 body {
-  font-family: Roboto, 'PingFang SC', 'Noto Sans SC', sans-serif;
-  background: radial-gradient(circle at 0 0, #16213f, #0b1020 46%);
-  color: #eef2ff;
+  background: var(--q-page-background);
+  color: var(--planner-text-primary, rgba(0, 0, 0, 0.87));
+}
+
+body.body--light {
+  --card-bg: #ffffff;
+  --card-border: #e0e0e0;
+  --planner-text-primary: rgba(0, 0, 0, 0.87);
+  --planner-text-secondary: #666666;
+  --planner-surface-soft: rgba(0, 0, 0, 0.04);
+  --planner-surface-strong: rgba(0, 0, 0, 0.08);
+  --planner-item-bg: rgba(255, 255, 255, 0.95);
+  --planner-item-border: rgba(0, 0, 0, 0.12);
+  --planner-thumb-bg: rgba(0, 0, 0, 0.08);
+}
+
+body.body--dark {
+  --card-bg: #1e1e1e;
+  --card-border: #333333;
+  --planner-text-primary: rgba(255, 255, 255, 0.87);
+  --planner-text-secondary: #aaaaaa;
+  --planner-surface-soft: rgba(255, 255, 255, 0.05);
+  --planner-surface-strong: rgba(255, 255, 255, 0.1);
+  --planner-item-bg: rgba(30, 30, 30, 0.92);
+  --planner-item-border: rgba(255, 255, 255, 0.14);
+  --planner-thumb-bg: rgba(255, 255, 255, 0.08);
+  background: #121212;
 }
 
 .planner-shell-page {
@@ -32,11 +56,11 @@ body {
 }
 
 .panel-card {
-  border-radius: 14px;
-  border-color: rgba(146, 174, 255, 0.35);
-  background: rgba(18, 27, 52, 0.9);
-  color: #eef2ff;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border-color: var(--card-border) !important;
+  background: var(--card-bg) !important;
+  color: var(--planner-text-primary) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
 .switch-card {
@@ -60,50 +84,27 @@ body {
 .panel-card .q-item__label,
 .panel-card .q-item__label--caption,
 .panel-card .q-tab,
-.panel-card .q-toggle__label {
-  color: #eaf0ff;
-}
-
+.panel-card .q-toggle__label,
 .panel-card .q-field__native,
 .panel-card .q-field__input,
 .panel-card .q-select__dropdown-icon,
 .panel-card .q-table__bottom,
 .panel-card .q-placeholder {
-  color: #dbe5ff;
+  color: var(--planner-text-primary) !important;
+}
+
+.panel-card .q-item__label--caption,
+.panel-card .q-table__bottom,
+.panel-card .q-placeholder {
+  color: var(--planner-text-secondary) !important;
 }
 
 .panel-card .q-field--outlined .q-field__control::before {
-  border-color: rgba(146, 174, 255, 0.45);
+  border-color: var(--planner-item-border) !important;
 }
 
 .panel-card .q-table tbody tr:nth-child(2n) {
-  background: rgba(75, 95, 146, 0.16);
-}
-
-body.body--light {
-  background: linear-gradient(180deg, #f4f8ff 0%, #eaf1ff 100%);
-  color: #1d2a44;
-}
-
-body.body--light .panel-card {
-  background: rgba(255, 255, 255, 0.95);
-  color: #233251;
-  border-color: rgba(117, 143, 206, 0.35);
-}
-
-body.body--light .panel-card .q-field--outlined .q-field__control,
-body.body--light .panel-card .q-table,
-body.body--light .panel-card .q-item,
-body.body--light .panel-card .q-item__label,
-body.body--light .panel-card .q-item__label--caption,
-body.body--light .panel-card .q-tab,
-body.body--light .panel-card .q-toggle__label,
-body.body--light .panel-card .q-field__native,
-body.body--light .panel-card .q-field__input,
-body.body--light .panel-card .q-select__dropdown-icon,
-body.body--light .panel-card .q-table__bottom,
-body.body--light .panel-card .q-placeholder {
-  color: #233251;
+  background: var(--planner-surface-soft);
 }
 
 .legacy-page {
@@ -122,10 +123,10 @@ body.body--light .panel-card .q-placeholder {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  
+
   @media (min-width: 900px) {
     grid-template-columns: 4fr 3fr;
-    
+
     &.single-column {
       grid-template-columns: 1fr;
     }
@@ -144,7 +145,7 @@ body.body--light .panel-card .q-placeholder {
 
 /* Filter Panel */
 .filter-panel-content {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--planner-surface-soft);
 }
 
 .filter-group {
@@ -159,22 +160,22 @@ body.body--light .panel-card .q-placeholder {
 }
 
 .weapon-card-mini {
-  border: 1px solid rgba(146, 174, 255, 0.2);
+  border: 1px solid var(--planner-item-border);
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(16, 26, 48, 0.6);
+  background: var(--planner-item-bg);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  
+
   &:hover {
-    border-color: #409eff;
+    border-color: var(--q-primary);
     transform: translateY(-2px);
   }
-  
+
   &.is-selected {
-    border-color: #409eff;
-    box-shadow: 0 0 0 1px #409eff;
+    border-color: var(--q-primary);
+    box-shadow: 0 0 0 1px var(--q-primary);
   }
 }
 
@@ -196,7 +197,7 @@ body.body--light .panel-card .q-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(72, 92, 140, 0.3);
+  background: var(--planner-thumb-bg);
   font-size: 14px;
   font-weight: bold;
 }
@@ -209,7 +210,7 @@ body.body--light .panel-card .q-placeholder {
   flex-direction: column;
   gap: 2px;
   pointer-events: none;
-  
+
   .q-badge {
     font-size: 9px;
     padding: 2px 4px;
@@ -233,20 +234,20 @@ body.body--light .panel-card .q-placeholder {
 }
 
 .weapon-attr-item {
-  border: 1px solid rgba(146, 174, 255, 0.2);
+  border: 1px solid var(--planner-item-border);
   border-radius: 8px;
   padding: 12px;
-  background: rgba(16, 26, 48, 0.4);
+  background: var(--planner-item-bg);
   transition: border-color 0.2s;
-  
+
   &.is-selected {
-    border-color: rgba(64, 158, 255, 0.5);
-    background: rgba(64, 158, 255, 0.05);
+    border-color: rgba(25, 118, 210, 0.5);
+    background: rgba(25, 118, 210, 0.06);
   }
-  
+
   &.conflict-item {
-    border-color: rgba(244, 67, 54, 0.5);
-    background: rgba(244, 67, 54, 0.05);
+    border-color: rgba(193, 0, 21, 0.45);
+    background: rgba(193, 0, 21, 0.06);
   }
 }
 
@@ -255,11 +256,11 @@ body.body--light .panel-card .q-placeholder {
   height: 64px;
   border-radius: 6px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--planner-thumb-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   img {
     width: 100%;
     height: 100%;
@@ -277,14 +278,14 @@ body.body--light .panel-card .q-placeholder {
 }
 
 .conflict-details {
-  border: 1px dashed rgba(244, 67, 54, 0.4);
+  border: 1px dashed rgba(193, 0, 21, 0.4);
   border-radius: 8px;
   padding: 16px;
-  background: rgba(244, 67, 54, 0.05);
+  background: rgba(193, 0, 21, 0.05);
 }
 
 .scheme-card {
-  border-color: rgba(146, 174, 255, 0.3);
+  border-color: var(--planner-item-border);
   overflow: hidden;
 }
 
@@ -298,7 +299,8 @@ body.body--light .panel-card .q-placeholder {
 }
 
 .scheme-weapon-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--planner-surface-strong);
+
   &:last-child {
     border-bottom: none;
   }
@@ -309,12 +311,12 @@ body.body--light .panel-card .q-placeholder {
   height: 32px;
   border-radius: 4px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--planner-thumb-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  
+
   img {
     width: 100%;
     height: 100%;

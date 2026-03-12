@@ -193,7 +193,7 @@
               </div>
               
               <!-- Inline Actions Row -->
-              <div class="row items-center q-gutter-sm q-mt-sm bg-grey-9 q-pa-sm rounded-borders">
+              <div class="row items-center q-gutter-sm q-mt-sm q-pa-sm rounded-borders planner-inline-tools">
                 <q-btn
                   size="sm"
                   unelevated
@@ -214,7 +214,7 @@
                   borderless
                   placeholder="备注..."
                   class="col-grow text-caption note-input"
-                  input-class="text-white"
+                  input-class="planner-note-input"
                   @click.stop
                 />
               </div>
@@ -260,7 +260,7 @@
 
           <!-- Case 3: No Scheme Found (Conflict) -->
           <div v-else-if="!recommendations.length" class="conflict-state">
-            <q-banner rounded class="bg-grey-9 text-white q-mb-md">
+            <q-banner rounded class="conflict-banner q-mb-md">
               <template v-slot:avatar>
                 <q-icon name="warning" color="warning" />
               </template>
@@ -325,7 +325,7 @@
               bordered
               class="scheme-card"
             >
-              <q-card-section class="scheme-header bg-grey-9">
+              <q-card-section class="scheme-header planner-scheme-header">
                 <div class="row items-center justify-between">
                   <div>
                     <div class="text-subtitle1">{{ scheme.dungeonName }}</div>
@@ -648,3 +648,24 @@ function getLockLabel(type: 's2' | 's3'): string {
   return type === 's2' ? '附加属性' : '技能属性';
 }
 </script>
+
+<style scoped lang="scss">
+.planner-inline-tools {
+  background: var(--planner-surface-soft);
+  border: 1px solid var(--planner-item-border);
+}
+
+.conflict-banner {
+  background: var(--planner-surface-soft) !important;
+  color: var(--planner-text-primary) !important;
+  border: 1px solid var(--planner-item-border);
+}
+
+.planner-scheme-header {
+  background: var(--planner-surface-soft) !important;
+}
+
+:deep(.planner-note-input) {
+  color: var(--planner-text-primary) !important;
+}
+</style>

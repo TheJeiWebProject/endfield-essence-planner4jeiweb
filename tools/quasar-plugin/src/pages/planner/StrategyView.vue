@@ -106,15 +106,15 @@ function getWeaponImageUrl(name: string): string {
 
 .strategy-card {
   display: flex;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--planner-surface-soft);
+  border: 1px solid var(--planner-item-border);
   border-radius: 8px;
   overflow: hidden;
   transition: background 0.2s;
   min-height: 120px;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--planner-surface-strong);
   }
 }
 
@@ -125,8 +125,8 @@ function getWeaponImageUrl(name: string): string {
   align-items: center;
   justify-content: center;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--planner-thumb-bg);
+  border-right: 1px solid var(--planner-item-border);
 }
 
 .char-avatar {
@@ -134,9 +134,9 @@ function getWeaponImageUrl(name: string): string {
   height: 64px;
   border-radius: 50%;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--planner-surface-strong);
   margin-bottom: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--planner-item-border);
   
   img {
     width: 100%;
@@ -177,9 +177,9 @@ function getWeaponImageUrl(name: string): string {
     height: 64px;
     border-radius: 8px;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--planner-thumb-bg);
     margin-bottom: 6px;
-    border: 1px solid rgba(146, 174, 255, 0.3);
+    border: 1px solid var(--planner-item-border);
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     
     img {
@@ -198,7 +198,7 @@ function getWeaponImageUrl(name: string): string {
     font-size: 12px;
     text-align: center;
     line-height: 1.2;
-    color: #eef2ff;
+    color: var(--planner-text-primary);
     width: 100%;
     white-space: nowrap;
     overflow: hidden;
@@ -212,7 +212,7 @@ function getWeaponImageUrl(name: string): string {
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    color: rgba(255,255,255,0.5);
+    color: var(--planner-text-secondary);
   }
 }
 </style>

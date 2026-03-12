@@ -64,7 +64,7 @@
         <div v-else class="q-pa-md">
           <!-- Selected Source Weapon Card -->
           <div class="text-subtitle2 q-mb-sm text-grey-5">已选武器</div>
-          <q-card flat bordered class="scheme-card bg-grey-9 q-mb-md">
+          <q-card flat bordered class="scheme-card planner-surface-card q-mb-md">
             <q-card-section class="row items-center q-col-gutter-md">
               <div class="col-auto">
                 <div class="weapon-thumb">
@@ -242,5 +242,10 @@ if (!matchSourceName.value && sortedWeapons.length > 0) {
 .weapon-card-mini.is-selected {
   border-color: var(--q-primary);
   box-shadow: 0 0 0 2px var(--q-primary);
+}
+
+.planner-surface-card {
+  background: var(--planner-surface-soft) !important;
+  border-color: var(--planner-item-border) !important;
 }
 </style>

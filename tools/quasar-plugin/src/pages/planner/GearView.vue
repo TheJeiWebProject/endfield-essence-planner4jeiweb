@@ -84,7 +84,7 @@
         <div v-else class="q-pa-md">
           <!-- Selected Gear Card -->
           <div class="text-subtitle2 q-mb-sm text-grey-5">已选装备</div>
-          <q-card flat bordered class="scheme-card bg-grey-9 q-mb-md">
+          <q-card flat bordered class="scheme-card planner-surface-card q-mb-md">
             <q-card-section class="row items-center q-col-gutter-md">
               <div class="col-auto">
                 <div class="weapon-thumb">
@@ -103,15 +103,15 @@
                 <div class="gear-attrs q-mt-sm">
                   <div class="row items-center justify-between text-caption border-bottom q-pb-xs q-mb-xs">
                     <span class="text-grey-5">副词条1</span>
-                    <span class="text-white">{{ selectedGear.sub1 || '无' }}</span>
+                    <span class="gear-attr-value">{{ selectedGear.sub1 || '无' }}</span>
                   </div>
                   <div class="row items-center justify-between text-caption border-bottom q-pb-xs q-mb-xs">
                     <span class="text-grey-5">副词条2</span>
-                    <span class="text-white">{{ selectedGear.sub2 || '无' }}</span>
+                    <span class="gear-attr-value">{{ selectedGear.sub2 || '无' }}</span>
                   </div>
                   <div class="row items-center justify-between text-caption">
                     <span class="text-grey-5">特效</span>
-                    <span class="text-white">{{ selectedGear.special || '无' }}</span>
+                    <span class="gear-attr-value">{{ selectedGear.special || '无' }}</span>
                   </div>
                 </div>
               </div>
@@ -128,7 +128,7 @@
               bordered
               class="scheme-card"
             >
-              <q-card-section class="scheme-header bg-grey-9 row items-center justify-between">
+              <q-card-section class="scheme-header planner-surface-header row items-center justify-between">
                 <div class="text-subtitle2">{{ rec.slotLabel }}</div>
                 <div class="text-caption text-primary" v-if="rec.targetAttr">
                   {{ rec.targetAttr }}
@@ -368,14 +368,14 @@ if (!selectedGearName.value && allGears.length > 0) {
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--planner-surface-soft);
   cursor: pointer;
   user-select: none;
   border-radius: 4px;
   margin-bottom: 4px;
   
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--planner-surface-strong);
   }
 }
 
@@ -395,14 +395,28 @@ if (!selectedGearName.value && allGears.length > 0) {
   position: absolute;
   top: 2px;
   right: 2px;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
+  background: var(--planner-surface-strong);
+  color: var(--planner-text-primary);
+  border: 1px solid var(--planner-item-border);
   font-size: 9px;
   padding: 1px 3px;
   border-radius: 2px;
 }
 
 .border-bottom {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--planner-item-border);
+}
+
+.gear-attr-value {
+  color: var(--planner-text-primary);
+}
+
+.planner-surface-card {
+  background: var(--planner-surface-soft) !important;
+  border-color: var(--planner-item-border) !important;
+}
+
+.planner-surface-header {
+  background: var(--planner-surface-soft) !important;
 }
 </style>

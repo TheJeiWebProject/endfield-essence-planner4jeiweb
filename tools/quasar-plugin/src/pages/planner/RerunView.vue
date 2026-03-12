@@ -210,8 +210,8 @@ function getCharacterImageUrl(name: string): string {
   align-items: center;
   padding: 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--planner-surface-soft);
+  border: 1px solid var(--planner-item-border);
   
   &.active-card {
     border-color: var(--q-positive);
@@ -228,7 +228,7 @@ function getCharacterImageUrl(name: string): string {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.3);
+  background: var(--planner-thumb-bg);
   margin-right: 12px;
   overflow: hidden;
   display: flex;
@@ -240,7 +240,7 @@ function getCharacterImageUrl(name: string): string {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.3);
+  background: var(--planner-thumb-bg);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -255,7 +255,7 @@ function getCharacterImageUrl(name: string): string {
 
 .avatar-placeholder {
   font-weight: bold;
-  color: #fff;
+  color: var(--planner-text-primary);
 }
 
 .rerun-list {
@@ -266,19 +266,19 @@ function getCharacterImageUrl(name: string): string {
 
 .rerun-item {
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--planner-surface-soft);
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--planner-item-border);
   transition: background 0.2s;
   
   &:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--planner-surface-strong);
   }
 }
 
 .rerun-bar-track {
   height: 6px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--planner-surface-strong);
   border-radius: 3px;
   overflow: hidden;
 }
