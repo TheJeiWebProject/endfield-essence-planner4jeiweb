@@ -1,138 +1,6 @@
 (function () {
   window.__APP_TEMPLATE_MAIN_PARTS = window.__APP_TEMPLATE_MAIN_PARTS || [];
   window.__APP_TEMPLATE_MAIN_PARTS.push(`
-                              {{ idx === 0 ? t("badge.item") : t("badge.item_2") }}
-                            </span>
-                          </div>
-                        </div>
-                        <div class="gear-row-main">
-                          <div class="gear-cell gear-weapon">
-                            <div class="gear-items">
-                              <div v-for="(weapon, wIdx) in row.weapons" :key="wIdx" class="gear-item">
-                                <div
-                                  class="gear-icon-frame"
-                                  :class="weapon.rarity === 6 ? 'weapon-rarity-6' : weapon.rarity === 5 ? 'weapon-rarity-5' : weapon.rarity === 4 ? 'weapon-rarity-4' : ''"
-                                >
-                                  <img v-if="weapon.icon" v-lazy-src="weapon.icon" class="gear-icon" alt="" />
-                                </div>
-                                <div class="gear-text">
-                                  <div class="gear-name">{{ weapon.name }}</div>
-                                  <div class="gear-note" v-if="weapon.note">{{ weapon.note }}</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div v-for="(equip, eIdx) in row.equipment" :key="eIdx" class="gear-cell">
-                            <div v-if="equip" class="gear-item">
-                              <div
-                                class="gear-icon-frame"
-                                :class="equip.rarity === 5 ? 'gear-rarity-5' : equip.rarity === 4 ? 'gear-rarity-4' : ''"
-                              >
-                                <img v-if="equip.icon" v-lazy-src="equip.icon" class="gear-icon" alt="" />
-                              </div>
-                              <div class="gear-text">
-                                <div class="gear-name">{{ equip.name }}</div>
-                                <div class="gear-note" v-if="equip.note">{{ equip.note }}</div>
-                              </div>
-                            </div>
-                            <div v-else class="gear-empty">-</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="gear-empty" v-else>{{ t("badge.item_3") }}</div>
-                  </div>
-                </div>
-
-                <div v-show="strategyCategory === 'guide' && strategyTab === 'team'" class="detail-panel">
-                  <div class="detail-section">
-                    <h3>{{ t("plan.item_8") }}</h3>
-                    <p class="strategy-text">{{ (currentGuide && currentGuide.teamTips) || t("badge.item_4") }}</p>
-                  </div>
-
-                  <div class="detail-section">
-                    <h3>{{ t("badge.item_5") }}</h3>
-                    <div class="team-table" v-if="teamSlots.length">
-                      <div v-for="(slot, sIdx) in teamSlots" :key="'team-slot-' + sIdx" class="team-cell">
-                        <div v-if="slot" class="team-slot">
-                          <div
-                            v-for="(entry, eIdx) in (slot.options || [])"
-                            :key="'team-entry-' + sIdx + '-' + eIdx"
-                            class="team-card"
-                            :class="{
-                              'is-alt': eIdx > 0,
-                              'is-self': currentCharacter && entry.name === currentCharacter.name,
-                            }"
-                          >
-                            <div class="team-name-row">
-                              <img v-if="entry.avatar" v-lazy-src="entry.avatar" class="team-member-avatar" alt="" loading="lazy" />
-                              <div class="team-name">{{ entry.name }}</div>
-                              <span
-                                v-if="currentCharacter && entry.name === currentCharacter.name"
-                                class="team-badge"
-                              >
-                                {{ t("badge.item_6") }}
-                              </span>
-                              <span v-if="entry.tag" class="team-badge muted">{{ entry.tag }}</span>
-                            </div>
-                            <div class="team-section">
-                              <span class="team-label">{{ t("guide.item_5") }}</span>
-                              <div class="team-items">
-                                <div v-for="(weapon, wIdx) in (entry.weapons || [])" :key="wIdx" class="team-item">
-                                  <div
-                                    class="team-icon-frame"
-                                    :class="weapon.rarity === 6 ? 'weapon-rarity-6' : weapon.rarity === 5 ? 'weapon-rarity-5' : weapon.rarity === 4 ? 'weapon-rarity-4' : ''"
-                                  >
-                                    <img v-if="weapon.icon" v-lazy-src="weapon.icon" class="team-icon" alt="" />
-                                  </div>
-                                  <div class="team-text">
-                                    <div class="team-item-name">{{ weapon.name }}</div>
-                                    <div class="team-note" v-if="weapon.note">{{ weapon.note }}</div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div class="team-section">
-                              <span class="team-label">{{ t("badge.item_7") }}</span>
-                              <div class="team-items">
-                                <div v-for="(equip, eIdx) in (entry.equipment || [])" :key="eIdx" class="team-item">
-                                  <div
-                                    class="team-icon-frame"
-                                    :class="equip.rarity === 5 ? 'gear-rarity-5' : equip.rarity === 4 ? 'gear-rarity-4' : ''"
-                                  >
-                                    <img v-if="equip.icon" v-lazy-src="equip.icon" class="team-icon" alt="" />
-                                  </div>
-                                  <div class="team-text">
-                                    <div class="team-item-name">{{ equip.name }}</div>
-                                    <div class="team-note" v-if="equip.note">{{ equip.note }}</div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div v-else class="team-empty">-</div>
-                      </div>
-                    </div>
-                    <div class="empty-guide" v-else>
-                      <p class="empty-guide-text">{{ t("badge.item_8") }}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-show="strategyCategory === 'guide' && strategyTab === 'operation'" class="detail-panel">
-                  <div class="detail-section">
-                    <h3>{{ t("guide.item_11") }}</h3>
-                    <p class="strategy-text">{{ (currentGuide && (currentGuide.operationTips || currentGuide.skillTips)) || t("badge.item_4") }}</p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-              </div>
-            </transition>
-          </div>
-
           <div v-else-if="currentView === 'rerun-ranking'" key="rerun-ranking" class="view-shell rerun-ranking-view">
             <section class="panel rerun-ranking-panel">
               <div class="panel-title">
@@ -165,6 +33,12 @@
                     <div class="rerun-ranking-name">{{ tTerm("character", row.characterName) }}</div>
                     <div class="rerun-ranking-meta">
                       {{ t("badge.gap_days_days", { days: row.hasEndedHistory ? row.gapDays : "-" }) }}
+                    </div>
+                    <div v-if="row.hasEndedHistory" class="rerun-ranking-gap-bar">
+                      <span
+                        class="rerun-ranking-gap-bar-fill"
+                        :style="{ width: (row.gapRatio * 100) + '%' }"
+                      ></span>
                     </div>
                     <div class="rerun-ranking-meta">
                       {{ t("badge.count_count", { count: row.rerunCount > 0 ? row.rerunCount : "-" }) }}
@@ -274,7 +148,9 @@
                     </div>
                     <div class="weapon-band"></div>
                     <div class="weapon-name">
-                      <div class="weapon-title">{{ tTerm("weapon", weapon.name) }}</div>
+                      <div class="weapon-title">
+                        <span class="weapon-title-text">{{ tTerm("weapon", weapon.name) }}</span>
+                      </div>
                       <match-status-line
                         :weapon-name="weapon.name"
                         :t="t"
@@ -348,7 +224,9 @@
                         <div class="weapon-band"></div>
                         <div class="weapon-name">
                           <div class="weapon-title">
-                            {{ tTerm("weapon", matchSourceWeapon.name) }}
+                            <span class="weapon-title-text">
+                              {{ tTerm("weapon", matchSourceWeapon.name) }}
+                            </span>
                           </div>
                           <div class="weapon-type-subtitle">
                             {{ tTerm("type", matchSourceWeapon.type) }}
@@ -411,7 +289,9 @@
                       </div>
                       <div class="weapon-band"></div>
                       <div class="weapon-name">
-                        <div class="weapon-title">{{ tTerm("weapon", weapon.name) }}</div>
+                        <div class="weapon-title">
+                          <span class="weapon-title-text">{{ tTerm("weapon", weapon.name) }}</span>
+                        </div>
                         <match-status-line
                           :weapon-name="weapon.name"
                           :t="t"
@@ -425,53 +305,75 @@
               </section>
             </div>
           </div>
-          <div v-else key="gear-refining" class="view-shell planner-shell gear-refining-shell">
+          </template>
+          <div v-else key="equip-refining" class="view-shell planner-shell equip-refining-shell">
+            <div
+              v-if="isViewBundleLoading('equip-refining') || isViewBundleFailed('equip-refining')"
+              class="panel view-load-panel"
+            >
+              <div v-if="isViewBundleLoading('equip-refining')" class="empty-state view-load-state">
+                <h2>{{ t("error.view_loading_title") }}</h2>
+                <p>{{ t("error.view_loading_summary") }}</p>
+              </div>
+              <div v-else class="empty-state view-load-state">
+                <h2>{{ t("error.view_load_failed_title") }}</h2>
+                <p>{{ t("error.view_load_failed_summary") }}</p>
+          <button class="ghost-button" @click="retryViewLoad('equip-refining')">
+            {{ t("action_retry") }}
+          </button>
+          <button class="ghost-button" @click="refreshPage">
+            {{ t("action_refresh") }}
+          </button>
+              </div>
+            </div>
+            <template v-else>
             <div class="mobile-tabs">
               <button
                 class="mobile-tab"
                 type="button"
-                :class="{ active: gearRefiningMobilePanel === 'gears' }"
-                @click="setGearRefiningMobilePanel('gears')"
+                :class="{ active: equipRefiningMobilePanel === 'equips' }"
+                @click="setEquipRefiningMobilePanel('equips')"
               >
-                {{ t("badge.gear_list") }} <span class="count">{{ gearRefiningGearCount }}</span>
+                {{ t("badge.equip_list") }} <span class="count">{{ equipRefiningEquipCount }}</span>
               </button>
               <button
                 class="mobile-tab"
                 type="button"
-                :class="{ active: gearRefiningMobilePanel === 'recommend' }"
-                @click="setGearRefiningMobilePanel('recommend')"
+                :class="{ active: equipRefiningMobilePanel === 'recommend' }"
+                @click="setEquipRefiningMobilePanel('recommend')"
               >
                 {{ t("badge.refining_recommendations") }}
-                <span class="count">{{ selectedGearRefiningGear ? gearRefiningRecommendations.length : 0 }}</span>
+                <span class="count">{{ selectedEquipRefiningEquip ? equipRefiningRecommendations.length : 0 }}</span>
               </button>
             </div>
-            <gear-refining-list
+            <equip-refining-list
               :t="t"
-              :mobile-panel="gearRefiningMobilePanel"
-              :query="gearRefiningQuery"
-              :grouped-sets="gearRefiningGroupedSets"
-              :selected-gear-name="selectedGearRefiningGearName"
-              :is-set-collapsed="isGearRefiningSetCollapsed"
-              :toggle-set-collapsed="toggleGearRefiningSetCollapsed"
-              :select-gear="selectGearRefiningGear"
-              :has-gear-image="hasGearRefiningGearImage"
-              :gear-image-src="gearRefiningGearImageSrc"
-              :on-gear-image-error="handleGearRefiningGearImageError"
-              @update:query="gearRefiningQuery = $event"
+              :mobile-panel="equipRefiningMobilePanel"
+              :query="equipRefiningQuery"
+              :grouped-sets="equipRefiningGroupedSets"
+              :selected-equip-name="selectedEquipRefiningEquipName"
+              :is-set-collapsed="isEquipRefiningSetCollapsed"
+              :toggle-set-collapsed="toggleEquipRefiningSetCollapsed"
+              :select-equip="selectEquipRefiningEquip"
+              :has-equip-image="hasEquipRefiningEquipImage"
+              :equip-image-src="equipRefiningEquipImageSrc"
+              :on-equip-image-error="handleEquipRefiningEquipImageError"
+              @update:query="equipRefiningQuery = $event"
             />
-            <gear-refining-detail
+            <equip-refining-detail
               :t="t"
-              :mobile-panel="gearRefiningMobilePanel"
-              :selected-gear="selectedGearRefiningGear"
-              :recommendations="gearRefiningRecommendations"
+              :mobile-panel="equipRefiningMobilePanel"
+              :selected-equip="selectedEquipRefiningEquip"
+              :recommendations="equipRefiningRecommendations"
               :visible-recommendation-candidates="visibleRecommendationCandidates"
               :has-more-recommendation-candidates="hasMoreRecommendationCandidates"
               :is-recommendation-expanded="isRecommendationExpanded"
               :toggle-recommendation-expanded="toggleRecommendationExpanded"
-              :has-gear-image="hasGearRefiningGearImage"
-              :gear-image-src="gearRefiningGearImageSrc"
-              :on-gear-image-error="handleGearRefiningGearImageError"
+              :has-equip-image="hasEquipRefiningEquipImage"
+              :equip-image-src="equipRefiningEquipImageSrc"
+              :on-equip-image-error="handleEquipRefiningEquipImageError"
             />
+          </template>
           </div>
         </transition>
       </main>
@@ -535,6 +437,20 @@
       >
         ↑
       </button>
+      <footer v-if="showIcpFooter" class="icp-footer">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
+          {{ icpNumber }}
+        </a>
+      </footer>
+    </div>
+    <div
+      v-else
+      key="background"
+      class="background-view"
+      role="region"
+      :aria-label="t('nav.background_view')"
+    ></div>
+  </transition>
 
       <transition name="fade-scale">
         <div v-if="showNotice" class="about-overlay notice-overlay" @click.self="closeNotice">
@@ -739,10 +655,10 @@
                 <ul class="about-sponsor-list-items">
                   <li
                     v-for="(entry, index) in aboutContent.sponsor.list"
-                    :key="entry.name || \`about-sponsor-entry-\${index}\`"
+                    :key="entry.key || \`about-sponsor-entry-\${index}\`"
                     class="about-sponsor-entry"
                   >
-                    <div class="about-sponsor-entry-name">{{ entry.name }}</div>
+                    <div class="about-sponsor-entry-name">{{ entry.displayName || entry.name }}</div>
                     <div
                       v-if="entry.amount || entry.date"
                       class="about-sponsor-entry-meta"

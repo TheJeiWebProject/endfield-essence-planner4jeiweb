@@ -9,3 +9,5 @@ test-results
 pictools/quasar-plugin/public/legacy/
 tools/quasar-plugin/dist/
 pic
+pic
+.tmp

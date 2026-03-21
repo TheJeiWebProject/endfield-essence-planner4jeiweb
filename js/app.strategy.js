@@ -7,7 +7,9 @@
     const weaponMap = new Map(weaponCatalog.map((weapon) => [weapon.name, weapon]));
 
     state.characters = ref(Array.isArray(window.characters) ? window.characters : []);
-    state.selectedCharacterId = ref(null);
+    if (!state.selectedCharacterId || typeof state.selectedCharacterId !== "object" || !("value" in state.selectedCharacterId)) {
+      state.selectedCharacterId = ref(null);
+    }
     state.strategyCategory = ref("info");
     state.strategyTab = ref("base");
 
@@ -119,7 +121,7 @@
       return state.characters.value.find((c) => c.id === state.selectedCharacterId.value);
     });
 
-    const normalizeGearRows = (rows) => {
+    const normalizeEquipRows = (rows) => {
       if (!Array.isArray(rows)) return [];
       return rows.map((row) => {
         const weapons = Array.isArray(row.weapons) ? row.weapons.filter(Boolean) : [];
@@ -148,13 +150,41 @@
       return stripped.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]/g, "");
     };
 
+    const buildAvatarPathCandidates = (name) => {
+      const raw = stripAvatarName(name);
+      if (!raw) return [];
+      const candidates = [];
+      candidates.push(`image/characters/${raw}.avif`);
+
+      const base = raw.replace(/[\u7537\u5973]$/u, "").trim();
+      if (base && base !== raw) {
+        const gender = /\u7537$/u.test(raw) ? "\u7537" : "\u5973";
+        candidates.push(`image/characters/${base}(${gender}).avif`);
+      } else {
+        candidates.push(`image/characters/${raw}(\u5973).avif`);
+        candidates.push(`image/characters/${raw}(\u7537).avif`);
+      }
+
+      return Array.from(new Set(candidates));
+    };
+
+    const resolveAvatarFromName = (name) => {
+      if (!name) return "";
+      if (typeof state.characterImageSrc === "function") {
+        const src = state.characterImageSrc(name);
+        if (src) return src;
+      }
+      const fallbackCandidates = buildAvatarPathCandidates(name);
+      return fallbackCandidates[0] || "";
+    };
+
     const findCharacterAvatarByName = (name) => {
       const target = normalizeNameForAvatar(name);
       if (!target) return "";
 
       let bestMatch = null;
       state.characters.value.forEach((character) => {
-        if (!character || !character.name || !character.avatar) return;
+        if (!character || !character.name) return;
         const current = normalizeNameForAvatar(character.name);
         if (!current) return;
 
@@ -174,12 +204,13 @@
           bestMatch = {
             score,
             length: current.length,
-            avatar: character.avatar,
+            name: character.name,
           };
         }
       });
 
-      return bestMatch ? bestMatch.avatar : "";
+      if (bestMatch) return resolveAvatarFromName(bestMatch.name);
+      return resolveAvatarFromName(name);
     };
 
     const normalizeTeamSlots = (slots) => {
@@ -209,9 +240,6 @@
     };
 
     const resolveTeamAvatar = (option, slot) => {
-      if (option && option.avatar) return option.avatar;
-      if (slot && slot.avatar) return slot.avatar;
-
       const names = [option && option.name, slot && slot.name].filter(Boolean);
       for (let index = 0; index < names.length; index += 1) {
         const found = findCharacterAvatarByName(names[index]);
@@ -220,24 +248,6 @@
 
       const fallbackCandidates = names.flatMap((name) => buildAvatarPathCandidates(name));
       return fallbackCandidates[0] || "";
-    };
-
-    const buildAvatarPathCandidates = (name) => {
-      const raw = stripAvatarName(name);
-      if (!raw) return [];
-      const candidates = [];
-      candidates.push(`image/characters/${raw}.png`);
-
-      const base = raw.replace(/[\u7537\u5973]$/u, "").trim();
-      if (base && base !== raw) {
-        const gender = /\u7537$/u.test(raw) ? "\u7537" : "\u5973";
-        candidates.push(`image/characters/${base}(${gender}).png`);
-      } else {
-        candidates.push(`image/characters/${raw}(\u5973).png`);
-        candidates.push(`image/characters/${raw}(\u7537).png`);
-      }
-
-      return Array.from(new Set(candidates));
     };
 
     state.currentGuide = computed(() => {
@@ -249,7 +259,7 @@
     state.guideRows = computed(() => {
       const guide = state.currentGuide.value;
       if (!guide) return [];
-      return normalizeGearRows(guide.gearRows || []);
+      return normalizeEquipRows(guide.equipRows || []);
     });
 
     state.teamSlots = computed(() => {
@@ -262,11 +272,15 @@
       return trimmed;
     });
 
-    const characterScripts = [
-      "./data/characters.js",
-      "./data/characters/ember.js",
-      "./data/characters/perlica.js",
-    ];
+    const resolveCharacterScripts = () => {
+      if (typeof window === "undefined") return [];
+      const raw = Array.isArray(window.__APP_CHARACTER_SCRIPTS__)
+        ? window.__APP_CHARACTER_SCRIPTS__
+        : [];
+      const normalized = raw.map((src) => String(src || "").trim()).filter(Boolean);
+      const unique = Array.from(new Set(normalized));
+      return unique.filter((src) => src !== "./data/characters.js");
+    };
 
     const syncCharactersFromWindow = () => {
       state.characters.value = Array.isArray(window.characters) ? window.characters : [];
@@ -292,10 +306,25 @@
       state.charactersLoading.value = true;
       pendingCharacterLoad = (async () => {
         try {
+          let hadFailure = false;
+          await state.loadScriptOnce("./data/characters.js");
+          const characterScripts = resolveCharacterScripts();
           for (let index = 0; index < characterScripts.length; index += 1) {
-            await state.loadScriptOnce(characterScripts[index]);
+            const script = characterScripts[index];
+            try {
+              await state.loadScriptOnce(script);
+            } catch (error) {
+              hadFailure = true;
+              if (typeof console !== "undefined" && typeof console.warn === "function") {
+                console.warn("[strategy] Failed to load character script:", script, error);
+              }
+            }
           }
           syncCharactersFromWindow();
+          if (!state.charactersLoaded.value && hadFailure) {
+            lastCharacterLoadFailureAt = Date.now();
+            return false;
+          }
           lastCharacterLoadFailureAt = 0;
           return state.charactersLoaded.value;
         } catch (error) {
@@ -514,14 +543,18 @@
       }
     };
 
-    watch(() => state.currentView.value, async (view) => {
-      if (view === "strategy") {
-        invalidateCharacterVirtualMetrics();
-        const loaded = await ensureCharacterDataLoaded();
-        if (!loaded) return;
-        scheduleCharacterVirtualWindow();
-      }
-    });
+    watch(
+      () => state.currentView.value,
+      async (view) => {
+        if (view === "strategy") {
+          invalidateCharacterVirtualMetrics();
+          const loaded = await ensureCharacterDataLoaded();
+          if (!loaded) return;
+          scheduleCharacterVirtualWindow();
+        }
+      },
+      { immediate: true }
+    );
 
     watch(
       [() => state.characters.value.length, state.selectedCharacterId, state.charactersLoaded],

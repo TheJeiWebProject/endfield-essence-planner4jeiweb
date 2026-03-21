@@ -16,7 +16,7 @@
                 :class="{ 'tutorial-highlight': tutorialCollapseHighlight }"
                 @click="toggleTutorialBody"
               >
-                {{ tutorialBodyCollapsed ? t("gear_refining.expand_details") : t("gear_refining.collapse_details") }}
+                {{ tutorialBodyCollapsed ? t("equip_refining.expand_details") : t("equip_refining.collapse_details") }}
               </button>
             </div>
             <h3>{{ tutorialStep.title }}</h3>
@@ -33,8 +33,8 @@
               {{ line }}
             </p>
             <div class="tutorial-status">
-              <span v-if="tutorialStepReady">{{ t("gear_refining.completed_you_can_continue") }}</span>
-              <span v-else>{{ t("gear_refining.follow_the_prompt_to_complete_this_step") }}</span>
+              <span v-if="tutorialStepReady">{{ t("equip_refining.completed_you_can_continue") }}</span>
+              <span v-else>{{ t("equip_refining.follow_the_prompt_to_complete_this_step") }}</span>
             </div>
             <div class="tutorial-actions">
               <button
@@ -42,17 +42,17 @@
                 @click="prevTutorialStep"
                 :disabled="tutorialStepIndex === 0"
               >
-                {{ t("gear_refining.previous") }}
+                {{ t("equip_refining.previous") }}
               </button>
               <button class="ghost-button" @click="openTutorialSkipConfirm">
-                {{ t("gear_refining.skip_all") }}
+                {{ t("equip_refining.skip_all") }}
               </button>
               <button
                 v-if="tutorialStepKey === 'base-pick' && !tutorialStepReady"
                 class="ghost-button"
                 @click="skipTutorialStep"
               >
-                {{ t("gear_refining.skip_this_step") }}
+                {{ t("equip_refining.skip_this_step") }}
               </button>
               <button
                 class="about-button"
@@ -61,8 +61,8 @@
               >
                 {{
                   tutorialStepIndex + 1 >= tutorialTotalSteps
-                    ? t("gear_refining.finish")
-                    : t("gear_refining.next")
+                    ? t("equip_refining.finish")
+                    : t("equip_refining.next")
                 }}
               </button>
             </div>
@@ -75,11 +75,11 @@
           <div class="about-card tutorial-modal">
             <h3>{{ t("tutorial.skip_tutorial") }}</h3>
             <p>{{ t("tutorial.are_you_sure_you_want_to_skip_this_version_s_tutorial_th") }}</p>
-            <p class="tutorial-note">{{ t("gear_refining.you_can_replay_it_later_in_more_settings") }}</p>
+            <p class="tutorial-note">{{ t("equip_refining.you_can_replay_it_later_in_more_settings") }}</p>
             <div class="about-actions">
               <button class="ghost-button" @click="closeTutorialSkipConfirm">{{ t("button.cancel") }}</button>
               <button class="about-button" @click="confirmTutorialSkipAll">
-                {{ t("gear_refining.skip_all") }}
+                {{ t("equip_refining.skip_all") }}
               </button>
             </div>
           </div>
@@ -93,7 +93,7 @@
             <h3>{{ t("tutorial.congrats_on_finishing_the_tutorial") }}</h3>
             <p>{{ t("tutorial.you_ve_completed_this_version_s_tutorial") }}</p>
             <p>{{ t("tutorial.if_you_think_the_tutorial_needs_improvement_feedback_is_") }}</p>
-            <p class="tutorial-note">{{ t("gear_refining.you_can_replay_it_in_more_settings") }}</p>
+            <p class="tutorial-note">{{ t("equip_refining.you_can_replay_it_in_more_settings") }}</p>
             <div class="tutorial-actions">
               <button class="about-button" @click="closeTutorialComplete">{{ t("button.got_it") }}</button>
             </div>
@@ -116,7 +116,12 @@
                 (unifiedExceptionCurrent && unifiedExceptionCurrent.summary) ||
                   t("error.page_init_summary")
               }}
-              {{ t("update.refresh_and_try_again_if_it_persists_report_it_with_cons") }}
+            </p>
+            <p class="storage-error-warning" v-if="activeUnifiedExceptionKind === 'runtime'">
+              {{
+                (unifiedExceptionCurrent && unifiedExceptionCurrent.detail) ||
+                  t("update.refresh_and_try_again_if_it_persists_report_it_with_cons")
+              }}
             </p>
             <p class="storage-error-warning" v-else>
               {{ t("storage.a_browser_local_data_read_write_error_was_detected_conti") }}
@@ -124,21 +129,21 @@
             <p class="storage-error-warning">
               {{
                 t("storage.failed_operation_operation", {
-                  operation: (unifiedExceptionCurrent && unifiedExceptionCurrent.operation) || t("gear_refining.unknown")
+                  operation: (unifiedExceptionCurrent && unifiedExceptionCurrent.operation) || t("equip_refining.unknown")
                 })
               }}
             </p>
             <p class="storage-error-warning" v-if="activeUnifiedExceptionKind === 'runtime'">
               {{
                 t("storage.source_scope", {
-                  scope: (unifiedExceptionCurrent && unifiedExceptionCurrent.scope) || t("gear_refining.unknown")
+                  scope: (unifiedExceptionCurrent && unifiedExceptionCurrent.scope) || t("equip_refining.unknown")
                 })
               }}
             </p>
             <p class="storage-error-warning">
               {{
                 t("storage.failed_key_key", {
-                  key: (unifiedExceptionCurrent && unifiedExceptionCurrent.key) || t("gear_refining.unknown")
+                  key: (unifiedExceptionCurrent && unifiedExceptionCurrent.key) || t("equip_refining.unknown")
                 })
               }}
             </p>
@@ -151,7 +156,7 @@
                 </span>
               </div>
               <div class="storage-error-meta-line">
-                <span class="storage-error-label">{{ t("gear_refining.time") }}</span>
+                <span class="storage-error-label">{{ t("equip_refining.time") }}</span>
                 <span class="storage-error-value">{{ unifiedExceptionCurrent.occurredAt }}</span>
               </div>
             </div>
@@ -191,7 +196,7 @@
                 {{ activeUnifiedExceptionKind === "runtime" ? t("update.refresh_page") : t("storage.clear_data_and_refresh") }}
               </button>
               <a class="storage-feedback-button" :href="storageFeedbackUrl" target="_blank" rel="noreferrer">
-                {{ t("gear_refining.report_issue") }}
+                {{ t("equip_refining.report_issue") }}
               </a>
               <button class="ghost-button" @click="ignoreUnifiedException">
                 {{ t("storage.ignore_error_continue") }}
@@ -319,7 +324,7 @@
             <div
               v-if="
                 marksImportMeta &&
-                (marksImportMeta.exportedAt || marksImportMeta.buildId || marksImportMeta.displayVersion)
+                (marksImportMeta.exportedAt || marksImportMeta.buildId || marksImportMeta.displayVersion || marksImportMeta.source)
               "
               class="marks-import-meta"
             >
@@ -335,6 +340,10 @@
               <div v-if="marksImportMeta.displayVersion" class="marks-import-meta-line">
                 <span class="marks-import-meta-label">{{ t("plan_config.marks_import_meta_display_version") }}</span>
                 <span class="marks-import-meta-value">{{ marksImportMeta.displayVersion }}</span>
+              </div>
+              <div v-if="marksImportMeta.source" class="marks-import-meta-line">
+                <span class="marks-import-meta-label">{{ t("plan_config.marks_import_meta_source") }}</span>
+                <span class="marks-import-meta-value">{{ formatSourceInfo(marksImportMeta.source) }}</span>
               </div>
             </div>
             <p class="storage-clear-confirm-warning">{{ t("plan_config.marks_import_confirm_warning") }}</p>
@@ -469,10 +478,10 @@
             aria-live="polite"
           >
             <p class="version-debug-badge-panel-title">
-              {{ t("update.current_site_compatible_version_version", { version: gameCompatSupportedVersion || t("gear_refining.unknown") }) }}
+              {{ t("update.current_site_compatible_version_version", { version: gameCompatSupportedVersion || t("equip_refining.unknown") }) }}
             </p>
             <p class="version-debug-badge-panel-text">
-              {{ t("update.if_the_game_has_been_updated_to_version_please_wait_for_", { version: gameCompatNextVersion || t("gear_refining.unknown") }) }}
+              {{ t("update.if_the_game_has_been_updated_to_version_please_wait_for_", { version: gameCompatNextVersion || t("equip_refining.unknown") }) }}
             </p>
             <div class="version-debug-badge-panel-actions">
               <button type="button" class="ghost-button version-compat-ack" @click="dismissGameCompatWarning">
@@ -503,45 +512,75 @@
         class="planner-bottom-right-overlays"
         :class="{
           'has-update-toast': showUpdatePrompt,
-          'has-optional-toast': optionalFailureNotices && optionalFailureNotices.length > 0,
+          'has-toast': toastNotices && toastNotices.length > 0,
         }"
       >
-        <transition-group name="fade-scale" tag="div" class="optional-toast-stack">
+        <transition-group
+          name="fade-scale"
+          tag="div"
+          class="toast-stack"
+          @before-leave="prepareToastLeave"
+        >
           <div
-            v-for="(notice, index) in optionalFailureNotices"
-            :key="notice.id || ['optional-failure', index].join('|')"
-            class="update-toast optional-failure-toast"
-            :class="'optional-failure-toast-' + index"
+            v-for="(notice, index) in toastNotices"
+            :key="notice.id || ['toast', index].join('|')"
+            class="update-toast planner-toast"
+            :class="['planner-toast-' + index, notice.tone ? 'planner-toast-' + notice.tone : '']"
             role="status"
             aria-live="polite"
           >
-            <div
-              class="update-toast-card optional-failure-toast-card"
-              role="button"
-              tabindex="0"
-              :aria-label="t('error.view_optional_failure_details')"
-              @click="openOptionalFailureDetailByLogId((notice && (notice.logId || notice.id)) || '')"
-              @keydown.enter.prevent="openOptionalFailureDetailByLogId((notice && (notice.logId || notice.id)) || '')"
-              @keydown.space.prevent="openOptionalFailureDetailByLogId((notice && (notice.logId || notice.id)) || '')"
-            >
-              <div class="optional-failure-toast-main">
-                <span class="optional-failure-toast-icon" aria-hidden="true">!</span>
-                <div class="optional-failure-toast-text">
-                  <strong>{{ notice.title || t("error.optional_feature_load_failed") }}</strong>
-                  <span>{{ t("gear_refining.tap_the_notification_to_view_details") }}</span>
+              <div
+                class="update-toast-card toast-card"
+                :class="{ 'is-clickable': notice && notice.clickable }"
+                :role="notice && notice.clickable ? 'button' : 'status'"
+                :tabindex="notice && notice.clickable ? 0 : -1"
+                :aria-label="notice && notice.clickable && notice.ariaLabel ? notice.ariaLabel : null"
+                :data-toast-id="(notice && notice.id) || ''"
+                @mouseenter="pauseToastNotice((notice && notice.id) || '')"
+                @mouseleave="resumeToastNotice((notice && notice.id) || '')"
+                @touchstart.passive="pauseToastNotice((notice && notice.id) || '')"
+                @touchend.passive="resumeToastNotice((notice && notice.id) || '')"
+                @touchcancel.passive="resumeToastNotice((notice && notice.id) || '')"
+                @focusin="pauseToastNotice((notice && notice.id) || '')"
+                @focusout="resumeToastNotice((notice && notice.id) || '')"
+                @click="activateToastNotice((notice && notice.id) || '')"
+                @keydown.enter.prevent="activateToastNotice((notice && notice.id) || '')"
+                @keydown.space.prevent="activateToastNotice((notice && notice.id) || '')"
+              >
+              <div class="toast-main">
+                <span class="toast-icon" aria-hidden="true">{{ notice && notice.icon ? notice.icon : "!" }}</span>
+                <div class="toast-text">
+                  <strong>{{ notice && notice.title ? notice.title : t("error.optional_feature_load_failed") }}</strong>
+                  <span v-if="notice && notice.summary">{{ notice.summary }}</span>
                 </div>
               </div>
-              <div class="optional-failure-toast-actions">
+              <div class="toast-actions">
+                <button
+                  v-if="notice && notice.actionLabel"
+                  type="button"
+                  class="ghost-button toast-action"
+                  @click.stop="runToastAction((notice && notice.id) || '')"
+                >
+                  {{ notice.actionLabel }}
+                </button>
                 <button
                   type="button"
-                  class="optional-failure-close-button"
+                  class="toast-close-button"
                   :aria-label="t('plan_config.close')"
                   :title="t('plan_config.close')"
-                  @click.stop="dismissOptionalFailureNotice(notice.id)"
+                  @click.stop="dismissToastNotice((notice && notice.id) || '')"
                 >
                   &times;
                 </button>
               </div>
+              <div
+                v-if="notice && notice.durationMs && notice.durationMs > 0"
+                class="toast-progress"
+                :style="{
+                  '--toast-duration': (notice.durationMs || toastDefaultDurationMs) + 'ms',
+                  '--toast-animation-state': isToastNoticePaused((notice && notice.id) || '') ? 'paused' : 'running'
+                }"
+              ></div>
             </div>
           </div>
         </transition-group>
@@ -560,7 +599,7 @@
               </div>
               <div class="update-version-row">
                 <span class="update-version-label">{{ t("update.latest_version") }}</span>
-                <span class="update-version-value">{{ updateLatestVersionText || t("gear_refining.unknown") }}</span>
+                <span class="update-version-value">{{ updateLatestVersionText || t("equip_refining.unknown") }}</span>
               </div>
               <div class="update-version-row" v-if="updateLatestPublishedAt">
                 <span class="update-version-label">{{ t("update.published_at") }}</span>
@@ -615,18 +654,13 @@
             >
               {{
                 warningCountdown > 0
-                  ? t("gear_refining.i_understand_count_s", { count: warningCountdown })
-                  : t("gear_refining.i_understand")
+                  ? t("equip_refining.i_understand_count_s", { count: warningCountdown })
+                  : t("equip_refining.i_understand")
               }}
             </button>
           </div>
         </div>
       </div>
 
-      <footer v-if="showIcpFooter" class="icp-footer">
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
-          {{ icpNumber }}
-        </a>
-      </footer>
 `);
 })();

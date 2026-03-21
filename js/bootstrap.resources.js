@@ -50,7 +50,7 @@
           "./css/styles.filters.css",
           "./css/styles.weapons.css",
           "./css/styles.recommendations.css",
-          "./css/styles.gear-refining.css",
+          "./css/styles.equip-refining.css",
           "./css/styles.theme.modes.css",
         ],
         data: [
@@ -59,7 +59,8 @@
           "./data/dungeons.js",
           "./data/weapons.js",
           "./data/up-schedules.js",
-          "./data/gears.js",
+          "./data/equip.js",
+          "./data/equip-images.js",
           "./data/weapon-images.js",
           "./data/i18n/zh-CN.js",
           "./data/i18n/zh-TW.js",
@@ -260,8 +261,9 @@
         refs.count.textContent = completedCount + "/" + total;
       }
       if (refs.progressFill) {
-        var percent = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
-        refs.progressFill.style.width = percent + "%";
+        var ratio = total > 0 ? Math.min(1, Math.max(0, completedCount / total)) : 0;
+        var percent = Math.round(ratio * 100);
+        refs.progressFill.style.transform = "scaleX(" + ratio + ")";
         refs.progressFill.setAttribute("aria-valuenow", String(percent));
       }
       if (refs.status) {

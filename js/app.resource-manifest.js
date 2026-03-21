@@ -8,7 +8,7 @@
         "./css/styles.filters.css",
         "./css/styles.weapons.css",
         "./css/styles.recommendations.css",
-        "./css/styles.gear-refining.css",
+        "./css/styles.equip-refining.css",
         "./css/styles.theme.modes.css",
       ],
       data: [
@@ -17,7 +17,8 @@
         "./data/dungeons.js",
         "./data/weapons.js",
         "./data/up-schedules.js",
-        "./data/gears.js",
+        "./data/equip.js",
+        "./data/equip-images.js",
         "./data/weapon-images.js",
         "./data/i18n/zh-CN.js",
         "./data/i18n/zh-TW.js",
@@ -31,6 +32,12 @@
           retryDelayMs: 1200,
           maxRetries: 1,
         },
+      "./js/analytics.bootstrap.js": {
+        featureKey: "analytics",
+        timeoutMs: 12000,
+        retryDelayMs: 1200,
+        maxRetries: 1,
+      },
       },
     },
     app: {
@@ -63,16 +70,29 @@
         "./js/app.modals.js",
         "./js/app.update.js",
         "./js/app.media.js",
-        "./js/app.strategy.js",
-        "./js/app.gear-refining.js",
         "./js/templates.plan-config.js",
-        "./js/templates.gear-refining.js",
+        "./js/templates.equip-refining.js",
+        "./js/templates.strategy-guide-detail.js",
         "./js/templates.main.01.js",
         "./js/templates.main.02.js",
         "./js/templates.main.03.js",
         "./js/templates.main.04.js",
         "./js/app.main.js",
       ],
+      viewBundles: {
+        strategy: {
+          scripts: ["./js/app.strategy.js"],
+          init: ["initStrategy"],
+        },
+        "equip-refining": {
+          scripts: ["./js/app.equip-refining.js"],
+          init: ["initEquipRefining"],
+        },
+        editor: {
+          scripts: ["./js/app.editor.js"],
+          init: ["initEditor"],
+        },
+      },
     },
   };
 

@@ -188,6 +188,20 @@
         : fallbackTriggerJsonDownload;
     const resolveText = (key, params, fallback) =>
       typeof state.t === "function" ? state.t(key, params) : fallback;
+    const pushInfoToast = (titleKey, summaryKey, fallbackTitle, fallbackSummary, signature) => {
+      if (typeof state.pushToastNotice !== "function") return;
+      const title = resolveText(titleKey, null, fallbackTitle);
+      const summary = resolveText(summaryKey, null, fallbackSummary);
+      state.pushToastNotice({
+        title,
+        summary,
+        tone: "info",
+        icon: "i",
+        durationMs: 6000,
+        signature: signature || "",
+        ariaLabel: title,
+      });
+    };
     const buildExportStamp = () =>
       new Date().toISOString().replace(/[^\d]/g, "").slice(0, 14) || String(Date.now());
     const readVersionInfo = () => {
@@ -288,6 +302,11 @@
             exportedAt,
             buildId: String(versionInfo.buildId || ""),
             displayVersion: String(versionInfo.displayVersion || ""),
+            source: {
+              type: "planner-web",
+              version: String(versionInfo.displayVersion || ""),
+              userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+            },
           },
           marks: normalized,
         };
@@ -295,6 +314,13 @@
         const buildId = String(versionInfo.buildId || "unknown");
         const filename = `planner-marks-${buildId}-${stamp}.json`;
         triggerJsonDownload(filename, payload);
+        pushInfoToast(
+          "plan_config.marks_export_success_title",
+          "plan_config.marks_export_success_summary",
+          "标记数据已导出",
+          "已触发下载文件。",
+          "marks-export"
+        );
       } catch (error) {
         if (typeof state.reportStorageIssue === "function") {
           state.reportStorageIssue("export", state.marksStorageKey, error, {
@@ -373,6 +399,13 @@
       }
       setRefValue(state.weaponMarks, pending);
       resetMarksImportState();
+      pushInfoToast(
+        "plan_config.marks_import_success_title",
+        "plan_config.marks_import_success_summary",
+        "标记数据已导入",
+        "已更新标记数据。",
+        "marks-import"
+      );
     };
     state.exportWeaponMarks = exportWeaponMarks;
     state.handleMarksImportFile = handleMarksImportFile;
@@ -416,6 +449,15 @@
             state.showFilterPanel.value = restored.showFilterPanel;
             restoredFilterPanelPreference = true;
           }
+          if (typeof restored.planConfigSectionManuallySet === "boolean") {
+            state.planConfigSectionManuallySet.value = restored.planConfigSectionManuallySet;
+          }
+          if (
+            state.planConfigSectionManuallySet.value &&
+            restored.planConfigSectionCollapsed
+          ) {
+            state.planConfigSectionCollapsed.value = restored.planConfigSectionCollapsed;
+          }
           if (typeof restored.showAllSchemes === "boolean") {
             state.showAllSchemes.value = restored.showAllSchemes;
           }
@@ -431,6 +473,12 @@
           if (restored.filterS1) state.filterS1.value = restored.filterS1;
           if (restored.filterS2) state.filterS2.value = restored.filterS2;
           if (restored.filterS3) state.filterS3.value = restored.filterS3;
+          if (
+            typeof restored.equipRefiningSelectedName === "string" &&
+            state.equipRefiningSelectedName
+          ) {
+            state.equipRefiningSelectedName.value = restored.equipRefiningSelectedName;
+          }
         }
       }
     } catch (error) {
@@ -490,15 +538,15 @@
     }
 
     try {
-      const storedGearRefiningNavHintVersion = localStorage.getItem(
-        state.gearRefiningNavHintStorageKey
+      const storedEquipRefiningNavHintVersion = localStorage.getItem(
+        state.equipRefiningNavHintStorageKey
       );
-      state.showGearRefiningNavHintDot.value =
-        storedGearRefiningNavHintVersion !== state.gearRefiningNavHintVersion;
+      state.showEquipRefiningNavHintDot.value =
+        storedEquipRefiningNavHintVersion !== state.equipRefiningNavHintVersion;
     } catch (error) {
-      state.showGearRefiningNavHintDot.value = true;
-      recoveryApi.reportStorageIssue("storage.read", state.gearRefiningNavHintStorageKey, error, {
-        scope: "restore-gear-refining-nav-hint",
+      state.showEquipRefiningNavHintDot.value = true;
+      recoveryApi.reportStorageIssue("storage.read", state.equipRefiningNavHintStorageKey, error, {
+        scope: "restore-equip-refining-nav-hint",
       });
     }
     try {
@@ -627,13 +675,22 @@
         filterS1: state.filterS1.value,
         filterS2: state.filterS2.value,
         filterS3: state.filterS3.value,
+        equipRefiningSelectedName: state.equipRefiningSelectedName
+          ? state.equipRefiningSelectedName.value
+          : "",
         mobilePanel: state.mobilePanel.value,
         filterPanelManuallySet: Boolean(
           state.filterPanelManuallySet && state.filterPanelManuallySet.value
         ),
+        planConfigSectionManuallySet: Boolean(
+          state.planConfigSectionManuallySet && state.planConfigSectionManuallySet.value
+        ),
       };
       if (value.filterPanelManuallySet) {
         value.showFilterPanel = state.showFilterPanel.value;
+      }
+      if (value.planConfigSectionManuallySet) {
+        value.planConfigSectionCollapsed = state.planConfigSectionCollapsed.value;
       }
       return value;
     });

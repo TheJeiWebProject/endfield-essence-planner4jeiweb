@@ -37,7 +37,7 @@
     return;
   }
 
-  if (!dungeons.length || !weapons.length || !gears.length) {
+  if (!dungeons.length || !weapons.length || !equips.length) {
     finishPreload();
     showBootError({
       title: "数据文件缺失",
@@ -45,8 +45,8 @@
       details: [
         `副本数据：${dungeons.length ? "已加载" : "缺失"}`,
         `武器数据：${weapons.length ? "已加载" : "缺失"}`,
-        `装备数据：${gears.length ? "已加载" : "缺失"}`,
-        "请确认 ./data/dungeons.js、./data/weapons.js 与 ./data/gears.js 可访问",
+        `装备数据：${equips.length ? "已加载" : "缺失"}`,
+        "请确认 ./data/dungeons.js、./data/weapons.js 与 ./data/equip.js 可访问",
       ],
       suggestions: ["检查 data 目录与发布路径", "强制刷新页面后重试"],
     });
@@ -76,6 +76,9 @@
 
   const applyLazyImage = (el, src) => {
     if (!src) return;
+    if (el && el.style && el.style.display === "none") {
+      el.style.display = "";
+    }
     if (!lazyImageObserver) {
       if (el.src !== src) {
         el.src = src;
@@ -184,7 +187,7 @@
   };
 
   const modules = window.AppModules || {};
-  const readRuntimeEnv = () => {
+      const readRuntimeEnv = () => {
     const normalizeEnv = (value) => String(value || "").trim().toLowerCase();
     if (typeof window !== "undefined" && window.location && typeof window.location.search === "string") {
       try {
@@ -279,19 +282,43 @@
     typeof appTemplates.planConfigControl === "string" && appTemplates.planConfigControl.trim()
       ? appTemplates.planConfigControl.trim()
       : "<div></div>";
-  const gearRefiningListTemplate =
-    typeof appTemplates.gearRefiningList === "string" && appTemplates.gearRefiningList.trim()
-      ? appTemplates.gearRefiningList.trim()
+  const equipRefiningListTemplate =
+    typeof appTemplates.equipRefiningList === "string" && appTemplates.equipRefiningList.trim()
+      ? appTemplates.equipRefiningList.trim()
       : "<div></div>";
-  const gearRefiningDetailTemplate =
-    typeof appTemplates.gearRefiningDetail === "string" && appTemplates.gearRefiningDetail.trim()
-      ? appTemplates.gearRefiningDetail.trim()
+  const equipRefiningDetailTemplate =
+    typeof appTemplates.equipRefiningDetail === "string" && appTemplates.equipRefiningDetail.trim()
+      ? appTemplates.equipRefiningDetail.trim()
       : "<div></div>";
-  const gearRefiningRecommendationTemplate =
-    typeof appTemplates.gearRefiningRecommendation === "string" &&
-    appTemplates.gearRefiningRecommendation.trim()
-      ? appTemplates.gearRefiningRecommendation.trim()
+  const equipRefiningRecommendationTemplate =
+    typeof appTemplates.equipRefiningRecommendation === "string" &&
+    appTemplates.equipRefiningRecommendation.trim()
+      ? appTemplates.equipRefiningRecommendation.trim()
       : "<div></div>";
+  const strategyGuideDetailTemplate =
+    typeof appTemplates.strategyGuideDetail === "string" && appTemplates.strategyGuideDetail.trim()
+      ? appTemplates.strategyGuideDetail.trim()
+      : "<div></div>";
+
+  const formatMarkdownBlocks = (() => {
+    if (
+      typeof window !== "undefined" &&
+      window.__APP_SANITIZER__ &&
+      typeof window.__APP_SANITIZER__.tokenizeMarkdownBlocks === "function"
+    ) {
+      return window.__APP_SANITIZER__.tokenizeMarkdownBlocks;
+    }
+    return (value) => {
+      const text = String(value || "");
+      if (!text.trim()) return [];
+      return [
+        {
+          type: "paragraph",
+          tokens: [{ type: "text", text }],
+        },
+      ];
+    };
+  })();
 
   const planConfigControl = {
     props: {
@@ -312,6 +339,29 @@
       tOwnershipPriorityModeOptions: { type: Array, required: true },
       tStrictPriorityOrderOptions: { type: Array, required: true },
       tTerm: { type: Function, required: true },
+      weaponAttrS1Options: { type: Array, required: true },
+      weaponAttrS2Options: { type: Array, required: true },
+      weaponAttrS3Options: { type: Array, required: true },
+      customWeapons: { type: Array, default: () => [] },
+      customWeaponDraft: {
+        type: Object,
+        default: () => ({
+          name: "",
+          rarity: 6,
+          type: "自定义",
+          s1: "",
+          s2: "",
+          s3: "",
+        }),
+      },
+      customWeaponError: { type: [String, Object], default: null },
+      addCustomWeapon: { type: Function, required: true },
+      removeCustomWeapon: { type: Function, required: true },
+      resetCustomWeaponDraft: { type: Function, required: true },
+      isPlanConfigSectionCollapsed: { type: Function, required: true },
+      togglePlanConfigSectionCollapsed: { type: Function, required: true },
+      hasPreviewWeapons: { type: Boolean, required: true },
+      openWeaponAttrDataModal: { type: Function, required: true },
     },
     emits: ["toggle"],
     methods: {
@@ -320,6 +370,19 @@
         if (input && typeof input.click === "function") {
           input.click();
         }
+      },
+      resolveCustomWeaponError(error) {
+        if (!error) return "";
+        if (typeof error === "string") return error;
+        const key = error.key || "";
+        const params = error.params || null;
+        if (key && typeof this.t === "function") {
+          const resolved = this.t(key, params);
+          if (resolved && resolved !== key) {
+            return resolved;
+          }
+        }
+        return error.fallback || String(key || "");
       },
     },
     template: planConfigTemplate,
@@ -335,39 +398,39 @@
     template: `
 <div class="match-status-line">
   <span
-    class="match-status-chip"
+    class="weapon-ownership-badge match-status-badge"
     :class="{ 'is-owned': isWeaponOwned(weaponName), 'is-unowned': !isWeaponOwned(weaponName) }"
   >
     {{ isWeaponOwned(weaponName) ? t("badge.owned") : t("nav.not_owned") }}
   </span>
   <span
-    class="match-status-chip"
-    :class="{ 'is-essence-owned': isEssenceOwned(weaponName) }"
+    class="weapon-ownership-badge match-status-badge"
+    :class="{ 'is-owned': isEssenceOwned(weaponName), 'is-unowned': !isEssenceOwned(weaponName) }"
   >
     {{ isEssenceOwned(weaponName) ? t("nav.essence_owned") : t("badge.essence_not_owned") }}
   </span>
 </div>`,
   };
 
-  const gearRefiningList = {
+  const equipRefiningList = {
     props: {
       t: { type: Function, required: true },
       mobilePanel: { type: String, required: true },
       query: { type: String, required: true },
       groupedSets: { type: Array, required: true },
-      selectedGearName: { type: String, default: "" },
+      selectedEquipName: { type: String, default: "" },
       isSetCollapsed: { type: Function, required: true },
       toggleSetCollapsed: { type: Function, required: true },
-      selectGear: { type: Function, required: true },
-      hasGearImage: { type: Function, required: true },
-      gearImageSrc: { type: Function, required: true },
-      onGearImageError: { type: Function, required: true },
+      selectEquip: { type: Function, required: true },
+      hasEquipImage: { type: Function, required: true },
+      equipImageSrc: { type: Function, required: true },
+      onEquipImageError: { type: Function, required: true },
     },
     emits: ["update:query"],
-    template: gearRefiningListTemplate,
+    template: equipRefiningListTemplate,
   };
 
-  const gearRefiningRecommendation = {
+  const equipRefiningRecommendation = {
     props: {
       t: { type: Function, required: true },
       recommendation: { type: Object, required: true },
@@ -375,28 +438,133 @@
       hasMoreCandidates: { type: Boolean, required: true },
       expanded: { type: Boolean, required: true },
       toggleExpanded: { type: Function, required: true },
-      hasGearImage: { type: Function, required: true },
-      gearImageSrc: { type: Function, required: true },
-      onGearImageError: { type: Function, required: true },
+      hasEquipImage: { type: Function, required: true },
+      equipImageSrc: { type: Function, required: true },
+      onEquipImageError: { type: Function, required: true },
     },
-    template: gearRefiningRecommendationTemplate,
+    template: equipRefiningRecommendationTemplate,
   };
 
-  const gearRefiningDetail = {
+  const equipRefiningDetail = {
     props: {
       t: { type: Function, required: true },
       mobilePanel: { type: String, required: true },
-      selectedGear: { type: Object, default: null },
+      selectedEquip: { type: Object, default: null },
       recommendations: { type: Array, required: true },
       visibleRecommendationCandidates: { type: Function, required: true },
       hasMoreRecommendationCandidates: { type: Function, required: true },
       isRecommendationExpanded: { type: Function, required: true },
       toggleRecommendationExpanded: { type: Function, required: true },
-      hasGearImage: { type: Function, required: true },
-      gearImageSrc: { type: Function, required: true },
-      onGearImageError: { type: Function, required: true },
+      hasEquipImage: { type: Function, required: true },
+      equipImageSrc: { type: Function, required: true },
+      onEquipImageError: { type: Function, required: true },
     },
-    template: gearRefiningDetailTemplate,
+    template: equipRefiningDetailTemplate,
+  };
+
+  const markdownText = {
+    props: {
+      content: { type: String, default: "" },
+      className: { type: String, default: "" },
+    },
+    setup(props) {
+      const blocks = computed(() => formatMarkdownBlocks(props.content));
+      return { blocks };
+    },
+    template: `
+<div v-if="blocks.length" class="markdown-text" :class="className">
+  <template v-for="(block, blockIndex) in blocks" :key="blockIndex">
+    <p v-if="block.type === 'paragraph'" class="markdown-paragraph">
+      <template v-for="(token, tokenIndex) in block.tokens" :key="tokenIndex">
+        <br v-if="token.type === 'break'" />
+        <strong v-else-if="token.type === 'strong'">{{ token.text }}</strong>
+        <em v-else-if="token.type === 'em'">{{ token.text }}</em>
+        <code v-else-if="token.type === 'code'">{{ token.text }}</code>
+        <a
+          v-else-if="token.type === 'link'"
+          :href="token.href"
+          target="_blank"
+          rel="noopener"
+        >
+          {{ token.text }}
+        </a>
+        <span v-else>{{ token.text }}</span>
+      </template>
+    </p>
+    <ul v-else-if="block.type === 'list' && !block.ordered" class="markdown-list">
+      <li v-for="(item, itemIndex) in block.items" :key="itemIndex">
+        <template v-for="(token, tokenIndex) in item.tokens" :key="tokenIndex">
+          <br v-if="token.type === 'break'" />
+          <strong v-else-if="token.type === 'strong'">{{ token.text }}</strong>
+          <em v-else-if="token.type === 'em'">{{ token.text }}</em>
+          <code v-else-if="token.type === 'code'">{{ token.text }}</code>
+          <a
+            v-else-if="token.type === 'link'"
+            :href="token.href"
+            target="_blank"
+            rel="noopener"
+          >
+            {{ token.text }}
+          </a>
+          <span v-else>{{ token.text }}</span>
+        </template>
+      </li>
+    </ul>
+    <ol v-else-if="block.type === 'list' && block.ordered" class="markdown-list">
+      <li v-for="(item, itemIndex) in block.items" :key="itemIndex">
+        <template v-for="(token, tokenIndex) in item.tokens" :key="tokenIndex">
+          <br v-if="token.type === 'break'" />
+          <strong v-else-if="token.type === 'strong'">{{ token.text }}</strong>
+          <em v-else-if="token.type === 'em'">{{ token.text }}</em>
+          <code v-else-if="token.type === 'code'">{{ token.text }}</code>
+          <a
+            v-else-if="token.type === 'link'"
+            :href="token.href"
+            target="_blank"
+            rel="noopener"
+          >
+            {{ token.text }}
+          </a>
+          <span v-else>{{ token.text }}</span>
+        </template>
+      </li>
+    </ol>
+  </template>
+</div>`,
+  };
+
+  const strategyGuideDetail = {
+    props: {
+      t: { type: Function, required: true },
+      tTerm: { type: Function, required: true },
+      currentCharacter: { type: Object, default: null },
+      currentGuide: { type: Object, default: null },
+      guideRows: { type: Array, required: true },
+      teamSlots: { type: Array, required: true },
+      strategyCategory: { type: String, required: true },
+      strategyTab: { type: String, required: true },
+      setStrategyCategory: { type: Function, required: true },
+      setStrategyTab: { type: Function, required: true },
+      backToCharacterList: { type: Function, required: true },
+      showBackButton: { type: Boolean, default: true },
+      skillLevelLabels: { type: Array, required: true },
+      getSkillTables: { type: Function, required: true },
+      hasImage: { type: Function, required: true },
+      weaponImageSrc: { type: Function, required: true },
+      weaponCharacters: { type: Function, required: true },
+      characterImageSrc: { type: Function, required: true },
+      characterCardSrc: { type: Function, required: true },
+      handleCharacterCardError: { type: Function, required: true },
+      handleCharacterImageError: { type: Function, required: true },
+      hasEquipImage: { type: Function, required: true },
+      equipImageSrc: { type: Function, required: true },
+      hasItemImage: { type: Function, required: true },
+      itemImageSrc: { type: Function, required: true },
+      resolveItemLabel: { type: Function, required: true },
+      resolvePotentialName: { type: Function, required: true },
+      resolvePotentialDescription: { type: Function, required: true },
+    },
+    template: strategyGuideDetailTemplate,
   };
 
   const app = createApp({
@@ -404,6 +572,8 @@
     setup() {
       const ctx = { ref, computed, onMounted, onBeforeUnmount, watch, nextTick };
       const state = {};
+      state.editorIdentityDraft = ref({ id: "", name: "" });
+      state.commitEditorCharacterIdentity = () => {};
       const fallbackInterpolate = (key, params) => {
         const text = String(key || "");
         if (!params || typeof params !== "object") return text;
@@ -413,6 +583,7 @@
       };
       state.t = (key, params) => fallbackInterpolate(key, params);
       state.tTerm = (category, value) => String(value || "");
+      state.formatMarkdownBlocks = formatMarkdownBlocks;
       state.loadScriptOnce = loadScriptOnce;
       state.createUiScheduler = createUiScheduler;
       const runtimeEnv = readRuntimeEnv();
@@ -420,9 +591,45 @@
         window.__APP_RUNTIME_ENV__ = runtimeEnv;
       }
       announceStrictRuntimeEnv(runtimeEnv);
+      const showEditorEntry = runtimeEnv === "development" || runtimeEnv === "test";
+      state.showEditorEntry = showEditorEntry;
       const initializedModules = new Set();
       const providedCapabilities = new Set();
       const pendingInitContractWarnings = [];
+      const deferredInitModules = new Set();
+      const viewBundleRegistry = (() => {
+        if (typeof window === "undefined") return {};
+        const manifest =
+          window.__APP_RESOURCE_MANIFEST && typeof window.__APP_RESOURCE_MANIFEST === "object"
+            ? window.__APP_RESOURCE_MANIFEST
+            : null;
+        const raw =
+          manifest && manifest.app && typeof manifest.app === "object"
+            ? manifest.app.viewBundles
+            : null;
+        if (!raw || typeof raw !== "object") return {};
+        const normalized = {};
+        Object.keys(raw).forEach((viewKey) => {
+          const entry = raw[viewKey];
+          if (Array.isArray(entry)) {
+            normalized[viewKey] = { scripts: entry.slice(), init: [] };
+            return;
+          }
+          if (!entry || typeof entry !== "object") return;
+          const scripts = Array.isArray(entry.scripts) ? entry.scripts.slice() : [];
+          const init = Array.isArray(entry.init) ? entry.init.slice() : [];
+          if (!scripts.length && !init.length) return;
+          normalized[viewKey] = { scripts, init };
+        });
+        return normalized;
+      })();
+      Object.keys(viewBundleRegistry).forEach((viewKey) => {
+        const bundle = viewBundleRegistry[viewKey];
+        if (!bundle || !Array.isArray(bundle.init)) return;
+        bundle.init.forEach((name) => {
+          if (name) deferredInitModules.add(name);
+        });
+      });
       const markProvidedCapabilities = (fn) => {
         parseInitContractList(fn && fn.provides).forEach((capability) => {
           providedCapabilities.add(capability);
@@ -571,6 +778,9 @@
         pendingInitContractWarnings.push(sendReporter);
       };
       const runInitWithContract = (name) => {
+        if (deferredInitModules.has(name)) {
+          return "deferred";
+        }
         const fn = modules[name];
         if (typeof fn !== "function") {
           const missingError = new Error(`[init-contract] missing module initializer: ${name}`);
@@ -651,12 +861,190 @@
         "initUpdate",
         "initMedia",
         "initStrategy",
-        "initGearRefining",
+        "initEquipRefining",
+        "initEditor",
       ];
 
       initExecutionOrder.forEach((name) => {
         runInitWithContract(name);
       });
+
+      const prepareToastLeave = (el) => {
+        if (!el || typeof window === "undefined") return;
+        let rect = null;
+        const parsedTop = el.dataset ? Number.parseFloat(el.dataset.toastTop) : Number.NaN;
+        const parsedLeft = el.dataset ? Number.parseFloat(el.dataset.toastLeft) : Number.NaN;
+        const parsedWidth = el.dataset ? Number.parseFloat(el.dataset.toastWidth) : Number.NaN;
+        const parsedHeight = el.dataset ? Number.parseFloat(el.dataset.toastHeight) : Number.NaN;
+        if (Number.isFinite(parsedTop) && Number.isFinite(parsedLeft)) {
+          rect = {
+            top: parsedTop,
+            left: parsedLeft,
+            width: Number.isFinite(parsedWidth) ? parsedWidth : el.getBoundingClientRect().width,
+            height: Number.isFinite(parsedHeight) ? parsedHeight : el.getBoundingClientRect().height,
+          };
+        }
+        if (!rect && el.querySelector && state.toastLeaveRects && typeof state.toastLeaveRects.get === "function") {
+          const card = el.querySelector(".toast-card[data-toast-id]");
+          const toastId = card ? card.getAttribute("data-toast-id") : "";
+          if (toastId) {
+            const cached = state.toastLeaveRects.get(String(toastId));
+            if (cached) {
+              rect = cached;
+            }
+          }
+        }
+        if (!rect && typeof el.getBoundingClientRect === "function") {
+          rect = el.getBoundingClientRect();
+        }
+        if (!rect) return;
+        const computed = window.getComputedStyle ? window.getComputedStyle(el) : null;
+        const computedTransform = computed ? computed.transform : "";
+        el.style.position = "fixed";
+        el.style.top = `${rect.top}px`;
+        el.style.left = `${rect.left}px`;
+        el.style.width = `${rect.width}px`;
+        el.style.height = `${rect.height}px`;
+        el.style.margin = "0";
+        el.style.right = "auto";
+        el.style.bottom = "auto";
+        el.style.pointerEvents = "none";
+        if (computedTransform && computedTransform !== "none") {
+          el.style.transform = computedTransform;
+        } else {
+          el.style.transform = "translateX(0) translateY(0)";
+        }
+      };
+
+      const viewLoadState = ref({});
+      const normalizeViewKey = (view) => String(view || "").trim();
+      const isViewBundleRegistered = (view) => {
+        const key = normalizeViewKey(view);
+        const bundle = key ? viewBundleRegistry[key] : null;
+        return Boolean(bundle && Array.isArray(bundle.scripts) && bundle.scripts.length);
+      };
+      const getViewLoadEntry = (view) => {
+        const key = normalizeViewKey(view);
+        const entry = key && viewLoadState.value ? viewLoadState.value[key] : null;
+        if (entry && typeof entry === "object") return entry;
+        return { status: "idle", error: "" };
+      };
+      const setViewLoadEntry = (view, patch) => {
+        const key = normalizeViewKey(view);
+        if (!key) return;
+        const base = viewLoadState.value && viewLoadState.value[key] ? viewLoadState.value[key] : {};
+        viewLoadState.value = {
+          ...(viewLoadState.value || {}),
+          [key]: { ...base, ...(patch || {}) },
+        };
+      };
+      const isViewBundleLoading = (view) =>
+        isViewBundleRegistered(view) && getViewLoadEntry(view).status === "loading";
+      const isViewBundleFailed = (view) =>
+        isViewBundleRegistered(view) && getViewLoadEntry(view).status === "error";
+      const isViewBundleReady = (view) =>
+        !isViewBundleRegistered(view) || getViewLoadEntry(view).status === "ready";
+      const getViewBundleError = (view) =>
+        isViewBundleRegistered(view) ? String(getViewLoadEntry(view).error || "") : "";
+
+      const viewLoadRegistry = new Map();
+      const viewLoadRetryRegistry = new Set();
+      const describeViewLoadError = (error) => {
+        const message = String((error && error.message) || "");
+        const failed = message.replace(/^Failed to load:\\s*/i, "").trim();
+        return failed && failed !== message ? failed : message || "unknown";
+      };
+
+      let pendingStrategyCharacterId = null;
+
+      const ensureViewBundleLoaded = (view, options) => {
+        const key = normalizeViewKey(view);
+        if (!key) return Promise.resolve(false);
+        const bundle = viewBundleRegistry[key];
+        if (!bundle || !Array.isArray(bundle.scripts) || !bundle.scripts.length) {
+          if (isViewBundleRegistered(key) && !isViewBundleReady(key)) {
+            setViewLoadEntry(key, { status: "ready", error: "" });
+          }
+          return Promise.resolve(true);
+        }
+        const runViewInit = () => {
+          let initFailed = false;
+          if (Array.isArray(bundle.init)) {
+            bundle.init.forEach((name) => {
+              if (!name) return;
+              deferredInitModules.delete(name);
+              if (initializedModules.has(name)) return;
+              const result = runInitWithContract(name);
+              if (result !== "ok") initFailed = true;
+            });
+          }
+          if (key === "strategy" && pendingStrategyCharacterId !== null) {
+            if (state.selectedCharacterId && state.selectedCharacterId.value !== undefined) {
+              state.selectedCharacterId.value = pendingStrategyCharacterId;
+              pendingStrategyCharacterId = null;
+            }
+          }
+          if (initFailed) {
+            throw new Error("View init failed");
+          }
+        };
+        const handleViewLoadFailure = (error) => {
+          const detail = describeViewLoadError(error);
+          setViewLoadEntry(key, { status: "error", error: detail });
+          viewLoadRegistry.delete(key);
+          if (typeof console !== "undefined" && typeof console.warn === "function") {
+            console.warn("[view-bundle] load failed", key, error);
+          }
+          return false;
+        };
+        const scheduleForceRetry = (task) => {
+          if (!task || viewLoadRetryRegistry.has(key)) return;
+          viewLoadRetryRegistry.add(key);
+          Promise.resolve(task).then((result) => {
+            if (!viewLoadRetryRegistry.has(key)) return;
+            viewLoadRetryRegistry.delete(key);
+            if (!result) return;
+            try {
+              setViewLoadEntry(key, { status: "loading", error: "" });
+              runViewInit();
+              setViewLoadEntry(key, { status: "ready", error: "" });
+            } catch (error) {
+              handleViewLoadFailure(error);
+            }
+          });
+        };
+        if (viewLoadRegistry.has(key)) {
+          const existing = viewLoadRegistry.get(key);
+          if (options && options.force) {
+            scheduleForceRetry(existing);
+          }
+          return existing;
+        }
+        const task = (async () => {
+          setViewLoadEntry(key, { status: "loading", error: "" });
+          for (let index = 0; index < bundle.scripts.length; index += 1) {
+            await loadScriptOnce(bundle.scripts[index]);
+          }
+          runViewInit();
+          setViewLoadEntry(key, { status: "ready", error: "" });
+          return true;
+        })().catch(handleViewLoadFailure);
+        viewLoadRegistry.set(key, task);
+        return task;
+      };
+
+      const retryViewLoad = (view) => ensureViewBundleLoaded(view, { force: true });
+      const refreshPage = () => {
+        if (typeof window === "undefined") return;
+        if (typeof state.reloadBypassCache === "function") {
+          const url = new URL(window.location.href);
+          if (!url.searchParams.has("__reload_ts")) {
+            state.reloadBypassCache();
+            return;
+          }
+        }
+        window.location.reload();
+      };
 
       const weaponCatalog =
         typeof window !== "undefined" && Array.isArray(window.WEAPONS) ? window.WEAPONS : [];
@@ -693,14 +1081,23 @@
         if (view === "strategy") {
           return { view: "strategy", characterId, weaponNames, hasWeaponParam };
         }
-        if (view === "gear-refining") {
-          return { view: "gear-refining", weaponNames, hasWeaponParam, gearName };
+        if (view === "editor") {
+          return { view: "editor" };
+        }
+        if (view === "equip-refining") {
+          return { view: "equip-refining", weaponNames, hasWeaponParam };
         }
         if (view === "rerun-ranking") {
           return { view: "rerun-ranking" };
         }
         if (view === "match") {
           return { view: "match", matchSource };
+        }
+        if (view === "background") {
+          return { view: "background" };
+        }
+        if (view === "background") {
+          return { view: "background" };
         }
         return { view: "planner", weaponNames, hasWeaponParam };
       };
@@ -712,7 +1109,11 @@
         applyingRoute = true;
         state.currentView.value = route.view || "planner";
         if (route.view === "strategy") {
-          state.selectedCharacterId.value = route.characterId || null;
+          if (state.selectedCharacterId && state.selectedCharacterId.value !== undefined) {
+            state.selectedCharacterId.value = route.characterId || null;
+          } else {
+            pendingStrategyCharacterId = route.characterId || null;
+          }
         }
         if (route.view === "match") {
           state.matchSourceName.value = route.matchSource || "";
@@ -735,7 +1136,10 @@
           params.set("view", view);
         }
         if (view === "strategy") {
-          const id = state.selectedCharacterId.value;
+          const id =
+            state.selectedCharacterId && state.selectedCharacterId.value
+              ? state.selectedCharacterId.value
+              : pendingStrategyCharacterId || "";
           if (id) params.set("operator", id);
         }
         if (view === "match") {
@@ -761,18 +1165,27 @@
       const buildAnalyticsPath = () => {
         const view = state.currentView.value;
         if (view === "strategy") {
-          const id = state.selectedCharacterId.value;
+          const id =
+            state.selectedCharacterId && state.selectedCharacterId.value
+              ? state.selectedCharacterId.value
+              : pendingStrategyCharacterId || "";
           if (id) return `/strategy/${encodeURIComponent(id)}`;
           return "/strategy";
         }
-        if (view === "gear-refining") {
-          return "/gear-refining";
+        if (view === "editor") {
+          return "/editor";
+        }
+        if (view === "equip-refining") {
+          return "/equip-refining";
         }
         if (view === "rerun-ranking") {
           return "/rerun-ranking";
         }
         if (view === "match") {
           return "/match";
+        }
+        if (view === "background") {
+          return "/background";
         }
         return "/planner";
       };
@@ -781,8 +1194,10 @@
         "planner",
         "match",
         "strategy",
-        "gear-refining",
+        "editor",
+        "equip-refining",
         "rerun-ranking",
+        "background",
       ]);
       const syncLegacyScrollbarMode = () => {
         if (typeof document === "undefined" || !document.documentElement) return;
@@ -873,19 +1288,21 @@
         document.documentElement.classList.remove("legacy-scrollbar-hidden");
       });
 
-      watch(
-        [
+      if (typeof watch === "function") {
+        watch(
           state.currentView,
-          state.selectedCharacterId,
-          state.matchSourceName,
-          state.selectedGearRefiningGearName,
-        ],
-        () => {
-          syncLegacyScrollbarMode();
-          syncQuery(false);
-          trackPageview();
-        }
-      );
+          (view) => {
+            ensureViewBundleLoaded(view);
+          },
+          { immediate: true }
+        );
+      }
+
+      watch([state.currentView, () => (state.selectedCharacterId ? state.selectedCharacterId.value : null)], () => {
+        syncLegacyScrollbarMode();
+        syncQuery(false);
+        trackPageview();
+      });
 
       watch(
         state.selectedNames,
@@ -973,7 +1390,10 @@
         return (
           operation === "optional.load" ||
           scope === "boot.optional-resource" ||
+          scope === "compat.avif" ||
+          operation === "media.avif-check" ||
           scope === "i18n.missing-key" ||
+          errorName === "AvifUnsupportedError" ||
           errorName === "I18nMissingKeyError"
         );
       });
@@ -1177,14 +1597,33 @@
               }
             };
 
+      const formatSourceInfo = (source) => {
+        if (!source || typeof source !== "object") return "";
+
+        if (source.type === "planner-web") {
+          const ua = source.userAgent || "";
+          let platform = null;
+          if (ua.includes("Windows")) platform = "Windows";
+          else if (ua.includes("Mac OS")) platform = "macOS";
+          else if (ua.includes("Linux")) platform = "Linux";
+          else if (ua.includes("Android")) platform = "Android";
+          else if (ua.includes("iPhone") || ua.includes("iPad")) platform = "iOS";
+
+          const browserText = state.t ? state.t("plan_config.marks_import_source_browser") : "浏览器导出";
+          return platform ? `${browserText} (${platform})` : browserText;
+        }
+
+        return source.version ? `${source.type} v${source.version}` : source.type;
+      };
+
       return {
         currentView: state.currentView,
         setView: (view) => {
           if (
-            view === "gear-refining" &&
-            typeof state.markGearRefiningNavHintSeen === "function"
+            view === "equip-refining" &&
+            typeof state.markEquipRefiningNavHintSeen === "function"
           ) {
-            state.markGearRefiningNavHintSeen();
+            state.markEquipRefiningNavHintSeen();
           }
           if (
             view === "rerun-ranking" &&
@@ -1195,6 +1634,12 @@
           state.currentView.value = view;
           window.scrollTo(0, 0);
         },
+        isViewBundleLoading,
+        isViewBundleFailed,
+        isViewBundleReady,
+        getViewBundleError,
+        retryViewLoad,
+        refreshPage,
         locale: state.locale,
         languageOptions: state.languageOptions,
         langSwitchRef: state.langSwitchRef,
@@ -1247,9 +1692,13 @@
         handleMarksImportFile: state.handleMarksImportFile,
         cancelMarksImport: state.cancelMarksImport,
         confirmMarksImport: state.confirmMarksImport,
-        showGearRefiningNavHintDot: state.showGearRefiningNavHintDot,
+        formatSourceInfo,
+        showEquipRefiningNavHintDot: state.showEquipRefiningNavHintDot,
         showRerunRankingNavHintDot: state.showRerunRankingNavHintDot,
+        showEditorEntry: state.showEditorEntry,
         togglePlanConfig: state.togglePlanConfig,
+        isPlanConfigSectionCollapsed: state.isPlanConfigSectionCollapsed,
+        togglePlanConfigSectionCollapsed: state.togglePlanConfigSectionCollapsed,
         openWeaponAttrDataModal: state.openWeaponAttrDataModal,
         openWeaponDataIntegrityDetails: state.openWeaponDataIntegrityDetails,
         closeWeaponAttrDataModal: state.closeWeaponAttrDataModal,
@@ -1262,6 +1711,12 @@
         weaponAttrS1Options: state.weaponAttrS1Options,
         weaponAttrS2Options: state.weaponAttrS2Options,
         weaponAttrS3Options: state.weaponAttrS3Options,
+        customWeapons: state.customWeapons,
+        customWeaponDraft: state.customWeaponDraft,
+        customWeaponError: state.customWeaponError,
+        addCustomWeapon: state.addCustomWeapon,
+        removeCustomWeapon: state.removeCustomWeapon,
+        resetCustomWeaponDraft: state.resetCustomWeaponDraft,
         setWeaponAttrOverride: state.setWeaponAttrOverride,
         clearWeaponAttrOverride: state.clearWeaponAttrOverride,
         getWeaponAttrEditorValue: state.getWeaponAttrEditorValue,
@@ -1358,27 +1813,75 @@
         matchSourceWeapon: state.matchSourceWeapon,
         matchResults: state.matchResults,
         selectMatchSource: state.selectMatchSource,
-        gearRefiningMobilePanel: state.gearRefiningMobilePanel,
-        isGearRefiningCompact: state.isGearRefiningCompact,
-        setGearRefiningMobilePanel: state.setGearRefiningMobilePanel,
-        gearRefiningQuery: state.gearRefiningQuery,
-        gearRefiningGearCount: state.gearRefiningGearCount,
-        isGearRefiningSetCollapsed: state.isGearRefiningSetCollapsed,
-        toggleGearRefiningSetCollapsed: state.toggleGearRefiningSetCollapsed,
-        isRecommendationExpanded: state.isRecommendationExpanded,
-        toggleRecommendationExpanded: state.toggleRecommendationExpanded,
-        hasMoreRecommendationCandidates: state.hasMoreRecommendationCandidates,
-        visibleRecommendationCandidates: state.visibleRecommendationCandidates,
-        gearRefiningGroupedSets: state.gearRefiningGroupedSets,
-        selectedGearRefiningGearName: state.selectedGearRefiningGearName,
-        selectedGearRefiningGear: state.selectedGearRefiningGear,
-        selectGearRefiningGear: state.selectGearRefiningGear,
-        gearRefiningRecommendations: state.gearRefiningRecommendations,
-        gearRefiningGearImageSrc: state.gearRefiningGearImageSrc,
-        hasGearRefiningGearImage: state.hasGearRefiningGearImage,
-        handleGearRefiningGearImageError: state.handleGearRefiningGearImageError,
+        equipRefiningMobilePanel: state.equipRefiningMobilePanel,
+        get isEquipRefiningCompact() {
+          return state.isEquipRefiningCompact;
+        },
+        get setEquipRefiningMobilePanel() {
+          return state.setEquipRefiningMobilePanel;
+        },
+        get equipRefiningQuery() {
+          return state.equipRefiningQuery;
+        },
+        set equipRefiningQuery(value) {
+          if (state.equipRefiningQuery) {
+            state.equipRefiningQuery.value = value;
+          }
+        },
+        get equipRefiningEquipCount() {
+          return state.equipRefiningEquipCount;
+        },
+        get isEquipRefiningSetCollapsed() {
+          return state.isEquipRefiningSetCollapsed;
+        },
+        get toggleEquipRefiningSetCollapsed() {
+          return state.toggleEquipRefiningSetCollapsed;
+        },
+        get isRecommendationExpanded() {
+          return state.isRecommendationExpanded;
+        },
+        get toggleRecommendationExpanded() {
+          return state.toggleRecommendationExpanded;
+        },
+        get hasMoreRecommendationCandidates() {
+          return state.hasMoreRecommendationCandidates;
+        },
+        get visibleRecommendationCandidates() {
+          return state.visibleRecommendationCandidates;
+        },
+        get equipRefiningGroupedSets() {
+          return state.equipRefiningGroupedSets;
+        },
+        get selectedEquipRefiningEquipName() {
+          return state.selectedEquipRefiningEquipName;
+        },
+        get selectedEquipRefiningEquip() {
+          return state.selectedEquipRefiningEquip;
+        },
+        get selectEquipRefiningEquip() {
+          return state.selectEquipRefiningEquip;
+        },
+        get equipRefiningRecommendations() {
+          return state.equipRefiningRecommendations;
+        },
+        get equipRefiningEquipImageSrc() {
+          return state.equipRefiningEquipImageSrc;
+        },
+        get hasEquipRefiningEquipImage() {
+          return state.hasEquipRefiningEquipImage;
+        },
+        get handleEquipRefiningEquipImageError() {
+          return state.handleEquipRefiningEquipImageError;
+        },
         hasImage: state.hasImage,
         weaponImageSrc: state.weaponImageSrc,
+        hasEquipImage: state.hasEquipImage,
+        equipImageSrc: state.equipImageSrc,
+        resolveItemLabel: state.resolveItemLabel,
+        resolvePotentialName: state.resolvePotentialName,
+        resolvePotentialDescription: state.resolvePotentialDescription,
+        hasItemImage: state.hasItemImage,
+        itemImageSrc: state.itemImageSrc,
         weaponCharacters: state.weaponCharacters,
         characterImageSrc: state.characterImageSrc,
         characterCardSrc: state.characterCardSrc,
@@ -1411,12 +1914,23 @@
         storageErrorClearTargetKeys: state.storageErrorClearTargetKeys,
         storageFeedbackUrl: state.storageFeedbackUrl,
         dismissRuntimeWarning: state.dismissRuntimeWarning,
-        optionalFailureNotices: state.optionalFailureNotices,
-        optionalFailureNotice: state.optionalFailureNotice,
-        hasOptionalFailureHistory: state.hasOptionalFailureHistory,
+        toastNotices: state.toastNotices,
+        toastNotice: state.toastNotice,
+        toastDefaultDurationMs: state.toastDefaultDurationMs,
+        dismissToastNotice: state.dismissToastNotice,
+        pauseToastNotice: state.pauseToastNotice,
+        resumeToastNotice: state.resumeToastNotice,
+        isToastNoticePaused: state.isToastNoticePaused,
+        resumeToastNoticeIfNotHovered: state.resumeToastNoticeIfNotHovered,
+        pauseAllToastNotices: state.pauseAllToastNotices,
+        resumeAllToastNotices: state.resumeAllToastNotices,
+        prepareToastLeave,
+        runToastAction: state.runToastAction,
+        activateToastNotice: state.activateToastNotice,
+        hasRuntimeWarningHistory: state.hasRuntimeWarningHistory,
         dismissOptionalFailureNotice: state.dismissOptionalFailureNotice,
         openOptionalFailureDetailByLogId: state.openOptionalFailureDetailByLogId,
-        openLatestOptionalFailureDetail: state.openLatestOptionalFailureDetail,
+        openLatestRuntimeWarningDetail: state.openLatestRuntimeWarningDetail,
         ignoreRuntimeWarnings: state.ignoreRuntimeWarnings,
         requestIgnoreRuntimeWarnings: state.requestIgnoreRuntimeWarnings,
         cancelIgnoreRuntimeWarnings: state.cancelIgnoreRuntimeWarnings,
@@ -1489,36 +2003,311 @@
         handleBackgroundFile: state.handleBackgroundFile,
         clearCustomBackground: state.clearCustomBackground,
         // Strategy Module
-        characters: state.characters,
-        visibleCharacters: state.visibleCharacters,
-        characterGridTopSpacer: state.characterGridTopSpacer,
-        characterGridBottomSpacer: state.characterGridBottomSpacer,
+        get characters() {
+          return state.characters;
+        },
+        get visibleCharacters() {
+          return state.visibleCharacters;
+        },
+        get characterGridTopSpacer() {
+          return state.characterGridTopSpacer;
+        },
+        get characterGridBottomSpacer() {
+          return state.characterGridBottomSpacer;
+        },
         charactersLoading: state.charactersLoading,
         charactersLoaded: state.charactersLoaded,
-        selectedCharacterId: state.selectedCharacterId,
-        currentCharacter: state.currentCharacter,
-        currentGuide: state.currentGuide,
-        skillLevelLabels: state.skillLevelLabels,
-        getSkillTables: state.getSkillTables,
-        guideRows: state.guideRows,
-        teamSlots: state.teamSlots,
-        strategyCategory: state.strategyCategory,
-        strategyTab: state.strategyTab,
-        selectCharacter: state.selectCharacter,
-        setStrategyCategory: state.setStrategyCategory,
-        setStrategyTab: state.setStrategyTab,
-        backToCharacterList: state.backToCharacterList,
-        guideBeforeLeave: state.guideBeforeLeave,
-        guideEnter: state.guideEnter,
+        get selectedCharacterId() {
+          return state.selectedCharacterId;
+        },
+        get currentCharacter() {
+          return state.currentCharacter;
+        },
+        get currentGuide() {
+          return state.currentGuide;
+        },
+        get skillLevelLabels() {
+          return state.skillLevelLabels;
+        },
+        get getSkillTables() {
+          return state.getSkillTables;
+        },
+        get guideRows() {
+          return state.guideRows;
+        },
+        get teamSlots() {
+          return state.teamSlots;
+        },
+        get strategyCategory() {
+          return state.strategyCategory;
+        },
+        get strategyTab() {
+          return state.strategyTab;
+        },
+        get selectCharacter() {
+          return state.selectCharacter;
+        },
+        get setStrategyCategory() {
+          return state.setStrategyCategory;
+        },
+        get setStrategyTab() {
+          return state.setStrategyTab;
+        },
+        get backToCharacterList() {
+          return state.backToCharacterList;
+        },
+        get guideBeforeLeave() {
+          return state.guideBeforeLeave;
+        },
+        get guideEnter() {
+          return state.guideEnter;
+        },
+        // Editor Module
+        get editorReady() {
+          return state.editorReady;
+        },
+        get editorEnvLabel() {
+          return state.editorEnvLabel;
+        },
+        get editorCharacters() {
+          return state.editorCharacters;
+        },
+        get editorFilteredCharacters() {
+          return state.editorFilteredCharacters;
+        },
+        get editorSelectedId() {
+          return state.editorSelectedId;
+        },
+        get editorSelectedCharacter() {
+          return state.editorSelectedCharacter;
+        },
+        get editorSearchQuery() {
+          return state.editorSearchQuery;
+        },
+        get editorPickerOpen() {
+          return state.editorPickerOpen;
+        },
+        get editorIssues() {
+          return state.editorIssues;
+        },
+        get editorIssueMap() {
+          return state.editorIssueMap;
+        },
+        get editorIssueSummary() {
+          return state.editorIssueSummary;
+        },
+        get editorDirty() {
+          return state.editorDirty;
+        },
+        get editorImportFileName() {
+          return state.editorImportFileName;
+        },
+        get editorImportError() {
+          return state.editorImportError;
+        },
+        get editorImportInput() {
+          return state.editorImportInput;
+        },
+        get editorLoadError() {
+          return state.editorLoadError;
+        },
+        get editorJsonDraft() {
+          return state.editorJsonDraft;
+        },
+        get editorJsonErrors() {
+          return state.editorJsonErrors;
+        },
+        get editorPotentialsDraft() {
+          return state.editorPotentialsDraft;
+        },
+        get editorMaterialsDraft() {
+          return state.editorMaterialsDraft;
+        },
+        get editorIdentityDraft() {
+          return state.editorIdentityDraft;
+        },
+        get commitEditorCharacterIdentity() {
+          return state.commitEditorCharacterIdentity;
+        },
+        get editorMaterialLevels() {
+          return state.editorMaterialLevels;
+        },
+        get editorStrategyCategory() {
+          return state.editorStrategyCategory;
+        },
+        get editorStrategyTab() {
+          return state.editorStrategyTab;
+        },
+        get editorCurrentCharacter() {
+          return state.editorCurrentCharacter;
+        },
+        get editorCurrentGuide() {
+          return state.editorCurrentGuide;
+        },
+        get editorGuideRows() {
+          return state.editorGuideRows;
+        },
+        get editorTeamSlots() {
+          return state.editorTeamSlots;
+        },
+        get editorSkillLevelLabels() {
+          return state.editorSkillLevelLabels;
+        },
+        get editorGetSkillTables() {
+          return state.editorGetSkillTables;
+        },
+        get getEditorSkillValue() {
+          return state.getEditorSkillValue;
+        },
+        get updateEditorSkillValue() {
+          return state.updateEditorSkillValue;
+        },
+        get setEditorStrategyCategory() {
+          return state.setEditorStrategyCategory;
+        },
+        get setEditorStrategyTab() {
+          return state.setEditorStrategyTab;
+        },
+        get triggerEditorImport() {
+          return state.triggerEditorImport;
+        },
+        get handleEditorImportFile() {
+          return state.handleEditorImportFile;
+        },
+        get exportEditorData() {
+          return state.exportEditorData;
+        },
+        get runEditorValidation() {
+          return state.runEditorValidation;
+        },
+        get applyEditorAutoFix() {
+          return state.applyEditorAutoFix;
+        },
+        get resetEditorChanges() {
+          return state.resetEditorChanges;
+        },
+        get selectEditorCharacter() {
+          return state.selectEditorCharacter;
+        },
+        get addEditorCharacter() {
+          return state.addEditorCharacter;
+        },
+        get removeEditorCharacter() {
+          return state.removeEditorCharacter;
+        },
+        get addEditorSkill() {
+          return state.addEditorSkill;
+        },
+        get removeEditorSkill() {
+          return state.removeEditorSkill;
+        },
+        get addEditorSkillTable() {
+          return state.addEditorSkillTable;
+        },
+        get removeEditorSkillTable() {
+          return state.removeEditorSkillTable;
+        },
+        get addEditorSkillRow() {
+          return state.addEditorSkillRow;
+        },
+        get removeEditorSkillRow() {
+          return state.removeEditorSkillRow;
+        },
+        get addEditorTalent() {
+          return state.addEditorTalent;
+        },
+        get removeEditorTalent() {
+          return state.removeEditorTalent;
+        },
+        get addEditorBaseSkill() {
+          return state.addEditorBaseSkill;
+        },
+        get removeEditorBaseSkill() {
+          return state.removeEditorBaseSkill;
+        },
+        get addEditorEquipRow() {
+          return state.addEditorEquipRow;
+        },
+        get removeEditorEquipRow() {
+          return state.removeEditorEquipRow;
+        },
+        get addEditorEquipWeapon() {
+          return state.addEditorEquipWeapon;
+        },
+        get removeEditorEquipWeapon() {
+          return state.removeEditorEquipWeapon;
+        },
+        get getEditorEquipSlotValue() {
+          return state.getEditorEquipSlotValue;
+        },
+        get updateEditorEquipSlotField() {
+          return state.updateEditorEquipSlotField;
+        },
+        get clearEditorEquipSlot() {
+          return state.clearEditorEquipSlot;
+        },
+        get addEditorTeamSlot() {
+          return state.addEditorTeamSlot;
+        },
+        get removeEditorTeamSlot() {
+          return state.removeEditorTeamSlot;
+        },
+        get addEditorTeamOption() {
+          return state.addEditorTeamOption;
+        },
+        get removeEditorTeamOption() {
+          return state.removeEditorTeamOption;
+        },
+        get addEditorTeamWeapon() {
+          return state.addEditorTeamWeapon;
+        },
+        get removeEditorTeamWeapon() {
+          return state.removeEditorTeamWeapon;
+        },
+        get addEditorTeamEquip() {
+          return state.addEditorTeamEquip;
+        },
+        get removeEditorTeamEquip() {
+          return state.removeEditorTeamEquip;
+        },
+        get syncEditorJsonField() {
+          return state.syncEditorJsonField;
+        },
+        get applyEditorJsonField() {
+          return state.applyEditorJsonField;
+        },
+        get formatEditorJsonField() {
+          return state.formatEditorJsonField;
+        },
+        get updateEditorPotentials() {
+          return state.updateEditorPotentials;
+        },
+        get addEditorPotential() {
+          return state.addEditorPotential;
+        },
+        get removeEditorPotential() {
+          return state.removeEditorPotential;
+        },
+        get moveEditorPotential() {
+          return state.moveEditorPotential;
+        },
+        get updateEditorPotentialField() {
+          return state.updateEditorPotentialField;
+        },
+        get updateEditorMaterialLevel() {
+          return state.updateEditorMaterialLevel;
+        },
       };
     },
   });
 
   app.component("PlanConfigControl", planConfigControl);
   app.component("MatchStatusLine", matchStatusLine);
-  app.component("GearRefiningList", gearRefiningList);
-  app.component("GearRefiningDetail", gearRefiningDetail);
-  app.component("GearRefiningRecommendation", gearRefiningRecommendation);
+  app.component("MarkdownText", markdownText);
+  app.component("EquipRefiningList", equipRefiningList);
+  app.component("EquipRefiningDetail", equipRefiningDetail);
+  app.component("EquipRefiningRecommendation", equipRefiningRecommendation);
+  app.component("StrategyGuideDetail", strategyGuideDetail);
   app.directive("lazy-src", lazyImageDirective);
   app.mount("#app");
 })();

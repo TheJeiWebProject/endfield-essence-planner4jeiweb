@@ -144,15 +144,15 @@
                   {{ t("tutorial.don_t_auto_open_this_version_s_tutorial") }}
                 </label>
               </div>
-              <div v-if="hasOptionalFailureHistory" class="secondary-item">
-                <div class="secondary-label">{{ t("error.optional_feature_load_failed") }}</div>
+              <div v-if="hasRuntimeWarningHistory" class="secondary-item">
+                <div class="secondary-label">{{ t("error.runtime_warning_history") }}</div>
                 <div class="secondary-actions">
-                  <button class="ghost-button secondary-warning-action" @click="openLatestOptionalFailureDetail">
-                    {{ t("error.view_optional_failure_details") }}
+                  <button class="ghost-button secondary-warning-action" @click="openLatestRuntimeWarningDetail">
+                    {{ t("error.view_runtime_warning_details") }}
                   </button>
                 </div>
                 <div class="secondary-hint secondary-warning">
-                  {{ t("warning.some_optional_features_could_not_be_loaded_core_page_usa") }}
+                  {{ t("warning.runtime_warning_history_hint") }}
                 </div>
               </div>
             </div>
@@ -183,15 +183,15 @@
           </button>
           <button 
             class="nav-item" 
-            :class="{ active: currentView === 'gear-refining' }" 
-            @click="setView('gear-refining')"
+            :class="{ active: currentView === 'equip-refining' }" 
+            @click="setView('equip-refining')"
           >
             <span
-              v-if="showGearRefiningNavHintDot"
+              v-if="showEquipRefiningNavHintDot"
               class="nav-hint-dot"
               aria-hidden="true"
             >NEW</span>
-            {{ t("nav.gear_refining") }}
+            {{ t("nav.equip_refining") }}
           </button>
           <button
             class="nav-item"
@@ -204,6 +204,21 @@
               aria-hidden="true"
             >NEW</span>
             {{ t("nav.rerun_ranking") }}
+          </button>
+          <button
+            class="nav-item"
+            :class="{ active: currentView === 'background' }"
+            @click="setView('background')"
+          >
+            {{ t("nav.background_view") }}
+          </button>
+          <button
+            v-if="showEditorEntry"
+            class="nav-item"
+            :class="{ active: currentView === 'editor' }"
+            @click="setView('editor')"
+          >
+            编辑器
           </button>
           </nav>
         </div>
@@ -229,9 +244,11 @@
           <button class="about-button perf-keep" @click="setPerfMode('low')">{{ t("button.keep_low_gpu") }}</button>
         </div>
       </div>
-      <main class="layout">
-        <transition name="view-switch" mode="out-in">
-          <div v-if="currentView === 'planner'" key="planner" class="view-shell planner-shell">
+      <transition name="view-switch" mode="out-in">
+        <div v-if="currentView !== 'background'" key="layout" class="layout-shell">
+          <main class="layout">
+            <transition name="view-switch" mode="out-in">
+              <div v-if="currentView === 'planner'" key="planner" class="view-shell planner-shell">
         <div class="mobile-tabs">
           <button
             class="mobile-tab"
@@ -269,6 +286,8 @@
                 :recommendation-config="recommendationConfig"
                 :show-plan-config="showPlanConfig"
                 :show-plan-config-hint-dot="showPlanConfigHintDot"
+                :is-plan-config-section-collapsed="isPlanConfigSectionCollapsed"
+                :toggle-plan-config-section-collapsed="togglePlanConfigSectionCollapsed"
                 :show-weapon-attrs="showWeaponAttrs"
                 :show-weapon-ownership="showWeaponOwnership"
                 :toggle-show-weapon-ownership="toggleShowWeaponOwnership"
@@ -281,6 +300,17 @@
                 :t-region-priority-mode-options="tRegionPriorityModeOptions"
                 :t-ownership-priority-mode-options="tOwnershipPriorityModeOptions"
                 :t-strict-priority-order-options="tStrictPriorityOrderOptions"
+                :weapon-attr-s1-options="weaponAttrS1Options"
+                :weapon-attr-s2-options="weaponAttrS2Options"
+                :weapon-attr-s3-options="weaponAttrS3Options"
+                :custom-weapons="customWeapons"
+                :custom-weapon-draft="customWeaponDraft"
+                :custom-weapon-error="customWeaponError"
+                :add-custom-weapon="addCustomWeapon"
+                :remove-custom-weapon="removeCustomWeapon"
+                :reset-custom-weapon-draft="resetCustomWeaponDraft"
+                :has-preview-weapons="hasPreviewWeapons"
+                :open-weapon-attr-data-modal="openWeaponAttrDataModal"
                 @toggle="togglePlanConfig"
               ></plan-config-control>
             </div>
@@ -331,14 +361,6 @@
               </button>
             </div>
           </transition>
-          <div v-if="hasPreviewWeapons" class="attr-hint weapon-attr-warning">
-            <span class="attr-hint-text weapon-attr-warning-text">
-              {{ t("error.weapon_attribute_data_preview_detected") }}
-            </span>
-            <button class="ghost-button attr-hint-dismiss weapon-attr-warning-action" @click="openWeaponAttrDataModal">
-              {{ t("button.manage_weapon_attribute_data") }}
-            </button>
-          </div>
           <div v-if="hasDataIntegrityWeaponAttrs" class="attr-hint weapon-attr-warning">
             <span class="attr-hint-text weapon-attr-warning-text">
               {{ t("error.weapon_data_integrity_detected_count", { count: dataIntegrityWeaponAttrRows.length }) }}
@@ -526,6 +548,9 @@
                   />
                   <span class="weapon-up-chip-fallback">{{ t("up_badge_text") }}</span>
                 </div>
+                <div v-if="weapon.isCustom" class="weapon-custom-chip">
+                  {{ t("badge.custom_weapon") }}
+                </div>
                 <div v-if="getSelectorHiddenReason(weapon)" class="weapon-hidden-chip">
                   {{ t("nav.hidden") }}
                 </div>
@@ -541,7 +566,9 @@
                 {{ isWeaponOwned(weapon.name) ? t("badge.owned") : t("nav.not_owned") }}
               </span>
               <div class="weapon-name">
-                <div class="weapon-title">{{ tTerm("weapon", weapon.name) }}</div>
+                <div class="weapon-title">
+                  <span class="weapon-title-text">{{ tTerm("weapon", weapon.name) }}</span>
+                </div>
               </div>
             </div>
             <div
@@ -680,6 +707,9 @@
                 <span class="rarity" :style="rarityTextStyle(weapon.rarity)">
                   {{ weapon.rarity }}★
                 </span>
+                <span v-if="weapon.isCustom" class="badge custom-weapon-badge">
+                  {{ t("badge.custom_weapon") }}
+                </span>
                 <span class="badge" v-if="selectedNameSet.has(weapon.name)">{{ t("nav.selected") }}</span>
                 <span class="badge muted" v-if="isUnowned(weapon.name)">{{ t("nav.not_owned") }}</span>
                 <span class="badge muted" v-if="isEssenceOwned(weapon.name)">{{ t("nav.essence_owned") }}</span>
@@ -755,6 +785,8 @@
                 :recommendation-config="recommendationConfig"
                 :show-plan-config="showPlanConfig"
                 :show-plan-config-hint-dot="showPlanConfigHintDot"
+                :is-plan-config-section-collapsed="isPlanConfigSectionCollapsed"
+                :toggle-plan-config-section-collapsed="togglePlanConfigSectionCollapsed"
                 :show-weapon-attrs="showWeaponAttrs"
                 :show-weapon-ownership="showWeaponOwnership"
                 :toggle-show-weapon-ownership="toggleShowWeaponOwnership"
@@ -767,6 +799,17 @@
                 :t-region-priority-mode-options="tRegionPriorityModeOptions"
                 :t-ownership-priority-mode-options="tOwnershipPriorityModeOptions"
                 :t-strict-priority-order-options="tStrictPriorityOrderOptions"
+                :weapon-attr-s1-options="weaponAttrS1Options"
+                :weapon-attr-s2-options="weaponAttrS2Options"
+                :weapon-attr-s3-options="weaponAttrS3Options"
+                :custom-weapons="customWeapons"
+                :custom-weapon-draft="customWeaponDraft"
+                :custom-weapon-error="customWeaponError"
+                :add-custom-weapon="addCustomWeapon"
+                :remove-custom-weapon="removeCustomWeapon"
+                :reset-custom-weapon-draft="resetCustomWeaponDraft"
+                :has-preview-weapons="hasPreviewWeapons"
+                :open-weapon-attr-data-modal="openWeaponAttrDataModal"
                 @toggle="togglePlanConfig"
               ></plan-config-control>
               <div class="pill">{{ t("nav.selected") }} {{ selectedCount }} / {{ t("nav.pending") }} {{ pendingCount }} {{ t("nav.weapons_2") }}</div>
@@ -893,6 +936,9 @@
                     </span>
                     <span class="rarity" :style="rarityTextStyle(weapon.rarity)">
                       {{ weapon.rarity }}★
+                    </span>
+                    <span v-if="weapon.isCustom" class="badge custom-weapon-badge">
+                      {{ t("badge.custom_weapon") }}
                     </span>
                     <span class="badge">{{ t("nav.selected") }}</span>
                     <span v-if="weapon.short" class="weapon-short">

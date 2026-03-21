@@ -2,14 +2,14 @@
   const modules = (window.AppModules = window.AppModules || {});
 
   modules.initUi = function initUi(ctx, state) {
-    const { ref, onMounted, onBeforeUnmount, nextTick } = ctx;
+    const { ref, computed, onMounted, onBeforeUnmount, nextTick } = ctx;
 
     const showBackToTop = state.showBackToTop;
     const showLangMenu = state.showLangMenu;
     const showSecondaryMenu = state.showSecondaryMenu;
     const showPlanConfig = state.showPlanConfig;
     const showPlanConfigHintDot = state.showPlanConfigHintDot;
-    const showGearRefiningNavHintDot = state.showGearRefiningNavHintDot;
+    const showEquipRefiningNavHintDot = state.showEquipRefiningNavHintDot;
     const showRerunRankingNavHintDot = state.showRerunRankingNavHintDot;
     const isPortrait = state.isPortrait;
     const updateLangMenuPlacement = state.updateLangMenuPlacement;
@@ -76,18 +76,57 @@
 
     const runtimeWarningLogLimit = 20;
     const runtimeWarningDedupWindowMs = 4000;
+    const toastVisibleLimit = 5;
+    const toastDefaultDurationMs = 6500;
+    const toastDismissBufferMs = 120;
+    const toastLastSeenAt = new Map();
+    const toastTimers = new Map();
+    const toastTimerMeta = new Map();
+    const toastManualPause = new Set();
+    const toastManualPauseMeta = new Map();
+    const toastHoverPause = new Set();
+    const toastLeaveRects = new Map();
+    const toastPauseEpoch = ref(0);
+    const markToastPauseChanged = () => {
+      toastPauseEpoch.value = (toastPauseEpoch.value + 1) % 1000000;
+    };
+    const setToastPaused = (noticeId, paused) => {
+      const key = String(noticeId || "");
+      if (!key) return;
+      const wasPaused = toastManualPause.has(key);
+      if (paused) {
+        toastManualPause.add(key);
+      } else {
+        toastManualPause.delete(key);
+      }
+      if (toastManualPause.has(key) !== wasPaused) {
+        markToastPauseChanged();
+      }
+    };
+    let toastPointerTrackerReady = false;
+    let toastPointerPosition = null;
+    let toastPointerMoveHandler = null;
+    let toastPointerSyncHandle = 0;
     const optionalFailureNotificationDedupWindowMs = 10000;
-    const optionalFailureVisibleLimit = 2;
-    const optionalFailureToastDurationMs = 6500;
     const optionalFailureQueueKey = "__bootOptionalLoadFailures";
     const optionalFailureEventName = "planner:optional-resource-failed";
     let optionalFailurePollTimer = null;
-    const optionalFailureToastTimers = new Map();
     let lastRuntimeWarningSignature = "";
     let lastRuntimeWarningAt = 0;
-    const optionalFailureLastSeenAt = new Map();
-    const optionalFailureNotices = state.optionalFailureNotices || ref([]);
-    const optionalFailureNotice = state.optionalFailureNotice || ref(null);
+    const toastNotices = state.toastNotices || ref([]);
+    const toastNotice = state.toastNotice || ref(null);
+    const runtimeWarningLogs = state.runtimeWarningLogs || ref([]);
+    if (!state.runtimeWarningLogs) {
+      state.runtimeWarningLogs = runtimeWarningLogs;
+    }
+    const hasRuntimeWarningHistory =
+      state.hasRuntimeWarningHistory && typeof state.hasRuntimeWarningHistory === "object"
+        ? state.hasRuntimeWarningHistory
+        : computed(
+            () =>
+              Array.isArray(runtimeWarningLogs.value) && runtimeWarningLogs.value.length > 0
+          );
+    state.hasRuntimeWarningHistory = hasRuntimeWarningHistory;
     const optionalFailureHistory = state.optionalFailureHistory || ref([]);
     const hasOptionalFailureHistory = state.hasOptionalFailureHistory || ref(false);
     hasOptionalFailureHistory.value =
@@ -125,10 +164,12 @@
           : typeof state.t === "function"
           ? state.t("error.page_init_summary")
           : "页面初始化阶段发生异常，部分功能可能不可用。";
+      const detail = meta && meta.detail ? String(meta.detail) : "";
       return {
         id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
         title,
         summary,
+        detail,
         occurredAt: nowIsoString(),
         operation,
         key,
@@ -155,105 +196,432 @@
       }
       return lines.join("\n");
     };
-    const syncOptionalFailurePrimaryNotice = () => {
-      if (!optionalFailureNotice || !optionalFailureNotices) return;
-      const list = Array.isArray(optionalFailureNotices.value) ? optionalFailureNotices.value : [];
-      optionalFailureNotice.value = list.length ? list[0] : null;
+    const syncToastPrimaryNotice = () => {
+      if (!toastNotice || !toastNotices) return;
+      const list = Array.isArray(toastNotices.value) ? toastNotices.value : [];
+      toastNotice.value = list.length ? list[0] : null;
     };
-    const setVisibleOptionalFailureNotices = (nextList) => {
-      if (!optionalFailureNotices) return;
-      const list = Array.isArray(nextList) ? nextList.slice(0, optionalFailureVisibleLimit) : [];
-      optionalFailureNotices.value = list;
-      syncOptionalFailurePrimaryNotice();
+    let toastQueue = [];
+    function snapshotToastLeaveRects() {
+      if (typeof document === "undefined") return;
+      toastLeaveRects.clear();
+      const items = document.querySelectorAll(".toast-stack .planner-toast");
+      items.forEach((el) => {
+        if (!el || !el.getBoundingClientRect) return;
+        const card = el.querySelector ? el.querySelector(".toast-card[data-toast-id]") : null;
+        const id = card ? card.getAttribute("data-toast-id") : "";
+        if (!id) return;
+        const rect = el.getBoundingClientRect();
+        toastLeaveRects.set(String(id), rect);
+        if (el.dataset) {
+          el.dataset.toastTop = String(rect.top);
+          el.dataset.toastLeft = String(rect.left);
+          el.dataset.toastWidth = String(rect.width);
+          el.dataset.toastHeight = String(rect.height);
+        }
+      });
+    }
+    const setToastQueue = (nextQueue) => {
+      toastQueue = Array.isArray(nextQueue) ? nextQueue.filter(Boolean) : [];
     };
-    const clearOptionalFailureToastTimer = (noticeId) => {
+    const setVisibleToastNotices = (nextList) => {
+      if (!toastNotices) return;
+      const list = Array.isArray(nextList) ? nextList.slice(0, toastVisibleLimit) : [];
+      snapshotToastLeaveRects();
+      toastNotices.value = list;
+      syncToastPrimaryNotice();
+      requestToastPointerSync();
+    };
+    const fillToastVisibleFromQueue = () => {
+      if (!toastNotices) return;
+      if (!toastQueue.length) return;
+      const current = Array.isArray(toastNotices.value) ? toastNotices.value : [];
+      if (current.length >= toastVisibleLimit) return;
+      const needed = toastVisibleLimit - current.length;
+      if (needed <= 0) return;
+      const pulled = toastQueue.splice(0, needed);
+      if (!pulled.length) return;
+      const next = current.concat(pulled);
+      setVisibleToastNotices(next);
+      pulled.forEach((item) => {
+        scheduleToastAutoDismiss(item);
+      });
+    };
+    const clearToastTimer = (noticeId, options = {}) => {
       const key = String(noticeId || "");
       if (!key) return;
-      const timer = optionalFailureToastTimers.get(key);
-      if (!timer) return;
-      clearTimeout(timer);
-      optionalFailureToastTimers.delete(key);
+      const timer = toastTimers.get(key);
+      if (timer) {
+        clearTimeout(timer);
+        toastTimers.delete(key);
+      }
+      if (!options.keepMeta) {
+        toastTimerMeta.delete(key);
+        toastHoverPause.delete(key);
+      }
     };
-    const clearAllOptionalFailureToastTimers = () => {
-      for (const timer of optionalFailureToastTimers.values()) {
+    const clearAllToastTimers = () => {
+      for (const timer of toastTimers.values()) {
         clearTimeout(timer);
       }
-      optionalFailureToastTimers.clear();
+      toastTimers.clear();
+      toastTimerMeta.clear();
     };
-    const removeVisibleOptionalFailureNotice = (noticeId) => {
-      if (!optionalFailureNotices) return;
+    const removeVisibleToastNotice = (noticeId) => {
+      if (!toastNotices) return;
       const key = String(noticeId || "");
       if (!key) {
-        setVisibleOptionalFailureNotices([]);
+        setVisibleToastNotices([]);
+        fillToastVisibleFromQueue();
         return;
       }
-      const current = Array.isArray(optionalFailureNotices.value) ? optionalFailureNotices.value : [];
+      setToastPaused(key, false);
+      toastManualPauseMeta.delete(key);
+      const current = Array.isArray(toastNotices.value) ? toastNotices.value : [];
       const next = current.filter((item) => String((item && item.id) || "") !== key);
-      setVisibleOptionalFailureNotices(next);
+      setVisibleToastNotices(next);
+      fillToastVisibleFromQueue();
     };
-    const scheduleOptionalFailureAutoDismiss = (noticeId) => {
+    const scheduleToastAutoDismiss = (notice, options = {}) => {
+      if (!notice || !notice.id) return;
+      const key = String(notice.id);
+      if (toastManualPause.has(key) && !options.allowPaused) {
+        return;
+      }
+      const baseDuration = Number.isFinite(notice.durationMs)
+        ? Number(notice.durationMs)
+        : toastDefaultDurationMs;
+      const hasRemaining = Number.isFinite(options.remainingMs);
+      const duration = hasRemaining ? Number(options.remainingMs) : baseDuration;
+      if (!Number.isFinite(duration) || duration <= 0) return;
+      const timeoutDuration = hasRemaining ? duration : duration + toastDismissBufferMs;
+      clearToastTimer(notice.id);
+      const startedAt = Date.now();
+      toastTimerMeta.set(key, {
+        remainingMs: timeoutDuration,
+        startedAt,
+      });
+      const timer = setTimeout(() => {
+        toastTimers.delete(notice.id);
+        toastTimerMeta.delete(key);
+        removeVisibleToastNotice(notice.id);
+      }, timeoutDuration);
+      toastTimers.set(notice.id, timer);
+    };
+
+    const syncPausedToastsWithPointer = (options = {}) => {
+      if (!toastPointerPosition) return;
+      if (typeof document === "undefined") return;
+      const fromPointerMove = Boolean(options.fromPointerMove);
+      const elements = Array.from(document.querySelectorAll("[data-toast-id]"));
+      const insideIds = new Set();
+      const x = toastPointerPosition.x;
+      const y = toastPointerPosition.y;
+      elements.forEach((el) => {
+        const id = el.getAttribute("data-toast-id");
+        if (!id) return;
+        const rect = el.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          insideIds.add(String(id));
+        }
+      });
+      const toPause = Array.from(insideIds).filter(
+        (id) => !toastManualPause.has(id) && !toastHoverPause.has(id)
+      );
+      const toResume = fromPointerMove
+        ? Array.from(toastHoverPause).filter((id) => !insideIds.has(id))
+        : [];
+      toPause.forEach((id) => {
+        toastHoverPause.add(id);
+        pauseToastNotice(id);
+      });
+      toResume.forEach((id) => {
+        toastHoverPause.delete(id);
+        resumeToastNotice(id);
+      });
+    };
+
+    const requestToastPointerSync = () => {
+      if (!toastPointerPosition) return;
+      if (toastPointerSyncHandle) return;
+      if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+        toastPointerSyncHandle = setTimeout(() => {
+          toastPointerSyncHandle = 0;
+          syncPausedToastsWithPointer({ fromPointerMove: false });
+        }, 0);
+        return;
+      }
+      toastPointerSyncHandle = window.requestAnimationFrame(() => {
+        toastPointerSyncHandle = 0;
+        syncPausedToastsWithPointer({ fromPointerMove: false });
+      });
+    };
+
+    const escapeToastSelector = (value) => {
+      if (typeof window !== "undefined" && window.CSS && typeof window.CSS.escape === "function") {
+        return window.CSS.escape(value);
+      }
+      return String(value).replace(/([\"'\\\\])/g, "\\$1");
+    };
+
+    const ensureToastPointerTracker = () => {
+      if (toastPointerTrackerReady) return;
+      if (typeof window === "undefined" || typeof document === "undefined") return;
+      toastPointerTrackerReady = true;
+      toastPointerMoveHandler = (event) => {
+        toastPointerPosition = { x: event.clientX, y: event.clientY };
+        syncPausedToastsWithPointer({ fromPointerMove: true });
+      };
+      document.addEventListener("pointermove", toastPointerMoveHandler, { passive: true });
+    };
+
+    const pauseToastNotice = (noticeId) => {
       const key = String(noticeId || "");
       if (!key) return;
-      clearOptionalFailureToastTimer(key);
-      const timer = setTimeout(() => {
-        optionalFailureToastTimers.delete(key);
-        removeVisibleOptionalFailureNotice(key);
-      }, optionalFailureToastDurationMs);
-      optionalFailureToastTimers.set(key, timer);
-    };
-    const dismissOptionalFailureNotice = (noticeId) => {
-      if (!optionalFailureNotices) return;
-      if (!noticeId) {
-        const first =
-          Array.isArray(optionalFailureNotices.value) && optionalFailureNotices.value.length
-            ? optionalFailureNotices.value[0]
-            : null;
-        if (!first || !first.id) return;
-        clearOptionalFailureToastTimer(first.id);
-        removeVisibleOptionalFailureNotice(first.id);
+      ensureToastPointerTracker();
+      setToastPaused(key, true);
+      toastManualPauseMeta.set(key, { pausedAt: Date.now() });
+      const meta = toastTimerMeta.get(key);
+      if (!meta || !toastTimers.has(key)) {
+        const notice = getToastNoticeById(key);
+        const baseDuration =
+          notice && Number.isFinite(notice.durationMs)
+            ? Number(notice.durationMs)
+            : toastDefaultDurationMs;
+        if (notice && Number.isFinite(baseDuration) && baseDuration > 0 && !toastTimerMeta.has(key)) {
+          toastTimerMeta.set(key, { remainingMs: baseDuration + toastDismissBufferMs, startedAt: 0 });
+        }
         return;
       }
-      clearOptionalFailureToastTimer(noticeId);
-      removeVisibleOptionalFailureNotice(noticeId);
+      const now = Date.now();
+      const elapsed = Math.max(0, now - meta.startedAt);
+      const remaining = Math.max(0, Number(meta.remainingMs) - elapsed);
+      clearToastTimer(key, { keepMeta: true });
+      toastTimerMeta.set(key, { remainingMs: remaining, startedAt: 0 });
+    };
+
+    const resumeToastNotice = (noticeId) => {
+      const key = String(noticeId || "");
+      if (!key) return;
+      setToastPaused(key, false);
+      toastManualPauseMeta.delete(key);
+      if (toastTimers.has(key)) return;
+      const meta = toastTimerMeta.get(key);
+      if (!meta) return;
+      const notice = getToastNoticeById(key);
+      if (!notice) {
+        toastTimerMeta.delete(key);
+        return;
+      }
+      const remaining = Number(meta.remainingMs);
+      if (!Number.isFinite(remaining) || remaining <= 0) {
+        toastTimerMeta.delete(key);
+        removeVisibleToastNotice(key);
+        return;
+      }
+      scheduleToastAutoDismiss(notice, { remainingMs: remaining, allowPaused: true });
+    };
+
+    const resumeToastNoticeIfNotHovered = (noticeId, options = {}) => {
+      const key = String(noticeId || "");
+      if (!key) return;
+      if (!options.fromPointerMove) return;
+      if (typeof window === "undefined" || typeof document === "undefined") {
+        resumeToastNotice(key);
+        return;
+      }
+      syncPausedToastsWithPointer({ fromPointerMove: true });
+    };
+
+    const isToastNoticePaused = (noticeId) => {
+      const key = String(noticeId || "");
+      if (!key) return false;
+      void toastPauseEpoch.value;
+      return toastManualPause.has(key);
+    };
+
+    const pauseAllToastNotices = () => {
+      const list = Array.isArray(toastNotices.value) ? toastNotices.value : [];
+      list.forEach((item) => {
+        if (item && item.id) pauseToastNotice(item.id);
+      });
+    };
+
+    const resumeAllToastNotices = () => {
+      const list = Array.isArray(toastNotices.value) ? toastNotices.value : [];
+      list.forEach((item) => {
+        if (item && item.id) resumeToastNotice(item.id);
+      });
+    };
+    const dismissToastNotice = (noticeId) => {
+      if (!toastNotices) return;
+      if (!noticeId) {
+        const first =
+          Array.isArray(toastNotices.value) && toastNotices.value.length
+            ? toastNotices.value[0]
+            : null;
+        if (!first || !first.id) return;
+        clearToastTimer(first.id);
+        removeVisibleToastNotice(first.id);
+        return;
+      }
+      setToastPaused(String(noticeId || ""), false);
+      toastManualPauseMeta.delete(String(noticeId || ""));
+      clearToastTimer(noticeId);
+      removeVisibleToastNotice(noticeId);
+    };
+    const getToastNoticeById = (noticeId) => {
+      if (!toastNotices || !noticeId) return null;
+      const list = Array.isArray(toastNotices.value) ? toastNotices.value : [];
+      return list.find((item) => String((item && item.id) || "") === String(noticeId)) || null;
+    };
+    const runToastAction = (noticeId) => {
+      const notice = getToastNoticeById(noticeId);
+      if (!notice || typeof notice.action !== "function") return;
+      try {
+        notice.action();
+      } catch (error) {
+        console.error("[toast] action failed", error);
+      } finally {
+        dismissToastNotice(noticeId);
+      }
+    };
+    const activateToastNotice = (noticeId) => {
+      const notice = getToastNoticeById(noticeId);
+      if (!notice) return;
+      if (typeof notice.onActivate === "function") {
+        try {
+          notice.onActivate();
+        } catch (error) {
+          console.error("[toast] activate failed", error);
+        } finally {
+          dismissToastNotice(noticeId);
+        }
+        return;
+      }
+      if (typeof notice.action === "function") {
+        try {
+          notice.action();
+        } catch (error) {
+          console.error("[toast] action failed", error);
+        } finally {
+          dismissToastNotice(noticeId);
+        }
+      }
+    };
+    const pushToastNotice = (payload, options = {}) => {
+      if (!toastNotices) return null;
+      const raw = payload && typeof payload === "object" ? payload : {};
+      const id = String(raw.id || `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`);
+      const normalized = {
+        id,
+        title: String(raw.title || ""),
+        summary: String(raw.summary || ""),
+        occurredAt: String(raw.occurredAt || nowIsoString()),
+        tone: String(raw.tone || "warning"),
+        icon: String(raw.icon || "!"),
+        actionLabel: raw.actionLabel ? String(raw.actionLabel) : "",
+        action: typeof raw.action === "function" ? raw.action : null,
+        onActivate: typeof raw.onActivate === "function" ? raw.onActivate : null,
+        durationMs: Number.isFinite(raw.durationMs) ? Number(raw.durationMs) : toastDefaultDurationMs,
+        signature: String(raw.signature || ""),
+        ariaLabel: raw.ariaLabel ? String(raw.ariaLabel) : "",
+        logId: raw.logId ? String(raw.logId) : "",
+      };
+      normalized.clickable = Boolean(normalized.onActivate || normalized.action);
+      const signature = String(options.signature || normalized.signature || "");
+      const dedupWindowMs = Number.isFinite(options.dedupWindowMs)
+        ? Number(options.dedupWindowMs)
+        : 0;
+      if (signature && dedupWindowMs > 0) {
+        const now = Date.now();
+        const lastAt = toastLastSeenAt.get(signature) || 0;
+        if (now - lastAt <= dedupWindowMs) {
+          return null;
+        }
+        toastLastSeenAt.set(signature, now);
+      }
+      if (signature) {
+        normalized.signature = signature;
+      }
+      const current = Array.isArray(toastNotices.value) ? toastNotices.value : [];
+      const queue = Array.isArray(toastQueue) ? toastQueue : [];
+      const removedBySignature = signature
+        ? current.filter((item) => String((item && item.signature) || "") === signature)
+        : [];
+      const withoutSameSignature = signature
+        ? current.filter((item) => String((item && item.signature) || "") !== signature)
+        : current.slice();
+      const queueWithoutSignature = signature
+        ? queue.filter((item) => String((item && item.signature) || "") !== signature)
+        : queue.slice();
+      const nextVisible = withoutSameSignature.slice();
+      const nextQueue = queueWithoutSignature.slice();
+      if (nextVisible.length < toastVisibleLimit) {
+        nextVisible.push(normalized);
+      } else {
+        nextQueue.push(normalized);
+      }
+      const nextVisibleIds = new Set(nextVisible.map((item) => String((item && item.id) || "")));
+      removedBySignature.forEach((item) => {
+        if (item && item.id) {
+          clearToastTimer(item.id);
+        }
+      });
+      current.forEach((item) => {
+        if (!item || !item.id) return;
+        if (!nextVisibleIds.has(String(item.id))) {
+          clearToastTimer(item.id);
+        }
+      });
+      setToastQueue(nextQueue);
+      setVisibleToastNotices(nextVisible);
+      nextVisible.forEach((item) => {
+        if (!item || !item.id) return;
+        if (!toastTimers.has(item.id) && !toastManualPause.has(String(item.id))) {
+          scheduleToastAutoDismiss(item);
+        }
+      });
+      fillToastVisibleFromQueue();
+      return normalized;
+    };
+    const dismissOptionalFailureNotice = (noticeId) => {
+      if (!noticeId) return;
+      dismissToastNotice(noticeId);
     };
     const pushOptionalFailureNotice = (entry, meta) => {
-      if (!optionalFailureNotices || !optionalFailureHistory) return;
+      if (!optionalFailureHistory) return;
       const signature = String((meta && meta.optionalSignature) || entry.key || "").trim();
+      const summaryText =
+        typeof state.t === "function"
+          ? state.t("equip_refining.tap_the_notification_to_view_details")
+          : "点击通知查看详情";
       const notice = {
         id: entry.id,
         logId: entry.id,
         occurredAt: entry.occurredAt || nowIsoString(),
         title: entry.title,
-        summary: entry.summary,
+        summary: summaryText,
         note: entry.note || "",
         signature,
+        tone: "warning",
+        icon: "!",
+        durationMs: toastDefaultDurationMs,
+        ariaLabel:
+          typeof state.t === "function"
+            ? state.t("error.view_runtime_warning_details")
+            : "查看错误详情",
+        onActivate: () => openOptionalFailureDetailByLogId(entry.id),
       };
       const nextHistory = [notice].concat(
         Array.isArray(optionalFailureHistory.value) ? optionalFailureHistory.value : []
       );
       optionalFailureHistory.value = nextHistory.slice(0, runtimeWarningLogLimit);
       hasOptionalFailureHistory.value = optionalFailureHistory.value.length > 0;
-      const now = Date.now();
-      if (signature) {
-        const lastAt = optionalFailureLastSeenAt.get(signature) || 0;
-        if (now - lastAt <= optionalFailureNotificationDedupWindowMs) {
-          return;
-        }
-        optionalFailureLastSeenAt.set(signature, now);
-      }
-      const current = Array.isArray(optionalFailureNotices.value) ? optionalFailureNotices.value : [];
-      const withoutSameSignature = signature
-        ? current.filter((item) => String((item && item.signature) || "") !== signature)
-        : current.slice();
-      const nextVisible = [notice].concat(withoutSameSignature).slice(0, optionalFailureVisibleLimit);
-      const dropped = [notice].concat(withoutSameSignature).slice(optionalFailureVisibleLimit);
-      dropped.forEach((item) => {
-        if (item && item.id) {
-          clearOptionalFailureToastTimer(item.id);
-        }
+      pushToastNotice(notice, {
+        signature,
+        dedupWindowMs: optionalFailureNotificationDedupWindowMs,
       });
-      setVisibleOptionalFailureNotices(nextVisible);
-      scheduleOptionalFailureAutoDismiss(notice.id);
     };
     const resolveRuntimeWarningLogById = (logId) => {
       if (!state.runtimeWarningLogs || !Array.isArray(state.runtimeWarningLogs.value)) return null;
@@ -273,15 +641,18 @@
       } else if (state.showRuntimeWarningModal) {
         state.showRuntimeWarningModal.value = true;
       }
-      dismissOptionalFailureNotice();
+      dismissOptionalFailureNotice(logId);
     };
-    const openLatestOptionalFailureDetail = () => {
+    const openLatestRuntimeWarningDetail = () => {
       const first =
-        optionalFailureHistory && Array.isArray(optionalFailureHistory.value)
-          ? optionalFailureHistory.value[0]
+        runtimeWarningLogs && Array.isArray(runtimeWarningLogs.value)
+          ? runtimeWarningLogs.value[0]
           : null;
       if (!first) return;
-      openOptionalFailureDetailByLogId(first.logId);
+      openOptionalFailureDetailByLogId(first.id || first.logId);
+    };
+    const openLatestOptionalFailureDetail = () => {
+      openLatestRuntimeWarningDetail();
     };
     const showUiInitWarning = (error, meta) => {
       const runtimeWarningCurrent = state.runtimeWarningCurrent;
@@ -714,17 +1085,17 @@
       }
     };
 
-    const markGearRefiningNavHintSeen = () => {
-      if (!showGearRefiningNavHintDot.value) return;
-      showGearRefiningNavHintDot.value = false;
+    const markEquipRefiningNavHintSeen = () => {
+      if (!showEquipRefiningNavHintDot.value) return;
+      showEquipRefiningNavHintDot.value = false;
       try {
         localStorage.setItem(
-          state.gearRefiningNavHintStorageKey,
-          state.gearRefiningNavHintVersion
+          state.equipRefiningNavHintStorageKey,
+          state.equipRefiningNavHintVersion
         );
       } catch (error) {
-        reportStorageIssue("storage.write", state.gearRefiningNavHintStorageKey, error, {
-          scope: "ui.gear-refining-nav-hint-write",
+        reportStorageIssue("storage.write", state.equipRefiningNavHintStorageKey, error, {
+          scope: "ui.equip-refining-nav-hint-write",
         });
       }
     };
@@ -748,6 +1119,29 @@
       showPlanConfig.value = nextOpen;
       if (nextOpen) {
         markPlanConfigHintSeen();
+      }
+    };
+
+    const planConfigSectionCollapsed =
+      state.planConfigSectionCollapsed || ref({});
+    const planConfigSectionManuallySet =
+      state.planConfigSectionManuallySet || ref(false);
+    const isPlanConfigSectionCollapsed = (key) => {
+      const name = String(key || "");
+      if (!name) return true;
+      if (!planConfigSectionManuallySet.value) return true;
+      const map = planConfigSectionCollapsed.value || {};
+      return map[name] !== false;
+    };
+    const togglePlanConfigSectionCollapsed = (key) => {
+      const name = String(key || "");
+      if (!name) return;
+      const current = isPlanConfigSectionCollapsed(name);
+      const next = { ...(planConfigSectionCollapsed.value || {}) };
+      next[name] = !current;
+      planConfigSectionCollapsed.value = next;
+      if (!planConfigSectionManuallySet.value) {
+        planConfigSectionManuallySet.value = true;
       }
     };
 
@@ -876,7 +1270,17 @@
         clearInterval(optionalFailurePollTimer);
         optionalFailurePollTimer = null;
       }
-      clearAllOptionalFailureToastTimers();
+      clearAllToastTimers();
+      if (toastPointerMoveHandler && typeof document !== "undefined") {
+        document.removeEventListener("pointermove", toastPointerMoveHandler);
+        toastPointerMoveHandler = null;
+      }
+      if (toastPointerSyncHandle) {
+        cancelAnimationFrame(toastPointerSyncHandle);
+        toastPointerSyncHandle = 0;
+      }
+      toastPointerTrackerReady = false;
+      toastPointerPosition = null;
       document.removeEventListener("click", handleDocClick);
       document.removeEventListener("keydown", handleDocKeydown);
       if (preloadBackgroundFadeTimer) {
@@ -888,25 +1292,44 @@
       }
     });
 
-    syncOptionalFailurePrimaryNotice();
+    syncToastPrimaryNotice();
     state.reportRuntimeWarning = reportRuntimeWarning;
     state.scrollToTop = scrollToTop;
     state.setThemeMode = setThemeMode;
     state.togglePlanConfig = togglePlanConfig;
-    state.markGearRefiningNavHintSeen = markGearRefiningNavHintSeen;
+    state.isPlanConfigSectionCollapsed = isPlanConfigSectionCollapsed;
+    state.togglePlanConfigSectionCollapsed = togglePlanConfigSectionCollapsed;
+    state.markEquipRefiningNavHintSeen = markEquipRefiningNavHintSeen;
     state.markRerunRankingNavHintSeen = markRerunRankingNavHintSeen;
     state.dismissRuntimeWarning = dismissRuntimeWarning;
     state.ignoreRuntimeWarnings = ignoreRuntimeWarnings;
     state.requestIgnoreRuntimeWarnings = requestIgnoreRuntimeWarnings;
     state.cancelIgnoreRuntimeWarnings = cancelIgnoreRuntimeWarnings;
     state.confirmIgnoreRuntimeWarnings = confirmIgnoreRuntimeWarnings;
-    state.optionalFailureNotices = optionalFailureNotices;
-    state.optionalFailureNotice = optionalFailureNotice;
+    state.toastNotices = toastNotices;
+    state.toastNotice = toastNotice;
+    state.toastDefaultDurationMs = toastDefaultDurationMs;
+    state.toastLeaveRects = toastLeaveRects;
+    state.snapshotToastLeaveRects = snapshotToastLeaveRects;
+    state.pushToastNotice = pushToastNotice;
+    state.dismissToastNotice = dismissToastNotice;
+    state.pauseToastNotice = pauseToastNotice;
+    state.resumeToastNotice = resumeToastNotice;
+    state.isToastNoticePaused = isToastNoticePaused;
+    state.resumeToastNoticeIfNotHovered = resumeToastNoticeIfNotHovered;
+    state.pauseAllToastNotices = pauseAllToastNotices;
+    state.resumeAllToastNotices = resumeAllToastNotices;
+    state.runToastAction = runToastAction;
+    state.activateToastNotice = activateToastNotice;
+    state.optionalFailureNotices = toastNotices;
+    state.optionalFailureNotice = toastNotice;
     state.optionalFailureHistory = optionalFailureHistory;
     state.hasOptionalFailureHistory = hasOptionalFailureHistory;
     state.dismissOptionalFailureNotice = dismissOptionalFailureNotice;
     state.openOptionalFailureDetailByLogId = openOptionalFailureDetailByLogId;
     state.openLatestOptionalFailureDetail = openLatestOptionalFailureDetail;
+    state.hasRuntimeWarningHistory = hasRuntimeWarningHistory;
+    state.openLatestRuntimeWarningDetail = openLatestRuntimeWarningDetail;
     state.reloadBypassCache = reloadBypassCache;
     state.exportRuntimeDiagnosticBundle = exportRuntimeDiagnosticBundle;
   };

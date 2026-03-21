@@ -31,6 +31,8 @@
         state.tutorialStorageKey,
         state.uiStateStorageKey,
         state.attrHintStorageKey,
+        state.customWeaponsStorageKey,
+        state.editorCharactersStorageKey,
         state.noticeSkipKey,
         state.perfModeStorageKey,
         state.themeModeStorageKey,
@@ -39,7 +41,7 @@
         state.backgroundApiStorageKey,
         state.backgroundDisplayStorageKey,
         state.planConfigHintStorageKey,
-        state.gearRefiningNavHintStorageKey,
+        state.equipRefiningNavHintStorageKey,
         state.rerunRankingNavHintStorageKey,
       ].filter(Boolean);
       const unique = Array.from(new Set(keys));
