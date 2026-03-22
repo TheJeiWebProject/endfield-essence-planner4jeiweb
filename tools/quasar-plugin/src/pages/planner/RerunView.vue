@@ -88,7 +88,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { getUpSchedules } from '@/core/data';
+import { getUpSchedules, toLegacyAssetUrl } from '@/core/data';
 
 const upSchedules = getUpSchedules();
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -193,7 +193,7 @@ function getTextColorClass(days: number) {
 }
 
 function getCharacterImageUrl(name: string): string {
-  return `/legacy/image/characters/${encodeURIComponent(name)}.png`;
+  return toLegacyAssetUrl(`legacy/image/characters/${encodeURIComponent(name)}.avif`);
 }
 </script>
 

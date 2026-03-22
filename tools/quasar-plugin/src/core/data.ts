@@ -3,7 +3,15 @@ import dungeons from '@/data/dungeons.json';
 import gears from '@/data/gears.json';
 import upSchedules from '@/data/up-schedules.json';
 import weaponImages from '@/data/weapon-images.json';
-import type { Dungeon, Gear, UpScheduleMap, Weapon } from './types';
+import characters from '@/data/characters.json';
+import type { Character, Dungeon, Gear, UpScheduleMap, Weapon } from './types';
+
+export function toLegacyAssetUrl(path: string): string {
+  const base = import.meta.env.BASE_URL || '/';
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+  const normalizedPath = path.replace(/^\/+/, '');
+  return `${normalizedBase}${normalizedPath}`;
+}
 
 export function getWeapons(): Weapon[] {
   return weapons as Weapon[];
@@ -22,5 +30,15 @@ export function getUpSchedules(): UpScheduleMap {
 }
 
 export function getWeaponImageNames(): string[] {
-  return weaponImages as string[];
+  const map = weaponImages as unknown as Record<string, string>;
+  return Object.keys(map);
+}
+
+export function getWeaponImageId(name: string): string | undefined {
+  const map = weaponImages as unknown as Record<string, string>;
+  return map[name];
+}
+
+export function getCharacters(): Character[] {
+  return characters as unknown as Character[];
 }

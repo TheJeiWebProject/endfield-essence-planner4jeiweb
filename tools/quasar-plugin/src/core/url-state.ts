@@ -1,4 +1,28 @@
-import type { PlannerState } from './types';
+import type { PlannerState, RecommendationConfig } from './types';
+
+export interface WeaponMarkUrlState {
+  ownedWeaponNames: string[];
+  ownedMatrixNames: string[];
+  hasOwnedWeaponParam: boolean;
+  hasOwnedMatrixParam: boolean;
+}
+
+export const DEFAULT_RECOMMENDATION_CONFIG: RecommendationConfig = {
+  hideEssenceOwnedWeaponsInSelector: false,
+  hideEssenceOwnedWeaponsInPlans: false,
+  hideEssenceOwnedOwnedOnly: false,
+  hideUnownedWeaponsInSelector: false,
+  hideUnownedWeaponsInPlans: false,
+  hideFourStarWeaponsInSelector: false,
+  hideFourStarWeaponsInPlans: false,
+  showWeaponOwnership: true,
+  attributeFilterAffectsHiddenWeapons: false,
+  preferredRegion1: '',
+  preferredRegion2: '',
+  regionPriorityMode: 'ignore',
+  ownershipPriorityMode: 'ignore',
+  strictPriorityOrder: 'ownershipFirst',
+};
 
 export const DEFAULT_STATE: PlannerState = {
   view: 'planner',
@@ -8,10 +32,11 @@ export const DEFAULT_STATE: PlannerState = {
   embed: false,
   api: false,
   readonly: false,
+  recommendationConfig: { ...DEFAULT_RECOMMENDATION_CONFIG },
 };
 
 function normalizeView(value: string | null): PlannerState['view'] {
-  if (value === 'planner' || value === 'strategy' || value === 'match' || value === 'gear-refining' || value === 'rerun-ranking') {
+  if (value === 'planner' || value === 'strategy' || value === 'match' || value === 'gear-refining' || value === 'rerun-ranking' || value === 'editor') {
     return value;
   }
   if (value === 'weapons' || value === 'recommendation') {
@@ -56,10 +81,63 @@ export function parseStateFromUrl(url = window.location.href): PlannerState {
     readonly: params.get('readonly') === '1',
     matchSource: params.get('matchSource') || undefined,
     gearName: params.get('gearName') || undefined,
+    recommendationConfig: { ...DEFAULT_RECOMMENDATION_CONFIG },
   };
 }
 
-export function writeStateToUrl(state: PlannerState, mode: 'replace' | 'push' = 'replace'): void {
+function parseNameListFromParams(params: URLSearchParams, keys: string[]): { values: string[]; hasAny: boolean } {
+  const entries: string[] = [];
+  let hasAny = false;
+  keys.forEach((key) => {
+    if (params.has(key)) {
+      hasAny = true;
+      const packed = params.get(key);
+      if (packed) {
+        entries.push(...packed.split(','));
+      }
+      const repeated = params.getAll(key);
+      if (repeated.length > 1) {
+        entries.push(...repeated.slice(1));
+      }
+    }
+  });
+  const values = Array.from(new Set(entries.map((item) => item.trim()).filter(Boolean)));
+  return { values, hasAny };
+}
+
+export function parseWeaponMarksFromUrl(
+  url = window.location.href,
+  weaponNameSet?: Set<string>,
+): WeaponMarkUrlState {
+  const parsedUrl = new URL(url);
+  const params = parsedUrl.searchParams;
+
+  const ownedWeaponParsed = parseNameListFromParams(params, ['ownedWeapons', 'ownedWeapon']);
+  const ownedMatrixParsed = parseNameListFromParams(params, ['ownedMatrix', 'ownedMatrices']);
+
+  const ownedWeaponNames = weaponNameSet
+    ? ownedWeaponParsed.values.filter((name) => weaponNameSet.has(name))
+    : ownedWeaponParsed.values;
+  const ownedMatrixNames = weaponNameSet
+    ? ownedMatrixParsed.values.filter((name) => weaponNameSet.has(name))
+    : ownedMatrixParsed.values;
+
+  return {
+    ownedWeaponNames,
+    ownedMatrixNames,
+    hasOwnedWeaponParam: ownedWeaponParsed.hasAny,
+    hasOwnedMatrixParam: ownedMatrixParsed.hasAny,
+  };
+}
+
+export function writeStateToUrl(
+  state: PlannerState,
+  mode: 'replace' | 'push' = 'replace',
+  options?: {
+    ownedWeaponNames?: string[];
+    ownedMatrixNames?: string[];
+  },
+): void {
   const url = new URL(window.location.href);
   const params = url.searchParams;
 
@@ -87,6 +165,24 @@ export function writeStateToUrl(state: PlannerState, mode: 'replace' | 'push' = 
 
   if (state.gearName) params.set('gearName', state.gearName);
   else params.delete('gearName');
+
+  if (options?.ownedWeaponNames) {
+    if (options.ownedWeaponNames.length > 0) {
+      params.set('ownedWeapons', options.ownedWeaponNames.join(','));
+    } else {
+      params.delete('ownedWeapons');
+      params.delete('ownedWeapon');
+    }
+  }
+
+  if (options?.ownedMatrixNames) {
+    if (options.ownedMatrixNames.length > 0) {
+      params.set('ownedMatrix', options.ownedMatrixNames.join(','));
+    } else {
+      params.delete('ownedMatrix');
+      params.delete('ownedMatrices');
+    }
+  }
 
   const next = `${url.pathname}?${params.toString()}${url.hash}`;
   if (mode === 'replace') {

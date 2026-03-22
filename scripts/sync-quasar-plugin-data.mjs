@@ -12,8 +12,7 @@ const legacyPublicDir = path.join(rootDir, 'tools', 'quasar-plugin', 'public', '
 const syncEntries = [
   { source: 'weapons.js', target: 'weapons.json', extract: (win) => win.WEAPONS },
   { source: 'dungeons.js', target: 'dungeons.json', extract: (win) => win.DUNGEONS },
-  { source: 'gears.js', target: 'gears.json', extract: (win) => win.GEARS },
-  { source: 'characters.js', target: 'characters.json', extract: (win) => win.characters ?? [] },
+  { source: 'equip.js', target: 'gears.json', extract: (win) => win.EQUIPS },
   { source: 'up-schedules.js', target: 'up-schedules.json', extract: (win) => win.WEAPON_UP_SCHEDULES },
   { source: 'weapon-images.js', target: 'weapon-images.json', extract: (win) => win.WEAPON_IMAGES },
   { source: 'content.js', target: 'content.json', extract: (win) => win.CONTENT },
@@ -38,6 +37,31 @@ function ensureSerializable(name, value) {
 
 async function writeJson(filePath, data) {
   await fs.writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+}
+
+async function syncCharacterData() {
+  const context = createContext();
+  // Load the main characters.js which registers sub-scripts in __APP_CHARACTER_SCRIPTS__
+  const mainPath = path.join(sourceDataDir, 'characters.js');
+  await evaluateScript(mainPath, context);
+
+  // Load each registered character sub-script
+  const scripts = context.window.__APP_CHARACTER_SCRIPTS__ || [];
+  for (const scriptPath of scripts) {
+    // scriptPath is relative to project root (e.g. './data/characters/tangtang.js')
+    const fullPath = path.join(rootDir, scriptPath);
+    try {
+      await evaluateScript(fullPath, context);
+    } catch (err) {
+      process.stderr.write(`Warning: Failed to load character script ${scriptPath}: ${err.message}\n`);
+    }
+  }
+
+  const characters = context.window.characters ?? [];
+  ensureSerializable('characters.js', characters);
+  const targetPath = path.join(targetDataDir, 'characters.json');
+  await writeJson(targetPath, characters);
+  return { source: 'characters.js', target: 'characters.json', count: characters.length };
 }
 
 async function syncBaseData() {
@@ -92,6 +116,8 @@ async function main() {
   await fs.rm(legacyPublicDir, { recursive: true, force: true });
 
   const summary = await syncBaseData();
+  const charEntry = await syncCharacterData();
+  summary.push(charEntry);
   const i18nSummary = await syncI18nData();
 
   const dataset = {

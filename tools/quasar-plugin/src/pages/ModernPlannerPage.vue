@@ -38,6 +38,7 @@
                     <q-tab name="match" label="词条对照" />
                     <q-tab name="gear-refining" label="装备精锻" />
                     <q-tab name="rerun-ranking" label="复刻排行" />
+                    <q-tab name="editor" label="角色编辑" />
                   </q-tabs>
                 </div>
               </div>
@@ -123,8 +124,12 @@
             :state="state"
             :weapon-marks="weaponMarks"
             @update:selected-weapons="onUpdateSelectedWeapons"
+            @update:weapon-mark="onUpdateWeaponMark"
             @update:match-source="state.matchSource = $event"
             @update:gear-name="state.gearName = $event"
+            @update:recommendation-config="onUpdateRecommendationConfig"
+            @export:weapon-marks="exportWeaponMarks"
+            @import:weapon-marks="importWeaponMarks"
           />
         </keep-alive>
       </div>
@@ -135,9 +140,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { getWeapons } from '@/core/data';
-import { DEFAULT_STATE, parseStateFromUrl, writeStateToUrl } from '@/core/url-state';
-import type { PlannerState } from '@/core/types';
+import { getWeapons, getDungeons } from '@/core/data';
+import { getRecommendations } from '@/core/recommender';
+import {
+  DEFAULT_RECOMMENDATION_CONFIG,
+  DEFAULT_STATE,
+  parseStateFromUrl,
+  parseWeaponMarksFromUrl,
+  writeStateToUrl,
+} from '@/core/url-state';
+import type { PlannerState, RecommendationConfig } from '@/core/types';
 import { installBridge } from '@/embed/bridge';
 import { exposeGlobalApi } from '@/api/expose-global';
 import LegacyPlannerPage from '@/pages/LegacyPlannerPage.vue';
@@ -148,6 +160,7 @@ import StrategyView from './planner/StrategyView.vue';
 import MatchView from './planner/MatchView.vue';
 import GearView from './planner/GearView.vue';
 import RerunView from './planner/RerunView.vue';
+import EditorView from './planner/EditorView.vue';
 
 const $q = useQuasar();
 
@@ -202,6 +215,7 @@ const state = reactive<PlannerState>({ ...DEFAULT_STATE, ...initialState });
 const weaponMarks = reactive<Record<string, WeaponMark>>({});
 const allWeapons = getWeapons();
 const weaponNameSet = new Set(allWeapons.map((item) => item.name));
+const marksFromUrl = parseWeaponMarksFromUrl(window.location.href, weaponNameSet);
 
 const currentViewComponent = computed(() => {
   switch (state.view) {
@@ -215,6 +229,8 @@ const currentViewComponent = computed(() => {
       return GearView;
     case 'rerun-ranking':
       return RerunView;
+    case 'editor':
+      return EditorView;
     default:
       return PlannerView;
   }
@@ -242,6 +258,81 @@ function onUpdateSelectedWeapons(value: string[]) {
   state.selectedWeapons.forEach(ensureMark);
 }
 
+function onUpdateWeaponMark(name: string, partial: Partial<WeaponMark>) {
+  if (state.readonly) return;
+  const mark = ensureMark(name);
+  Object.assign(mark, partial);
+}
+
+function getOwnedMarkLists() {
+  const ownedWeaponNames: string[] = [];
+  const ownedMatrixNames: string[] = [];
+  Object.entries(weaponMarks).forEach(([name, mark]) => {
+    if (!weaponNameSet.has(name)) return;
+    if (mark.ownedWeapon) ownedWeaponNames.push(name);
+    if (mark.ownedMatrix) ownedMatrixNames.push(name);
+  });
+  ownedWeaponNames.sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
+  ownedMatrixNames.sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
+  return { ownedWeaponNames, ownedMatrixNames };
+}
+
+function applyMarksFromUrl() {
+  if (marksFromUrl.hasOwnedWeaponParam) {
+    Object.values(weaponMarks).forEach((mark) => {
+      mark.ownedWeapon = false;
+    });
+    marksFromUrl.ownedWeaponNames.forEach((name) => {
+      ensureMark(name).ownedWeapon = true;
+    });
+  }
+  if (marksFromUrl.hasOwnedMatrixParam) {
+    Object.values(weaponMarks).forEach((mark) => {
+      mark.ownedMatrix = false;
+    });
+    marksFromUrl.ownedMatrixNames.forEach((name) => {
+      ensureMark(name).ownedMatrix = true;
+    });
+  }
+}
+
+function onUpdateRecommendationConfig(partial: Partial<RecommendationConfig>) {
+  Object.assign(state.recommendationConfig, partial);
+}
+
+function exportWeaponMarks() {
+  const data = JSON.stringify({ weaponMarks }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'weapon-marks.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importWeaponMarks(raw: string) {
+  try {
+    const parsed = JSON.parse(raw) as { weaponMarks?: Record<string, WeaponMark> };
+    if (parsed.weaponMarks && typeof parsed.weaponMarks === 'object') {
+      let count = 0;
+      Object.entries(parsed.weaponMarks).forEach(([name, mark]) => {
+        if (!weaponNameSet.has(name)) return;
+        weaponMarks[name] = {
+          ownedWeapon: Boolean(mark?.ownedWeapon),
+          ownedMatrix: Boolean(mark?.ownedMatrix),
+          excluded: Boolean(mark?.excluded),
+          note: typeof mark?.note === 'string' ? mark.note.slice(0, 60) : '',
+        };
+        count++;
+      });
+      $q.notify({ type: 'positive', message: `已导入 ${count} 条标记数据` });
+    }
+  } catch {
+    $q.notify({ type: 'negative', message: '导入失败：文件格式无效' });
+  }
+}
+
 function loadPersistedState() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -252,6 +343,7 @@ function loadPersistedState() {
       weaponMarks?: Record<string, WeaponMark>;
       matchSource?: string;
       gearName?: string;
+      recommendationConfig?: Partial<RecommendationConfig>;
     };
 
     if (Array.isArray(parsed.selectedWeapons) && state.selectedWeapons.length === 0) {
@@ -264,6 +356,10 @@ function loadPersistedState() {
     
     if (parsed.gearName && !state.gearName) {
       state.gearName = parsed.gearName;
+    }
+
+    if (parsed.recommendationConfig && typeof parsed.recommendationConfig === 'object') {
+      Object.assign(state.recommendationConfig, parsed.recommendationConfig);
     }
 
     if (parsed.weaponMarks && typeof parsed.weaponMarks === 'object') {
@@ -284,6 +380,7 @@ function loadPersistedState() {
 }
 
 loadPersistedState();
+applyMarksFromUrl();
 
 function resolveTheme(theme: PlannerState['theme']): 'light' | 'dark' {
   if (theme !== 'auto') {
@@ -327,6 +424,8 @@ watch(
     const existing = window.localStorage.getItem(STORAGE_KEY);
     const prev = existing ? JSON.parse(existing) : {};
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prev, ...payload }));
+    const ownedMarks = getOwnedMarkLists();
+    writeStateToUrl(state, 'replace', ownedMarks);
   },
   { deep: true },
 );
@@ -334,7 +433,7 @@ watch(
 watch(
   () => state.view,
   (view) => {
-    writeStateToUrl(state, 'push');
+    writeStateToUrl(state, 'push', getOwnedMarkLists());
   }
 );
 
@@ -348,12 +447,15 @@ watch(
     readonly: state.readonly,
     matchSource: state.matchSource,
     gearName: state.gearName,
+    recommendationConfig: { ...state.recommendationConfig },
   }),
   () => {
-    writeStateToUrl(state, 'replace');
+    writeStateToUrl(state, 'replace', getOwnedMarkLists());
   },
   { deep: true },
 );
+
+const allDungeons = getDungeons();
 
 const apiContext = {
   getState: () => ({ ...state, selectedWeapons: [...state.selectedWeapons] }),
@@ -368,7 +470,7 @@ const apiContext = {
     }
     return { ...state, selectedWeapons: [...state.selectedWeapons] };
   },
-  getRecommendations: () => [], 
+  getRecommendations: () => getRecommendations(state.selectedWeapons, allWeapons, allDungeons),
 };
 
 exposeGlobalApi(apiContext);

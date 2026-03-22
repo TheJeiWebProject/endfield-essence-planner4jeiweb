@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { toLegacyAssetUrl } from '@/core/data';
 
 const legacyReady = ref(false);
 
@@ -34,12 +35,12 @@ const legacySrc = computed(() => {
   
   const query = params.toString();
   const suffix = query ? `?${query}` : '';
-  return `/legacy/index.html${suffix}${url.hash || ''}`;
+  return `${toLegacyAssetUrl('legacy/index.html')}${suffix}${url.hash || ''}`;
 });
 
 onMounted(async () => {
   try {
-    const response = await fetch('/legacy/index.html', { method: 'HEAD' });
+    const response = await fetch(toLegacyAssetUrl('legacy/index.html'), { method: 'HEAD' });
     legacyReady.value = response.ok;
   } catch {
     legacyReady.value = false;

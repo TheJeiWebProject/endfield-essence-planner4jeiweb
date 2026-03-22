@@ -143,7 +143,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { getDungeons, getWeaponImageNames, getWeapons } from '@/core/data';
+import { getDungeons, getWeaponImageId, getWeapons, toLegacyAssetUrl } from '@/core/data';
 import type { Weapon, PlannerState } from '@/core/types';
 
 const props = defineProps<{
@@ -157,7 +157,7 @@ const emit = defineEmits<{
 
 const allWeapons = getWeapons();
 const dungeons = getDungeons();
-const weaponImageNameSet = new Set(getWeaponImageNames());
+// weaponImageNameSet removed — use getWeaponImageId directly
 
 const matchQuery = ref('');
 const matchSourceName = ref(props.state.matchSource || '');
@@ -215,10 +215,8 @@ function selectMatchSource(weapon: Weapon) {
 }
 
 function getWeaponImageUrl(name: string): string {
-  if (!weaponImageNameSet.has(name)) {
-    return '';
-  }
-  return `/legacy/image/${encodeURIComponent(name)}.png`;
+  const id = getWeaponImageId(name);
+  return id ? toLegacyAssetUrl(`legacy/image/weapon/${encodeURIComponent(id)}.avif`) : '';
 }
 
 // Auto-select first if empty
