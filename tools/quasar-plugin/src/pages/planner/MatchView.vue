@@ -28,11 +28,11 @@
             <div
               v-for="weapon in matchSourceList"
               :key="weapon.name"
-              class="weapon-card-mini"
-              :class="{ 'is-selected': matchSourceName === weapon.name }"
+              class="weapon-card-mini match-weapon-card"
+              :class="[rarityClass(weapon.rarity), { 'is-selected': matchSourceName === weapon.name }]"
               @click="selectMatchSource(weapon)"
             >
-              <div class="weapon-cover-box">
+              <div class="weapon-art-layer">
                 <img
                   v-if="getWeaponImageUrl(weapon.name)"
                   :src="getWeaponImageUrl(weapon.name)"
@@ -41,7 +41,13 @@
                 />
                 <div v-else class="weapon-fallback">{{ weapon.rarity }}★</div>
               </div>
-              <div class="weapon-name-mini text-caption text-center text-truncate">{{ weapon.name }}</div>
+              <div class="weapon-band"></div>
+              <div class="weapon-name-mini">
+                <div class="weapon-title">
+                  <span class="weapon-title-text">{{ weapon.name }}</span>
+                </div>
+                <div class="match-weapon-meta">{{ weapon.type }}</div>
+              </div>
             </div>
           </div>
         </q-card-section>
@@ -61,13 +67,13 @@
           请从左侧选择一把武器以查看同词条对照。
         </div>
 
-        <div v-else class="q-pa-md">
+        <div v-else class="match-result-body q-pa-md">
           <!-- Selected Source Weapon Card -->
-          <div class="text-subtitle2 q-mb-sm text-grey-5">已选武器</div>
+          <div class="planner-section-label q-mb-sm">已选武器</div>
           <q-card flat bordered class="scheme-card planner-surface-card q-mb-md">
-            <q-card-section class="row items-center q-col-gutter-md">
+            <q-card-section class="row items-center q-col-gutter-md match-selected-section">
               <div class="col-auto">
-                <div class="weapon-thumb">
+                <div class="weapon-thumb match-selected-thumb" :class="rarityClass(matchSourceWeapon.rarity)">
                   <img
                     v-if="getWeaponImageUrl(matchSourceWeapon.name)"
                     :src="getWeaponImageUrl(matchSourceWeapon.name)"
@@ -76,14 +82,14 @@
                 </div>
               </div>
               <div class="col">
-                <div class="text-subtitle1">{{ matchSourceWeapon.name }}</div>
-                <div class="text-caption text-grey-4">
+                <div class="text-subtitle1 match-selected-title">{{ matchSourceWeapon.name }}</div>
+                <div class="text-caption planner-meta-text">
                   {{ matchSourceWeapon.type }} · {{ matchSourceWeapon.rarity }}★
                 </div>
-                <div class="row q-gutter-x-md q-mt-xs">
-                  <span class="text-caption text-primary">基础: {{ matchSourceWeapon.s1 || '-' }}</span>
-                  <span class="text-caption text-secondary">附加: {{ matchSourceWeapon.s2 || '-' }}</span>
-                  <span class="text-caption text-accent">技能: {{ matchSourceWeapon.s3 || '-' }}</span>
+                <div class="row q-gutter-x-md q-gutter-y-xs q-mt-sm match-inline-attrs">
+                  <span class="text-caption match-attr-chip match-attr-chip-base">基础: {{ matchSourceWeapon.s1 || '-' }}</span>
+                  <span class="text-caption match-attr-chip match-attr-chip-extra">附加: {{ matchSourceWeapon.s2 || '-' }}</span>
+                  <span class="text-caption match-attr-chip match-attr-chip-skill">技能: {{ matchSourceWeapon.s3 || '-' }}</span>
                 </div>
               </div>
             </q-card-section>
@@ -91,10 +97,10 @@
 
           <!-- Exact Match Results -->
           <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle2 text-grey-5">同词条完全一致 ({{ matchResults.length }})</div>
+            <div class="planner-section-label">同词条完全一致 ({{ matchResults.length }})</div>
           </div>
           
-          <div v-if="matchResults.length === 0" class="text-caption text-grey-6 q-mb-lg">
+          <div v-if="matchResults.length === 0" class="text-caption planner-muted-text q-mb-lg">
             暂无其他武器拥有完全相同的词条组合。
           </div>
 
@@ -102,9 +108,10 @@
             <div
               v-for="weapon in matchResults"
               :key="weapon.name"
-              class="weapon-card-mini"
+              class="weapon-card-mini match-weapon-card"
+              :class="rarityClass(weapon.rarity)"
             >
-              <div class="weapon-cover-box">
+              <div class="weapon-art-layer">
                 <img
                   v-if="getWeaponImageUrl(weapon.name)"
                   :src="getWeaponImageUrl(weapon.name)"
@@ -113,20 +120,26 @@
                 />
                 <div v-else class="weapon-fallback">{{ weapon.rarity }}★</div>
               </div>
-              <div class="weapon-name-mini text-caption text-center text-truncate">{{ weapon.name }}</div>
+              <div class="weapon-band"></div>
+              <div class="weapon-name-mini">
+                <div class="weapon-title">
+                  <span class="weapon-title-text">{{ weapon.name }}</span>
+                </div>
+                <div class="match-weapon-meta">{{ weapon.type }}</div>
+              </div>
             </div>
           </div>
 
           <!-- Dungeon Drop Info -->
-          <div class="text-subtitle2 q-mb-sm text-grey-5">副本掉落匹配</div>
-          <q-list separator bordered class="rounded-borders">
-            <q-item v-if="compatibleDungeons.length === 0" class="text-grey-6">
+          <div class="planner-section-label q-mb-sm">副本掉落匹配</div>
+          <q-list separator bordered class="rounded-borders match-dungeon-list">
+            <q-item v-if="compatibleDungeons.length === 0" class="planner-muted-text">
               <q-item-section>无副本同时掉落该组合</q-item-section>
             </q-item>
             <q-item v-for="dungeon in compatibleDungeons" :key="dungeon.id">
               <q-item-section>
                 <q-item-label>{{ dungeon.name }}</q-item-label>
-                <q-item-label caption>
+                <q-item-label caption class="planner-meta-text">
                   同时包含 {{ matchSourceWeapon.s2 }} / {{ matchSourceWeapon.s3 }}
                 </q-item-label>
               </q-item-section>
@@ -219,6 +232,12 @@ function getWeaponImageUrl(name: string): string {
   return id ? toLegacyAssetUrl(`legacy/image/weapon/${encodeURIComponent(id)}.avif`) : '';
 }
 
+function rarityClass(rarity: number): string {
+  if (rarity === 6) return 'rarity-6';
+  if (rarity === 5) return 'rarity-5';
+  return 'rarity-4';
+}
+
 // Auto-select first if empty
 if (!matchSourceName.value && sortedWeapons.length > 0) {
   matchSourceName.value = sortedWeapons[0].name;
@@ -237,6 +256,120 @@ if (!matchSourceName.value && sortedWeapons.length > 0) {
   }
 }
 
+.match-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.match-weapon-card {
+  width: 100%;
+}
+
+.match-weapon-card .weapon-name-mini {
+  bottom: 6px;
+  height: auto;
+  min-height: 38px;
+  padding: 0 6px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.match-weapon-meta {
+  max-width: 100%;
+  font-size: 10px;
+  line-height: 1.1;
+  font-weight: 500;
+  color: rgba(245, 242, 238, var(--alpha-80));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-section-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--planner-text-secondary);
+}
+
+.planner-meta-text,
+.planner-muted-text {
+  color: var(--planner-text-secondary) !important;
+}
+
+.match-selected-title {
+  color: var(--planner-text-primary);
+}
+
+.match-inline-attrs {
+  align-items: center;
+}
+
+.match-attr-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+
+.match-attr-chip-base {
+  border-color: rgba(var(--color-info-rgb), var(--alpha-38));
+  background: rgba(var(--color-info-rgb), var(--alpha-12));
+  color: rgba(var(--color-info-rgb), var(--alpha-100));
+}
+
+.match-attr-chip-extra {
+  border-color: rgba(var(--color-secondary-rgb), 0.38);
+  background: rgba(var(--color-secondary-rgb), 0.12);
+  color: rgb(156, 196, 255);
+}
+
+.match-attr-chip-skill {
+  border-color: rgba(var(--color-accent-rgb), var(--alpha-38));
+  background: rgba(var(--color-accent-rgb), var(--alpha-12));
+  color: rgba(var(--color-accent-rgb), var(--alpha-100));
+}
+
+.match-selected-thumb {
+  width: 84px;
+  height: 84px;
+}
+
+.match-selected-thumb.rarity-6::after,
+.match-selected-thumb.rarity-5::after,
+.match-selected-thumb.rarity-4::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 24px;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 100% 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.match-selected-thumb.rarity-6::after {
+  background-image: var(--rarity-6-frame);
+}
+
+.match-selected-thumb.rarity-5::after {
+  background-image: var(--rarity-5-frame);
+}
+
+.match-selected-thumb.rarity-4::after {
+  background-image: var(--rarity-4-frame);
+}
+
+.match-dungeon-list {
+  border-color: var(--planner-item-border);
+  background: var(--planner-surface-soft);
+}
+
 .weapon-card-mini.is-selected {
   border-color: var(--q-primary);
   box-shadow: 0 0 0 2px var(--q-primary);
@@ -245,5 +378,20 @@ if (!matchSourceName.value && sortedWeapons.length > 0) {
 .planner-surface-card {
   background: var(--planner-surface-soft) !important;
   border-color: var(--planner-item-border) !important;
+}
+
+@media (max-width: 640px) {
+  .match-weapon-card .weapon-name-mini {
+    min-height: 34px;
+  }
+
+  .match-weapon-meta {
+    font-size: 9px;
+  }
+
+  .match-selected-thumb {
+    width: 72px;
+    height: 72px;
+  }
 }
 </style>
