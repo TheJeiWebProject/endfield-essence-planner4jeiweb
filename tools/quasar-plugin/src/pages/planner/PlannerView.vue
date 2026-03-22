@@ -67,33 +67,33 @@
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedWeaponsInSelector"
-                  label="武器列表隐藏已拥有有基质武器"
+                  label="武器列表隐藏已拥有基质武器"
                   dense
                   @update:model-value="setConfig({ hideEssenceOwnedWeaponsInSelector: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedWeaponsInPlans"
-                  label="方案推荐隐藏已拥有有基质武器"
+                  label="方案推荐隐藏已拥有基质武器"
                   dense
                   @update:model-value="setConfig({ hideEssenceOwnedWeaponsInPlans: $event })"
                 />
                 <q-toggle
                   v-if="props.state.recommendationConfig.hideEssenceOwnedWeaponsInSelector || props.state.recommendationConfig.hideEssenceOwnedWeaponsInPlans"
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedOwnedOnly"
-                  label="仅当同时标记已拥有有武器时隐藏"
+                  label="仅当同时标记已拥有武器时隐藏"
                   dense
                   class="q-ml-md"
                   @update:model-value="setConfig({ hideEssenceOwnedOwnedOnly: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideUnownedWeaponsInSelector"
-                  label="武器列表隐藏未拥有有武器"
+                  label="武器列表隐藏未拥有武器"
                   dense
                   @update:model-value="setConfig({ hideUnownedWeaponsInSelector: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideUnownedWeaponsInPlans"
-                  label="方案推荐隐藏未拥有有武器"
+                  label="方案推荐隐藏未拥有武器"
                   dense
                   @update:model-value="setConfig({ hideUnownedWeaponsInPlans: $event })"
                 />
@@ -416,7 +416,7 @@
                 class="weapon-ownership-badge"
                 :class="item.mark.ownedWeapon ? 'is-owned' : 'is-unowned'"
               >
-                {{ item.mark.ownedWeapon ? '已拥有有' : '未拥有' }}
+                {{ item.mark.ownedWeapon ? '已拥有' : '未拥有' }}
               </div>
               <div class="weapon-name">
                 <div class="weapon-title">
@@ -459,7 +459,7 @@
                       v-if="props.state.recommendationConfig.showWeaponOwnership && item.mark.ownedWeapon"
                       color="primary"
                       outline
-                    >已拥有有武器</q-badge>
+                    >已拥有武器</q-badge>
                     <q-badge
                       v-if="props.state.recommendationConfig.showWeaponOwnership && item.mark.ownedMatrix"
                       color="teal"
@@ -483,7 +483,7 @@
                   size="sm"
                   unelevated
                   :color="item.mark.ownedWeapon ? 'primary' : 'grey-8'"
-                  :label="item.mark.ownedWeapon ? '标记未拥有' : '标记已拥有有'"
+                  :label="item.mark.ownedWeapon ? '标记未拥有' : '标记已拥有'"
                   @click.stop="setMarkField(item.name, 'ownedWeapon', !item.mark.ownedWeapon)"
                 />
                 <q-btn
@@ -788,7 +788,7 @@
                            color="primary"
                            outline
                            size="sm"
-                         >已拥有有武器</q-badge>
+                         >已拥有武器</q-badge>
                          <q-badge
                            v-if="props.state.recommendationConfig.showWeaponOwnership && weapon.isEssenceOwned"
                            color="teal"
@@ -816,7 +816,7 @@
                            dense
                            unelevated
                            :color="weapon.isWeaponOwned ? 'primary' : 'grey-8'"
-                           :label="weapon.isWeaponOwned ? '已拥有有' : '未拥有'"
+                           :label="weapon.isWeaponOwned ? '已拥有' : '未拥有'"
                            @click.stop="setMarkField(weapon.name, 'ownedWeapon', !weapon.isWeaponOwned)"
                          />
                          <q-btn
