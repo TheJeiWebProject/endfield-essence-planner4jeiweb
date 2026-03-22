@@ -67,20 +67,20 @@
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedWeaponsInSelector"
-                  label="武器列表隐藏已拥基质武器"
+                  label="武器列表隐藏已拥有有基质武器"
                   dense
                   @update:model-value="setConfig({ hideEssenceOwnedWeaponsInSelector: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedWeaponsInPlans"
-                  label="方案推荐隐藏已拥基质武器"
+                  label="方案推荐隐藏已拥有有基质武器"
                   dense
                   @update:model-value="setConfig({ hideEssenceOwnedWeaponsInPlans: $event })"
                 />
                 <q-toggle
                   v-if="props.state.recommendationConfig.hideEssenceOwnedWeaponsInSelector || props.state.recommendationConfig.hideEssenceOwnedWeaponsInPlans"
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedOwnedOnly"
-                  label="仅当同时标记已拥武器时隐藏"
+                  label="仅当同时标记已拥有有武器时隐藏"
                   dense
                   class="q-ml-md"
                   @update:model-value="setConfig({ hideEssenceOwnedOwnedOnly: $event })"
@@ -416,7 +416,7 @@
                 class="weapon-ownership-badge"
                 :class="item.mark.ownedWeapon ? 'is-owned' : 'is-unowned'"
               >
-                {{ item.mark.ownedWeapon ? '已拥' : '未拥有' }}
+                {{ item.mark.ownedWeapon ? '已拥有有' : '未拥有' }}
               </div>
               <div class="weapon-name">
                 <div class="weapon-title">
@@ -459,7 +459,7 @@
                       v-if="props.state.recommendationConfig.showWeaponOwnership && item.mark.ownedWeapon"
                       color="primary"
                       outline
-                    >已拥武器</q-badge>
+                    >已拥有有武器</q-badge>
                     <q-badge
                       v-if="props.state.recommendationConfig.showWeaponOwnership && item.mark.ownedMatrix"
                       color="teal"
@@ -483,7 +483,7 @@
                   size="sm"
                   unelevated
                   :color="item.mark.ownedWeapon ? 'primary' : 'grey-8'"
-                  :label="item.mark.ownedWeapon ? '标记未拥有' : '标记已拥'"
+                  :label="item.mark.ownedWeapon ? '标记未拥有' : '标记已拥有有'"
                   @click.stop="setMarkField(item.name, 'ownedWeapon', !item.mark.ownedWeapon)"
                 />
                 <q-btn
@@ -685,8 +685,15 @@
               
               <q-separator />
 
-              <q-card-section v-if="scheme.baseOverflow" class="q-py-sm">
-                <div class="text-caption text-warning q-mb-xs">基础词条超限：请手动锁定最多 3 个基础属性</div>
+              <q-card-section v-if="scheme.baseOptions.length > 0" class="q-py-sm">
+                <div class="text-caption q-mb-xs" :class="scheme.baseOverflow ? 'text-warning' : 'text-primary'">
+                  <template v-if="scheme.baseOverflow">
+                    基础词条超限：请手动锁定最多 3 个基础属性
+                  </template>
+                  <template v-else>
+                    可手动锁定基础属性（最多 3 个），覆盖范围会实时更新。
+                  </template>
+                </div>
                 <div class="row q-gutter-xs">
                   <q-chip
                     v-for="item in scheme.baseOptions"
@@ -708,12 +715,12 @@
                     还需选择 {{ scheme.manualPickNeeded }} 个基础属性。
                   </template>
                   <template v-else>
-                    基础属性已锁定，可同时刷取范围已更新。
+                    基础属性已锁定（{{ scheme.activeBasePick.length }} 项），可同时刷取范围已更新。
                   </template>
                 </div>
               </q-card-section>
 
-              <q-separator v-if="scheme.baseOverflow" />
+              <q-separator v-if="scheme.baseOptions.length > 0" />
 
               <q-card-section v-if="scheme.conflictSelected.length > 0" class="q-py-sm">
                 <div class="row items-center justify-between">
@@ -781,7 +788,7 @@
                            color="primary"
                            outline
                            size="sm"
-                         >已拥武器</q-badge>
+                         >已拥有有武器</q-badge>
                          <q-badge
                            v-if="props.state.recommendationConfig.showWeaponOwnership && weapon.isEssenceOwned"
                            color="teal"
@@ -809,7 +816,7 @@
                            dense
                            unelevated
                            :color="weapon.isWeaponOwned ? 'primary' : 'grey-8'"
-                           :label="weapon.isWeaponOwned ? '已拥' : '未拥有'"
+                           :label="weapon.isWeaponOwned ? '已拥有有' : '未拥有'"
                            @click.stop="setMarkField(weapon.name, 'ownedWeapon', !weapon.isWeaponOwned)"
                          />
                          <q-btn
@@ -1306,14 +1313,18 @@ const displaySchemes = computed(() => {
     const manualPick = manualSeed.filter((item) => baseOptionsRaw.includes(item));
     const baseLimit = 3;
     const manualPickNeeded = scheme.baseOverflow ? Math.max(0, baseLimit - manualPick.length) : 0;
-    const manualPickOverflow = Boolean(scheme.baseOverflow) && manualPick.length > baseLimit;
+    const manualPickOverflow = manualPick.length > baseLimit;
     const manualPickOverflowCount = manualPickOverflow ? manualPick.length - baseLimit : 0;
-    const manualPickReady = Boolean(scheme.baseOverflow) && manualPick.length >= baseLimit && !manualPickOverflow;
+    const manualPickReady = scheme.baseOverflow
+      ? manualPick.length >= baseLimit && !manualPickOverflow
+      : true;
     const activeBasePick = scheme.baseOverflow
       ? manualPickReady
-        ? manualPick
+        ? manualPick.slice(0, baseLimit)
         : baseAutoPick
-      : baseOptionsRaw;
+      : manualPick.length
+        ? manualPick.slice(0, baseLimit)
+        : baseOptionsRaw.slice(0, baseLimit);
     const activeBaseSet = new Set(activeBasePick);
     const selectedCoveredNames = new Set(
       weaponRows
@@ -1345,25 +1356,6 @@ const displaySchemes = computed(() => {
       count: baseCounts[value],
       selected: manualPick.includes(value),
     }));
-
-    if (!scheme.baseOverflow) {
-      return {
-        ...scheme,
-        activeBasePick: baseOptionsRaw,
-        activeCoveredWeapons,
-        activeMissingWeapons: displaySelectedMissingNames,
-        displayWeaponCount: activeCoveredWeapons.length,
-        displaySelectedMatchCount,
-        displaySelectedMissingNames,
-        targetCount,
-        manualPickNeeded,
-        manualPickOverflow,
-        manualPickOverflowCount,
-        conflictSelected,
-        baseOptions,
-        weaponRowsDisplay,
-      };
-    }
 
     return {
       ...scheme,
