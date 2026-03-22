@@ -1,7 +1,7 @@
 <template>
-  <div class="planner-layout">
+  <div class="planner-layout" :class="{ 'single-column': state.hideWeaponSelector }">
     <!-- Left Panel: Weapon Selector -->
-    <div class="panel-column">
+    <div v-if="!state.hideWeaponSelector" class="panel-column">
       <q-card flat bordered class="panel-card main-panel">
         <q-card-section class="panel-header">
           <div class="row items-center justify-between no-wrap">

@@ -18,6 +18,8 @@ pnpm install
 pnpm --dir tools/quasar-plugin dev
 ```
 
+开发命令会先自动同步根目录数据，并复制 Legacy 静态资源到 `tools/quasar-plugin/public/legacy`，避免现代版页面缺失图片或回退资源。
+
 ### 3. 构建生产版本
 
 构建过程会自动同步数据、拷贝 Legacy 资源并生成 CORS 配置文件：
@@ -132,9 +134,12 @@ dist/
 | :--- | :--- | :--- |
 | **基质规划 (默认)** | `/?view=planner` | 进入默认的基质规划界面 |
 | **基质规划 (带预选)** | `/?view=planner&weapons=莫奈何,长路` | 预先选中“莫奈何”和“长路”两把武器 |
+| **基质规划 (隐藏左栏)** | `/?view=planner&weapons=莫奈何,长路&hideWeaponSelector=1` | 隐藏左侧武器选择器，仅展示方案区 |
 | **角色攻略** | `/?view=strategy` | 直接进入角色攻略界面 |
 | **词条对照** | `/?view=match&matchSource=莫奈何` | 进入词条对照界面，并指定“莫奈何”为源武器 |
+| **词条对照 (隐藏左栏)** | `/?view=match&matchSource=莫奈何&hideWeaponSelector=1` | 隐藏左侧武器列表，仅展示对照结果 |
 | **装备精锻** | `/?view=gear-refining&gearName=天灾防护重甲` | 进入装备精锻界面，并指定“天灾防护重甲”为目标装备 |
+| **装备精锻 (隐藏左栏)** | `/?view=gear-refining&gearName=天灾防护重甲&hideWeaponSelector=1` | 隐藏左侧装备列表，仅展示精锻结果 |
 | **旧版引擎** | `/?renderer=legacy` | 强制使用旧版 (Legacy) 渲染引擎 |
 | **只读嵌入** | `/?view=planner&embed=1&readonly=1` | 以只读模式嵌入，隐藏 UI 且禁止修改 |
 
@@ -146,6 +151,7 @@ dist/
 | **readonly** | 只读模式 | `1` (开启，禁止用户修改已选武器或配置)<br>`0` (关闭) | `readonly=1` |
 | **matchSource** | 词条对照源武器 | 武器名称 (仅在 `view=match` 时有效) | `matchSource=莫奈何` |
 | **gearName** | 装备精锻目标装备 | 装备名称 (仅在 `view=gear-refining` 时有效) | `gearName=天灾防护重甲` |
+| **hideWeaponSelector** | 隐藏左侧选择器列 | `1` (开启)<br>`0` (关闭，不传即关闭)。兼容别名 `hideSelector`。对 `planner`、`match`、`gear-refining` 三个页面生效 | `hideWeaponSelector=1` |
 
 #### 高级功能
 

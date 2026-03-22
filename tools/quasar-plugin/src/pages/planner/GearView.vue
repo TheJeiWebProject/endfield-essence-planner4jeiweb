@@ -1,7 +1,7 @@
 <template>
-  <div class="planner-layout gear-layout">
+  <div class="planner-layout gear-layout" :class="{ 'single-column': props.state.hideWeaponSelector }">
     <!-- Left Panel: Gear Selector -->
-    <div class="panel-column">
+    <div v-if="!props.state.hideWeaponSelector" class="panel-column">
       <q-card flat bordered class="panel-card main-panel">
         <q-card-section class="panel-header">
           <div class="text-h6">装备选择 ({{ filteredGears.length }})</div>
@@ -84,7 +84,7 @@
         <q-separator />
 
         <div v-if="!selectedGear" class="empty-state text-center text-grey-6 q-py-xl">
-          请从左侧选择一件装备以查看精锻推荐。
+          {{ props.state.hideWeaponSelector ? '当前已隐藏左侧选择器，请通过 URL 参数 gearName 预选一件装备。' : '请从左侧选择一件装备以查看精锻推荐。' }}
         </div>
 
         <div v-else class="gear-result-body q-pa-md">
@@ -379,6 +379,12 @@ if (!selectedGearName.value && allGears.length > 0) {
   
   @media (min-width: 900px) {
     grid-template-columns: 4fr 3fr;
+  }
+}
+
+.gear-layout.single-column {
+  @media (min-width: 900px) {
+    grid-template-columns: 1fr;
   }
 }
 

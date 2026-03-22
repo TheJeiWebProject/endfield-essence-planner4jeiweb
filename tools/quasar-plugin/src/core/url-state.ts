@@ -32,8 +32,13 @@ export const DEFAULT_STATE: PlannerState = {
   embed: false,
   api: false,
   readonly: false,
+  hideWeaponSelector: false,
   recommendationConfig: { ...DEFAULT_RECOMMENDATION_CONFIG },
 };
+
+function normalizeBooleanParam(value: string | null): boolean {
+  return value === '1' || value === 'true';
+}
 
 function normalizeView(value: string | null): PlannerState['view'] {
   if (value === 'planner' || value === 'strategy' || value === 'match' || value === 'gear-refining' || value === 'rerun-ranking' || value === 'editor') {
@@ -79,6 +84,7 @@ export function parseStateFromUrl(url = window.location.href): PlannerState {
     embed: params.get('embed') === '1',
     api: params.get('api') === '1',
     readonly: params.get('readonly') === '1',
+    hideWeaponSelector: normalizeBooleanParam(params.get('hideWeaponSelector')) || normalizeBooleanParam(params.get('hideSelector')),
     matchSource: params.get('matchSource') || undefined,
     gearName: params.get('gearName') || undefined,
     recommendationConfig: { ...DEFAULT_RECOMMENDATION_CONFIG },
@@ -159,6 +165,12 @@ export function writeStateToUrl(
 
   if (state.readonly) params.set('readonly', '1');
   else params.delete('readonly');
+
+  if (state.hideWeaponSelector) params.set('hideWeaponSelector', '1');
+  else {
+    params.delete('hideWeaponSelector');
+    params.delete('hideSelector');
+  }
 
   if (state.matchSource) params.set('matchSource', state.matchSource);
   else params.delete('matchSource');

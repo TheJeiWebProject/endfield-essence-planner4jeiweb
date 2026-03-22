@@ -343,6 +343,7 @@ function loadPersistedState() {
       weaponMarks?: Record<string, WeaponMark>;
       matchSource?: string;
       gearName?: string;
+      hideWeaponSelector?: boolean;
       recommendationConfig?: Partial<RecommendationConfig>;
     };
 
@@ -356,6 +357,10 @@ function loadPersistedState() {
     
     if (parsed.gearName && !state.gearName) {
       state.gearName = parsed.gearName;
+    }
+
+    if (typeof parsed.hideWeaponSelector === 'boolean' && !state.hideWeaponSelector) {
+      state.hideWeaponSelector = parsed.hideWeaponSelector;
     }
 
     if (parsed.recommendationConfig && typeof parsed.recommendationConfig === 'object') {
@@ -419,6 +424,7 @@ watch(
     weaponMarks: JSON.parse(JSON.stringify(weaponMarks)),
     matchSource: state.matchSource,
     gearName: state.gearName,
+    hideWeaponSelector: state.hideWeaponSelector,
   }),
   (payload) => {
     const existing = window.localStorage.getItem(STORAGE_KEY);
@@ -445,6 +451,7 @@ watch(
     embed: state.embed,
     api: state.api,
     readonly: state.readonly,
+    hideWeaponSelector: state.hideWeaponSelector,
     matchSource: state.matchSource,
     gearName: state.gearName,
     recommendationConfig: { ...state.recommendationConfig },

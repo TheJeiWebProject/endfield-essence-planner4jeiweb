@@ -1,7 +1,7 @@
 <template>
-  <div class="planner-layout match-layout">
+  <div class="planner-layout match-layout" :class="{ 'single-column': props.state.hideWeaponSelector }">
     <!-- Left Panel: Weapon Source Selector -->
-    <div class="panel-column">
+    <div v-if="!props.state.hideWeaponSelector" class="panel-column">
       <q-card flat bordered class="panel-card main-panel">
         <q-card-section class="panel-header">
           <div class="text-h6">武器选择 ({{ matchSourceList.length }})</div>
@@ -64,7 +64,7 @@
         <q-separator />
 
         <div v-if="!matchSourceWeapon" class="empty-state text-center text-grey-6 q-py-xl">
-          请从左侧选择一把武器以查看同词条对照。
+          {{ props.state.hideWeaponSelector ? '当前已隐藏左侧选择器，请通过 URL 参数 matchSource 预选一把武器。' : '请从左侧选择一把武器以查看同词条对照。' }}
         </div>
 
         <div v-else class="match-result-body q-pa-md">
@@ -253,6 +253,12 @@ if (!matchSourceName.value && sortedWeapons.length > 0) {
   
   @media (min-width: 900px) {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+.match-layout.single-column {
+  @media (min-width: 900px) {
+    grid-template-columns: 1fr;
   }
 }
 

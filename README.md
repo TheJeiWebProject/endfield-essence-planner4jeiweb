@@ -3,6 +3,8 @@
 一款面向《明日方舟：终末地》玩家的本地化网页工具，用于基质刷取规划与多武器共刷方案推荐。  
 重构的Vue版本在tools目录提供
 
+Vue / Quasar 重构版的开发说明、嵌入方式与 URL 参数见 [tools/quasar-plugin/README.md](./tools/quasar-plugin/README.md)。
+
 ## 功能概览
 
 - 武器搜索与多选

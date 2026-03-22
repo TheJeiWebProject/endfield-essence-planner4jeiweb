@@ -111,6 +111,7 @@ export interface PlannerState {
   embed: boolean;
   api: boolean;
   readonly: boolean;
+  hideWeaponSelector: boolean;
   // Sub-view states
   matchSource?: string;
   gearName?: string;
