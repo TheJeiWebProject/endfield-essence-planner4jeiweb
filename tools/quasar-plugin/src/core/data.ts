@@ -3,6 +3,7 @@ import dungeons from '@/data/dungeons.json';
 import gears from '@/data/gears.json';
 import upSchedules from '@/data/up-schedules.json';
 import weaponImages from '@/data/weapon-images.json';
+import gearImages from '@/data/equip-images.json';
 import characters from '@/data/characters.json';
 import type { Character, Dungeon, Gear, UpScheduleMap, Weapon } from './types';
 
@@ -36,6 +37,11 @@ export function getWeaponImageNames(): string[] {
 
 export function getWeaponImageId(name: string): string | undefined {
   const map = weaponImages as unknown as Record<string, string>;
+  return map[name];
+}
+
+export function getGearImageId(name: string): string | undefined {
+  const map = gearImages as unknown as Record<string, string>;
   return map[name];
 }
 

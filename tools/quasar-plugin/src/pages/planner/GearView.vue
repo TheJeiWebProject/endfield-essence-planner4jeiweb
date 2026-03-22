@@ -195,7 +195,7 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive, watch } from 'vue';
-import { getGears, toLegacyAssetUrl } from '@/core/data';
+import { getGearImageId, getGears, toLegacyAssetUrl } from '@/core/data';
 import type { Gear, PlannerState } from '@/core/types';
 
 const props = defineProps<{
@@ -227,9 +227,8 @@ function parseAttrValue(attr: string): number {
 }
 
 function getGearImageUrl(name: string): string {
-  const gear = allGears.find((g) => g.name === name);
-  if (!gear) return '';
-  return toLegacyAssetUrl(`legacy/image/gear/${gear.rarity}/${encodeURIComponent(name)}.png`);
+  const id = getGearImageId(name);
+  return id ? toLegacyAssetUrl(`legacy/image/equip/${encodeURIComponent(id)}.avif`) : '';
 }
 
 function rarityClass(rarity: number): string {

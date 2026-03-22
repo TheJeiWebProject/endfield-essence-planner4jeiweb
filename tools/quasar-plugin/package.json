@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "predev": "pnpm run sync:data && pnpm run copy:legacy",
     "dev": "vite",
     "copy:legacy": "node ./scripts/copy-legacy-assets.mjs",
     "sync:data": "node ../../scripts/sync-quasar-plugin-data.mjs",

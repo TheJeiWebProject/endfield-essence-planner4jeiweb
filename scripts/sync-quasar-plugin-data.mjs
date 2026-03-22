@@ -7,12 +7,12 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(currentDir, '..');
 const sourceDataDir = path.join(rootDir, 'data');
 const targetDataDir = path.join(rootDir, 'tools', 'quasar-plugin', 'src', 'data');
-const legacyPublicDir = path.join(rootDir, 'tools', 'quasar-plugin', 'public', 'legacy');
 
 const syncEntries = [
   { source: 'weapons.js', target: 'weapons.json', extract: (win) => win.WEAPONS },
   { source: 'dungeons.js', target: 'dungeons.json', extract: (win) => win.DUNGEONS },
   { source: 'equip.js', target: 'gears.json', extract: (win) => win.EQUIPS },
+  { source: 'equip-images.js', target: 'equip-images.json', extract: (win) => win.EQUIP_IMAGES },
   { source: 'up-schedules.js', target: 'up-schedules.json', extract: (win) => win.WEAPON_UP_SCHEDULES },
   { source: 'weapon-images.js', target: 'weapon-images.json', extract: (win) => win.WEAPON_IMAGES },
   { source: 'content.js', target: 'content.json', extract: (win) => win.CONTENT },
@@ -113,7 +113,6 @@ function verifyContracts(dataset) {
 
 async function main() {
   await fs.mkdir(targetDataDir, { recursive: true });
-  await fs.rm(legacyPublicDir, { recursive: true, force: true });
 
   const summary = await syncBaseData();
   const charEntry = await syncCharacterData();
