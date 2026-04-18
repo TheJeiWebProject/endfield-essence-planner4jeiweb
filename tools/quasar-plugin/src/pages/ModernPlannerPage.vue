@@ -22,7 +22,7 @@
         <q-card v-if="!state.embed" flat bordered class="panel-card toolbar-card">
           <q-card-section class="planner-topbar-section">
             <div class="row q-col-gutter-sm items-center planner-topbar-row">
-              <div class="col-12 col-lg planner-toolbar-nav">
+              <div class="col planner-toolbar-nav">
                 <div class="row items-center no-wrap scroll">
                   <q-tabs
                     v-model="state.view"
@@ -43,32 +43,48 @@
                 </div>
               </div>
               
-              <div class="col-12 col-lg-auto">
+              <div class="col-auto planner-toolbar-column">
                 <div class="planner-toolbar-controls">
                   <div class="planner-toolbar-selects">
-                  <q-select 
-                    v-model="state.lang" 
-                    :options="langOptions" 
-                    dense 
-                    outlined 
-                    emit-value 
-                    map-options 
-                    options-dense
-                    class="planner-toolbar-select planner-lang-select"
-                    :label="t('语言')"
-                  />
+                  <q-btn flat dense round icon="translate" color="primary">
+                    <q-tooltip>{{ t('语言', '语言') }}: {{ currentLangLabel }}</q-tooltip>
+                    <q-menu>
+                      <q-list style="min-width: 160px">
+                        <q-item
+                          v-for="option in langOptions"
+                          :key="option.value"
+                          clickable
+                          v-close-popup
+                          @click="state.lang = option.value"
+                        >
+                          <q-item-section>{{ option.label }}</q-item-section>
+                          <q-item-section side>
+                            <q-icon v-if="state.lang === option.value" name="check" color="primary" />
+                          </q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
 
-                  <q-select
-                    v-model="state.theme"
-                    :options="themeOptions"
-                    dense
-                    outlined
-                    emit-value
-                    map-options
-                    options-dense
-                    class="planner-toolbar-select"
-                    :label="t('主题')"
-                  />
+                  <q-btn flat dense round icon="palette" color="primary">
+                    <q-tooltip>{{ t('主题', '主题') }}: {{ currentThemeLabel }}</q-tooltip>
+                    <q-menu>
+                      <q-list style="min-width: 160px">
+                        <q-item
+                          v-for="option in themeOptions"
+                          :key="option.value"
+                          clickable
+                          v-close-popup
+                          @click="state.theme = option.value"
+                        >
+                          <q-item-section>{{ option.label }}</q-item-section>
+                          <q-item-section side>
+                            <q-icon v-if="state.theme === option.value" name="check" color="primary" />
+                          </q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
                   
                   <q-btn-dropdown flat dense dropdown-icon="settings">
                     <q-list style="min-width: 200px">
@@ -160,10 +176,11 @@
                     dense
                     color="primary"
                     icon="wallpaper"
-                    :label="t('看背景图', '看背景图')"
                     no-caps
                     @click="openBackgroundPreview"
-                  />
+                  >
+                    <q-tooltip>{{ t('看背景图', '看背景图') }}</q-tooltip>
+                  </q-btn>
 
                   <q-btn
                     v-if="hasPlannerContent"
@@ -171,12 +188,13 @@
                     dense
                     color="primary"
                     icon="campaign"
-                    :label="t('公告')"
                     no-caps
                     @click="openAnnouncementDialog"
                   >
                     <q-badge v-if="hasUnreadAnnouncement" floating rounded color="negative" />
                     <q-tooltip>
+                      {{ t('公告', '公告') }}
+                      <br>
                       当前支持 {{ supportedVersionLabel }}
                       <span v-if="nextVersionLabel">，下个版本 {{ nextVersionLabel }}</span>
                       <span v-if="nextVersionDateLabel">，预计 {{ nextVersionDateLabel }}</span>
@@ -411,6 +429,10 @@ const langOptions = computed(() => [
   { label: '日本語', value: 'ja' },
 ]);
 
+const currentLangLabel = computed(
+  () => langOptions.value.find((option) => option.value === state.lang)?.label || state.lang,
+);
+
 const themeOptions = computed(() => [
   { label: t('自动'), value: 'auto' },
   { label: t('浅色', '浅色'), value: 'light' },
@@ -418,6 +440,10 @@ const themeOptions = computed(() => [
   { label: t('原版浅色', '原版浅色'), value: 'classic-light' },
   { label: t('原版深色', '原版深色'), value: 'classic-dark' },
 ]);
+
+const currentThemeLabel = computed(
+  () => themeOptions.value.find((option) => option.value === state.theme)?.label || state.theme,
+);
 
 const showClassicThemeSettings = computed(() =>
   state.theme === 'classic-light' || state.theme === 'classic-dark',
@@ -1265,12 +1291,16 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+.planner-toolbar-column {
+  min-width: 0;
+}
+
 .planner-toolbar-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px 10px;
+  gap: 6px 8px;
 }
 
 .planner-toolbar-selects,
@@ -1278,15 +1308,15 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .planner-toolbar-select {
-  min-width: 126px;
+  min-width: 104px;
 }
 
 .planner-lang-select {
-  min-width: 144px;
+  min-width: 116px;
 }
 
 .planner-toolbar-separator {
@@ -1426,42 +1456,30 @@ onBeforeUnmount(() => {
   box-shadow: 0 18px 40px rgba(22, 44, 72, 0.12);
 }
 
-@media (min-width: 1360px) {
+@media (min-width: 921px) {
   .planner-topbar-row {
     flex-wrap: nowrap;
   }
 
-  .planner-toolbar-controls,
-  .planner-toolbar-selects,
-  .planner-toolbar-actions {
-    flex-wrap: nowrap;
+  .planner-toolbar-controls {
+    justify-content: flex-end;
   }
 }
 
-@media (max-width: 1359px) {
+@media (max-width: 650px) {
   .planner-toolbar-separator {
     display: none;
   }
 
-  .planner-topbar-row {
-    align-items: stretch;
-  }
-
   .planner-toolbar-nav,
-  .planner-topbar-row > .col-12.col-lg-auto {
-    width: 100%;
+  .planner-toolbar-column {
     flex: 0 0 100%;
     max-width: 100%;
+    width: 100%;
   }
 
   .planner-toolbar-controls {
     justify-content: flex-start;
-    width: 100%;
-  }
-
-  .planner-toolbar-selects,
-  .planner-toolbar-actions {
-    flex: 1 1 100%;
   }
 
   .planner-toolbar-actions {
