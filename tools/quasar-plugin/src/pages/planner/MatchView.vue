@@ -4,7 +4,7 @@
     <div v-if="!props.state.hideWeaponSelector" class="panel-column">
       <q-card flat bordered class="panel-card main-panel">
         <q-card-section class="panel-header">
-          <div class="text-h6">武器选择 ({{ matchSourceList.length }})</div>
+          <div class="text-h6">{{ t('武器选择', '武器选择') }} ({{ matchSourceList.length }})</div>
         </q-card-section>
 
         <q-card-section class="toolbar-section">
@@ -12,7 +12,7 @@
             v-model="matchQuery"
             dense
             outlined
-            placeholder="🔍 搜索武器..."
+            :placeholder="`🔍 ${t('搜索武器...', '搜索武器...')}`"
             class="search-input"
           >
             <template #append>
@@ -58,18 +58,18 @@
     <div class="panel-column">
       <q-card flat bordered class="panel-card">
         <q-card-section class="panel-header">
-          <div class="text-h6">词条对照结果</div>
+          <div class="text-h6">{{ t('词条对照结果', '词条对照结果') }}</div>
         </q-card-section>
 
         <q-separator />
 
         <div v-if="!matchSourceWeapon" class="empty-state text-center text-grey-6 q-py-xl">
-          {{ props.state.hideWeaponSelector ? '当前已隐藏左侧选择器，请通过 URL 参数 matchSource 预选一把武器。' : '请从左侧选择一把武器以查看同词条对照。' }}
+          {{ props.state.hideWeaponSelector ? t('当前已隐藏左侧选择器，请通过 URL 参数 matchSource 预选一把武器。', '当前已隐藏左侧选择器，请通过 URL 参数 matchSource 预选一把武器。') : t('请从左侧选择一把武器以查看同词条对照。', '请从左侧选择一把武器以查看同词条对照。') }}
         </div>
 
         <div v-else class="match-result-body q-pa-md">
           <!-- Selected Source Weapon Card -->
-          <div class="planner-section-label q-mb-sm">已选武器</div>
+          <div class="planner-section-label q-mb-sm">{{ t('已选武器', '已选武器') }}</div>
           <q-card flat bordered class="scheme-card planner-surface-card q-mb-md">
             <q-card-section class="row items-center q-col-gutter-md match-selected-section">
               <div class="col-auto">
@@ -87,9 +87,9 @@
                   {{ matchSourceWeapon.type }} · {{ matchSourceWeapon.rarity }}★
                 </div>
                 <div class="row q-gutter-x-md q-gutter-y-xs q-mt-sm match-inline-attrs">
-                  <span class="text-caption match-attr-chip match-attr-chip-base">基础: {{ matchSourceWeapon.s1 || '-' }}</span>
-                  <span class="text-caption match-attr-chip match-attr-chip-extra">附加: {{ matchSourceWeapon.s2 || '-' }}</span>
-                  <span class="text-caption match-attr-chip match-attr-chip-skill">技能: {{ matchSourceWeapon.s3 || '-' }}</span>
+                  <span class="text-caption match-attr-chip match-attr-chip-base">{{ t('基础属性', '基础') }}: {{ matchSourceWeapon.s1 || '-' }}</span>
+                  <span class="text-caption match-attr-chip match-attr-chip-extra">{{ t('附加属性', '附加') }}: {{ matchSourceWeapon.s2 || '-' }}</span>
+                  <span class="text-caption match-attr-chip match-attr-chip-skill">{{ t('技能属性', '技能') }}: {{ matchSourceWeapon.s3 || '-' }}</span>
                 </div>
               </div>
             </q-card-section>
@@ -97,11 +97,11 @@
 
           <!-- Exact Match Results -->
           <div class="row items-center justify-between q-mb-sm">
-            <div class="planner-section-label">同词条完全一致 ({{ matchResults.length }})</div>
+            <div class="planner-section-label">{{ t('同词条完全一致', '同词条完全一致') }} ({{ matchResults.length }})</div>
           </div>
           
           <div v-if="matchResults.length === 0" class="text-caption planner-muted-text q-mb-lg">
-            暂无其他武器拥有完全相同的词条组合。
+            {{ t('暂无其他武器拥有完全相同的词条组合。', '暂无其他武器拥有完全相同的词条组合。') }}
           </div>
 
           <div v-else class="weapon-grid q-mb-lg">
@@ -131,10 +131,10 @@
           </div>
 
           <!-- Dungeon Drop Info -->
-          <div class="planner-section-label q-mb-sm">副本掉落匹配</div>
+          <div class="planner-section-label q-mb-sm">{{ t('副本掉落匹配', '副本掉落匹配') }}</div>
           <q-list separator bordered class="rounded-borders match-dungeon-list">
             <q-item v-if="compatibleDungeons.length === 0" class="planner-muted-text">
-              <q-item-section>无副本同时掉落该组合</q-item-section>
+              <q-item-section>{{ t('无副本同时掉落该组合', '无副本同时掉落该组合') }}</q-item-section>
             </q-item>
             <q-item v-for="dungeon in compatibleDungeons" :key="dungeon.id">
               <q-item-section>
@@ -157,6 +157,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { getDungeons, getWeaponImageId, getWeapons, toLegacyAssetUrl } from '@/core/data';
+import { translatePlannerText } from '@/core/i18n';
 import type { Weapon, PlannerState } from '@/core/types';
 
 const props = defineProps<{
@@ -167,6 +168,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:matchSource', value: string): void;
 }>();
+
+function t(key: string, fallback = key, params?: Record<string, string | number>): string {
+  return translatePlannerText(props.state.lang, key, fallback, params);
+}
 
 const allWeapons = getWeapons();
 const dungeons = getDungeons();
@@ -373,7 +378,7 @@ if (!matchSourceName.value && sortedWeapons.length > 0) {
 
 .match-dungeon-list {
   border-color: var(--planner-item-border);
-  background: var(--planner-surface-soft);
+  background: var(--planner-surface-card-bg);
 }
 
 .weapon-card-mini.is-selected {
@@ -382,8 +387,10 @@ if (!matchSourceName.value && sortedWeapons.length > 0) {
 }
 
 .planner-surface-card {
-  background: var(--planner-surface-soft) !important;
+  background: var(--planner-surface-card-bg) !important;
   border-color: var(--planner-item-border) !important;
+  -webkit-backdrop-filter: var(--planner-panel-backdrop);
+  backdrop-filter: var(--planner-panel-backdrop);
 }
 
 @media (max-width: 640px) {

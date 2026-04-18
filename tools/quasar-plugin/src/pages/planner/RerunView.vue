@@ -2,11 +2,11 @@
   <div class="planner-layout single-column">
     <q-card flat bordered class="panel-card">
       <q-card-section class="row items-center justify-between">
-        <div class="text-subtitle1">复刻排行</div>
+          <div class="text-subtitle1">{{ t('复刻排行') }}</div>
         <div class="row q-gutter-sm">
-           <q-chip color="positive" text-color="white" icon="event_available">进行中: {{ activeRows.length }}</q-chip>
-           <q-chip color="warning" text-color="dark" icon="update">即将开始: {{ upcomingRows.length }}</q-chip>
-           <q-chip color="grey-7" text-color="white" icon="history">已结束: {{ inactiveRows.length }}</q-chip>
+            <q-chip color="positive" text-color="white" icon="event_available">{{ t('进行中', '进行中') }}: {{ activeRows.length }}</q-chip>
+            <q-chip color="warning" text-color="dark" icon="update">{{ t('即将开始', '即将开始') }}: {{ upcomingRows.length }}</q-chip>
+            <q-chip color="grey-7" text-color="white" icon="history">{{ t('已结束', '已结束') }}: {{ inactiveRows.length }}</q-chip>
         </div>
       </q-card-section>
       <q-separator />
@@ -14,7 +14,7 @@
       <div class="q-pa-md q-gutter-y-md">
         <!-- Active -->
         <div v-if="activeRows.length > 0">
-          <div class="text-subtitle2 text-positive q-mb-sm">正在 UP</div>
+          <div class="text-subtitle2 text-positive q-mb-sm">{{ t('正在 UP', '正在 UP') }}</div>
           <div class="rerun-grid">
             <div v-for="row in activeRows" :key="row.characterName" class="rerun-card active-card">
               <div class="rerun-avatar">
@@ -22,9 +22,9 @@
               </div>
               <div class="rerun-info">
                 <div class="text-subtitle1">{{ row.characterName }}</div>
-                <div class="text-caption text-positive">UP 进行中</div>
+                 <div class="text-caption text-positive">{{ t('UP 进行中', 'UP 进行中') }}</div>
                 <div class="text-caption text-grey-5">
-                   结束于 {{ formatDate(row.currentEndMs) }}
+                   {{ t('结束于', '结束于') }} {{ formatDate(row.currentEndMs) }}
                 </div>
               </div>
             </div>
@@ -33,7 +33,7 @@
 
         <!-- Upcoming -->
         <div v-if="upcomingRows.length > 0">
-          <div class="text-subtitle2 text-warning q-mb-sm">即将开始</div>
+          <div class="text-subtitle2 text-warning q-mb-sm">{{ t('即将开始', '即将开始') }}</div>
           <div class="rerun-grid">
              <div v-for="row in upcomingRows" :key="row.characterName" class="rerun-card upcoming-card">
               <div class="rerun-avatar">
@@ -41,9 +41,9 @@
               </div>
               <div class="rerun-info">
                 <div class="text-subtitle1">{{ row.characterName }}</div>
-                <div class="text-caption text-warning">还有 {{ row.nextStartDelta }} 天</div>
+                 <div class="text-caption text-warning">{{ t('还有', '还有') }} {{ row.nextStartDelta }} {{ t('天', '天') }}</div>
                 <div class="text-caption text-grey-5">
-                   开启于 {{ formatDate(row.nextStartMs) }}
+                   {{ t('开启于', '开启于') }} {{ formatDate(row.nextStartMs) }}
                 </div>
               </div>
             </div>
@@ -52,7 +52,7 @@
 
         <!-- Inactive (Ranking) -->
         <div>
-          <div class="text-subtitle2 text-grey-6 q-mb-sm">等待复刻 (按间隔天数排序)</div>
+          <div class="text-subtitle2 text-grey-6 q-mb-sm">{{ t('等待复刻 (按间隔天数排序)', '等待复刻 (按间隔天数排序)') }}</div>
           <div class="rerun-list">
             <div v-for="row in inactiveRows" :key="row.characterName" class="rerun-item">
                <div class="row items-center q-col-gutter-md">
@@ -74,8 +74,8 @@
                     </div>
                   </div>
                   <div class="col-auto text-right" style="min-width: 80px">
-                    <div class="text-subtitle2" :class="getTextColorClass(row.gapDays)">{{ row.gapDays }} 天</div>
-                    <div class="text-caption text-grey-6">上次UP: {{ formatDate(row.lastEndMs) }}</div>
+                    <div class="text-subtitle2" :class="getTextColorClass(row.gapDays)">{{ row.gapDays }} {{ t('天', '天') }}</div>
+                    <div class="text-caption text-grey-6">{{ t('上次UP', '上次UP') }}: {{ formatDate(row.lastEndMs) }}</div>
                   </div>
                </div>
             </div>
@@ -88,7 +88,18 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { translatePlannerText } from '@/core/i18n';
 import { getUpSchedules, toLegacyAssetUrl } from '@/core/data';
+import type { PlannerState } from '@/core/types';
+
+const props = defineProps<{
+  state: PlannerState;
+  weaponMarks: Record<string, unknown>;
+}>();
+
+function t(key: string, fallback = key, params?: Record<string, string | number>): string {
+  return translatePlannerText(props.state.lang, key, fallback, params);
+}
 
 const upSchedules = getUpSchedules();
 const DAY_MS = 24 * 60 * 60 * 1000;

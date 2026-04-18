@@ -1,11 +1,11 @@
 <template>
-  <div class="planner-layout" :class="{ 'single-column': state.hideWeaponSelector }">
+  <div class="planner-layout" :class="{ 'single-column': state.hideWeaponSelector, 'is-embed': state.embed }">
     <!-- Left Panel: Weapon Selector -->
     <div v-if="!state.hideWeaponSelector" class="panel-column">
       <q-card flat bordered class="panel-card main-panel">
         <q-card-section class="panel-header">
           <div class="row items-center justify-between no-wrap">
-            <div class="text-h6">武器选择器</div>
+            <div class="text-h6">{{ t('武器选择器') }}</div>
             <q-btn
               class="plan-config-toggle"
               flat
@@ -13,26 +13,26 @@
               size="sm"
               :color="showPlanConfig ? 'primary' : 'grey-5'"
               :icon="showPlanConfig ? 'settings' : 'settings'"
-              label="基质规划设置"
+              :label="t('基质规划设置')"
               @click="showPlanConfig = !showPlanConfig"
             />
           </div>
         </q-card-section>
 
         <q-slide-transition>
-          <div v-if="showPlanConfig" ref="planConfigRoot" class="plan-config-panel q-px-md q-pb-md" @click.stop>
+          <div v-if="showPlanConfig" ref="planConfigRoot" class="plan-config-panel" @click.stop>
             <q-separator class="q-mb-md" />
 
             <!-- Marks Import/Export -->
             <div class="config-section">
               <button class="config-section-header" type="button" @click="togglePlanConfigSectionCollapsed('transfer')">
-                <span>标记导入 / 导出</span>
+                <span>{{ t('标记导入 / 导出', '标记导入 / 导出') }}</span>
                 <q-icon :name="isPlanConfigSectionCollapsed('transfer') ? 'chevron_right' : 'expand_more'" />
               </button>
               <div v-show="!isPlanConfigSectionCollapsed('transfer')" class="q-mt-sm">
                 <div class="row q-gutter-sm">
-                  <q-btn dense unelevated color="grey-8" label="导出标记数据" @click="emit('export:weaponMarks')" />
-                  <q-btn dense unelevated color="grey-8" label="导入标记数据" @click="triggerMarksImport" />
+                  <q-btn dense unelevated color="grey-8" :label="t('导出标记数据', '导出标记数据')" @click="emit('export:weaponMarks')" />
+                  <q-btn dense unelevated color="grey-8" :label="t('导入标记数据', '导入标记数据')" @click="triggerMarksImport" />
                   <input
                     ref="marksImportInput"
                     type="file"
@@ -49,69 +49,69 @@
             <!-- Display rules: hide 4-star -->
             <div class="config-section">
               <button class="config-section-header" type="button" @click="togglePlanConfigSectionCollapsed('displayRules')">
-                <span>显示规则与优先级</span>
+                <span>{{ t('显示规则与优先级', '显示规则与优先级') }}</span>
                 <q-icon :name="isPlanConfigSectionCollapsed('displayRules') ? 'chevron_right' : 'expand_more'" />
               </button>
               <div v-show="!isPlanConfigSectionCollapsed('displayRules')" class="column q-gutter-sm q-mt-sm">
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideFourStarWeaponsInSelector"
-                  label="武器列表隐藏 4★ 武器"
+                  :label="t('武器列表隐藏 4★ 武器', '武器列表隐藏 4★ 武器')"
                   dense
                   @update:model-value="setConfig({ hideFourStarWeaponsInSelector: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideFourStarWeaponsInPlans"
-                  label="方案推荐隐藏 4★ 武器"
+                  :label="t('方案推荐隐藏 4★ 武器', '方案推荐隐藏 4★ 武器')"
                   dense
                   @update:model-value="setConfig({ hideFourStarWeaponsInPlans: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedWeaponsInSelector"
-                  label="武器列表隐藏已拥有基质武器"
+                  :label="t('武器列表隐藏已拥有基质武器', '武器列表隐藏已拥有基质武器')"
                   dense
                   @update:model-value="setConfig({ hideEssenceOwnedWeaponsInSelector: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedWeaponsInPlans"
-                  label="方案推荐隐藏已拥有基质武器"
+                  :label="t('方案推荐隐藏已拥有基质武器', '方案推荐隐藏已拥有基质武器')"
                   dense
                   @update:model-value="setConfig({ hideEssenceOwnedWeaponsInPlans: $event })"
                 />
                 <q-toggle
                   v-if="props.state.recommendationConfig.hideEssenceOwnedWeaponsInSelector || props.state.recommendationConfig.hideEssenceOwnedWeaponsInPlans"
                   :model-value="props.state.recommendationConfig.hideEssenceOwnedOwnedOnly"
-                  label="仅当同时标记已拥有武器时隐藏"
+                  :label="t('仅当同时标记已拥有武器时隐藏', '仅当同时标记已拥有武器时隐藏')"
                   dense
                   class="q-ml-md"
                   @update:model-value="setConfig({ hideEssenceOwnedOwnedOnly: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideUnownedWeaponsInSelector"
-                  label="武器列表隐藏未拥有武器"
+                  :label="t('武器列表隐藏未拥有武器', '武器列表隐藏未拥有武器')"
                   dense
                   @update:model-value="setConfig({ hideUnownedWeaponsInSelector: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.hideUnownedWeaponsInPlans"
-                  label="方案推荐隐藏未拥有武器"
+                  :label="t('方案推荐隐藏未拥有武器', '方案推荐隐藏未拥有武器')"
                   dense
                   @update:model-value="setConfig({ hideUnownedWeaponsInPlans: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.showWeaponOwnership"
-                  label="显示武器拥有标签"
+                  :label="t('显示武器拥有标签')"
                   dense
                   @update:model-value="setConfig({ showWeaponOwnership: $event })"
                 />
                 <q-toggle
                   :model-value="props.state.recommendationConfig.attributeFilterAffectsHiddenWeapons"
-                  label="属性筛选同时作用于武器列表"
+                  :label="t('属性筛选同时作用于武器列表', '属性筛选同时作用于武器列表')"
                   dense
                   @update:model-value="setConfig({ attributeFilterAffectsHiddenWeapons: $event })"
                 />
 
                 <div class="q-mt-sm">
-                  <div class="text-caption text-grey-5 q-mb-xs">地区优先级</div>
+                  <div class="text-caption text-grey-5 q-mb-xs">{{ t('地区优先级') }}</div>
                   <div class="row q-col-gutter-sm">
                     <div class="col-12 col-md-6">
                       <q-select
@@ -119,7 +119,7 @@
                         outlined
                         :model-value="props.state.recommendationConfig.preferredRegion1"
                         :options="['', ...regionOptions]"
-                        label="优先地区 1"
+                        :label="t('优先地区 1', '优先地区 1')"
                         @update:model-value="setConfig({ preferredRegion1: String($event || '') })"
                       />
                     </div>
@@ -129,7 +129,7 @@
                         outlined
                         :model-value="props.state.recommendationConfig.preferredRegion2"
                         :options="['', ...regionOptions].filter((r) => !r || r !== props.state.recommendationConfig.preferredRegion1)"
-                        label="优先地区 2"
+                        :label="t('优先地区 2', '优先地区 2')"
                         @update:model-value="setConfig({ preferredRegion2: String($event || '') })"
                       />
                     </div>
@@ -143,7 +143,7 @@
                   :options="regionPriorityModeOptions"
                   emit-value
                   map-options
-                  label="地区优先策略"
+                  :label="t('地区优先策略')"
                   @update:model-value="setConfig({ regionPriorityMode: $event })"
                 />
                 <q-select
@@ -153,7 +153,7 @@
                   :options="ownershipPriorityModeOptions"
                   emit-value
                   map-options
-                  label="拥有武器优先策略"
+                  :label="t('已拥有武器优先策略', '拥有武器优先策略')"
                   @update:model-value="setConfig({ ownershipPriorityMode: $event })"
                 />
                 <q-select
@@ -164,28 +164,28 @@
                   :options="strictPriorityOrderOptions"
                   emit-value
                   map-options
-                  label="严格优先顺序"
+                  :label="t('严格优先顺序')"
                   @update:model-value="setConfig({ strictPriorityOrder: $event })"
                 />
 
                 <q-separator class="q-my-sm" />
 
                 <div>
-                  <div class="text-caption text-grey-5 q-mb-sm">自定义武器</div>
+                  <div class="text-caption text-grey-5 q-mb-sm">{{ t('自定义武器') }}</div>
                   <div v-if="hasPreviewWeapons" class="text-caption text-warning q-mb-sm">
-                    检测到词条预览数据，建议在管理器中检查
+                    {{ t('检测到词条预览数据，建议在管理器中检查', '检测到词条预览数据，建议在管理器中检查') }}
                     <q-btn
                       flat
                       dense
                       size="sm"
                       color="warning"
-                      label="打开管理器"
+                      :label="t('打开管理器', '打开管理器')"
                       @click="showWeaponAttrDataModal = true"
                     />
                   </div>
                   <div class="row q-col-gutter-sm q-mb-sm">
                     <div class="col-12 col-md-6">
-                      <q-input v-model.trim="customWeaponDraft.name" dense outlined label="武器名称" />
+                      <q-input v-model.trim="customWeaponDraft.name" dense outlined :label="t('武器名称', '武器名称')" />
                     </div>
                     <div class="col-12 col-md-6">
                       <q-select
@@ -193,7 +193,7 @@
                         dense
                         outlined
                         :options="[6,5,4]"
-                        label="星级"
+                        :label="t('星级')"
                       />
                     </div>
                   </div>
@@ -204,7 +204,7 @@
                         dense
                         outlined
                         :options="weaponAttrS1Options"
-                        label="S1 基础属性"
+                        :label="t('S1 基础属性', 'S1 基础属性')"
                       />
                     </div>
                     <div class="col-12 col-md-4">
@@ -213,7 +213,7 @@
                         dense
                         outlined
                         :options="weaponAttrS2Options"
-                        label="S2 附加属性"
+                        :label="t('S2 附加属性', 'S2 附加属性')"
                       />
                     </div>
                     <div class="col-12 col-md-4">
@@ -222,14 +222,14 @@
                         dense
                         outlined
                         :options="weaponAttrS3Options"
-                        label="S3 技能属性"
+                        :label="t('S3 技能属性', 'S3 技能属性')"
                       />
                     </div>
                   </div>
                   <div v-if="customWeaponError" class="text-caption text-negative q-mb-sm">{{ customWeaponError }}</div>
                   <div class="row q-gutter-sm q-mb-sm">
-                    <q-btn dense unelevated color="primary" label="添加自定义武器" @click="addCustomWeapon" />
-                    <q-btn dense flat color="grey-5" label="清空" @click="resetCustomWeaponDraft" />
+                    <q-btn dense unelevated color="primary" :label="t('添加自定义武器', '添加自定义武器')" @click="addCustomWeapon" />
+                    <q-btn dense flat color="grey-5" :label="t('清空')" @click="resetCustomWeaponDraft" />
                   </div>
 
                   <q-list bordered separator v-if="customWeapons.length">
@@ -254,7 +254,7 @@
             v-model="weaponKeyword"
             dense
             outlined
-            placeholder="🔍 搜索武器 / 属性 / 角色"
+            :placeholder="`🔍 ${t('搜索武器 / 属性 / 角色', '搜索武器 / 属性 / 角色')}`"
             class="search-input"
           >
             <template #append>
@@ -262,24 +262,24 @@
             </template>
           </q-input>
 
-          <div class="filter-actions row q-gutter-sm q-mt-sm">
+          <div class="filter-actions row q-gutter-xs q-mt-xs">
             <q-btn
               :color="showWeaponAttrs ? 'primary' : 'grey-8'"
               :outline="!showWeaponAttrs"
-              label="显示属性/拥有/备注"
+              :label="t('显示属性/拥有/备注')"
               @click="showWeaponAttrs = !showWeaponAttrs"
               class="col-grow"
             />
             <q-btn
               flat
               color="primary"
-              :label="showFilterPanel ? '收起筛选' : '展开筛选'"
+              :label="showFilterPanel ? t('收起筛选', '收起筛选') : t('展开筛选', '展开筛选')"
               @click="showFilterPanel = !showFilterPanel"
             />
             <q-btn
               flat
               color="secondary"
-              label="清空筛选"
+              :label="t('清空筛选')"
               :disable="!hasAttributeFilters"
               @click="clearPlannerFilters"
             />
@@ -291,7 +291,7 @@
             <q-separator />
             <q-card-section>
               <div class="filter-group">
-                <div class="text-caption q-mb-xs">基础属性</div>
+                <div class="text-caption q-mb-xs">{{ t('基础属性') }}</div>
                 <div class="row q-col-gutter-xs">
                   <div v-for="opt in plannerS1Options" :key="opt.value" class="col-auto">
                     <q-btn
@@ -308,7 +308,7 @@
                 </div>
               </div>
               <div class="filter-group q-mt-sm">
-                <div class="text-caption q-mb-xs">附加属性</div>
+                <div class="text-caption q-mb-xs">{{ t('附加属性') }}</div>
                 <div class="row q-col-gutter-xs">
                   <div v-for="opt in plannerS2Options" :key="opt.value" class="col-auto">
                     <q-btn
@@ -325,7 +325,7 @@
                 </div>
               </div>
               <div class="filter-group q-mt-sm">
-                <div class="text-caption q-mb-xs">技能属性</div>
+                <div class="text-caption q-mb-xs">{{ t('技能属性') }}</div>
                 <div class="row q-col-gutter-xs">
                   <div v-for="opt in plannerS3Options" :key="opt.value" class="col-auto">
                     <q-btn
@@ -349,7 +349,7 @@
 
         <q-card-section class="selection-bar row items-center justify-between">
           <div class="selection-tags row q-gutter-xs">
-            <span v-if="state.selectedWeapons.length === 0" class="text-grey-6 text-caption">未选择任何武器</span>
+            <span v-if="state.selectedWeapons.length === 0" class="text-grey-6 text-caption">{{ t('未选择任何武器', '未选择任何武器') }}</span>
             <q-chip
               v-for="name in state.selectedWeapons"
               :key="name"
@@ -365,8 +365,8 @@
             </q-chip>
           </div>
           <div class="selection-actions row q-gutter-xs">
-            <q-btn flat dense size="sm" color="primary" label="全选" @click="onSelectAllVisible" />
-            <q-btn flat dense size="sm" color="negative" label="清空" @click="onSelectWeapons([])" />
+            <q-btn flat dense size="sm" color="primary" :label="t('全选武器', '全选')" @click="onSelectAllVisible" />
+            <q-btn flat dense size="sm" color="negative" :label="t('清空')" @click="onSelectWeapons([])" />
           </div>
         </q-card-section>
 
@@ -408,15 +408,22 @@
                 />
               </div>
               <div class="weapon-corner-stack">
-                <div v-if="item.isCustom" class="weapon-custom-chip">自定义</div>
-                <div v-if="item.mark.excluded" class="weapon-hidden-chip">隐藏</div>
+                <div
+                  v-if="item.upActive"
+                  class="weapon-up-chip is-fallback"
+                  :title="item.upCharactersText || t('当前 UP', '当前 UP')"
+                >
+                  <span class="weapon-up-chip-fallback">{{ t('up_badge_text', 'UP') }}</span>
+                </div>
+                <div v-if="item.isCustom" class="weapon-custom-chip">{{ t('自定义', '自定义') }}</div>
+                <div v-if="item.mark.excluded" class="weapon-hidden-chip">{{ t('隐藏（{reasons}）', '隐藏', { reasons: '' }).replace(/\s*\(\)$/, '') }}</div>
               </div>
               <div
                 v-if="props.state.recommendationConfig.showWeaponOwnership"
                 class="weapon-ownership-badge"
                 :class="item.mark.ownedWeapon ? 'is-owned' : 'is-unowned'"
               >
-                {{ item.mark.ownedWeapon ? '已拥有' : '未拥有' }}
+                {{ item.mark.ownedWeapon ? t('已拥有') : t('未拥有') }}
               </div>
               <div class="weapon-name">
                 <div class="weapon-title">
@@ -453,51 +460,52 @@
                       />
                     </span>
                     <span class="text-subtitle2">{{ item.name }}</span>
+                    <q-badge v-if="item.upActive" color="warning" text-color="black">{{ t('up_badge_text', 'UP') }}</q-badge>
                     <q-badge v-if="item.short" color="secondary" outline>{{ item.short }}</q-badge>
-                    <q-badge :color="item.selected ? 'primary' : 'grey-7'">{{ item.selected ? '已选' : '未选' }}</q-badge>
+                    <q-badge :color="item.selected ? 'primary' : 'grey-7'">{{ item.selected ? t('已选', '已选') : t('未选', '未选') }}</q-badge>
                     <q-badge
                       v-if="props.state.recommendationConfig.showWeaponOwnership && item.mark.ownedWeapon"
                       color="primary"
                       outline
-                    >已拥有武器</q-badge>
+                    >{{ t('已拥有武器', '已拥有武器') }}</q-badge>
                     <q-badge
                       v-if="props.state.recommendationConfig.showWeaponOwnership && item.mark.ownedMatrix"
                       color="teal"
                       outline
-                    >已有基质</q-badge>
+                    >{{ t('基质已有', '已有基质') }}</q-badge>
                   </div>
                   <div class="text-caption text-grey-4 q-mt-xs">
                     {{ item.type }} · <span :class="rarityClass(item.rarity)">{{ item.rarity }}★</span>
                   </div>
                   <div class="row q-gutter-x-md q-mt-xs text-caption">
-                    <span :class="{ 'text-primary': plannerS1Filters.includes(item.s1 || '') }">基础: {{ item.s1 || '-' }}</span>
-                    <span :class="{ 'text-secondary': plannerS2Filters.includes(item.s2 || '') }">附加: {{ item.s2 || '-' }}</span>
-                    <span :class="{ 'text-accent': plannerS3Filters.includes(item.s3 || '') }">技能: {{ item.s3 || '-' }}</span>
+                    <span :class="{ 'text-primary': plannerS1Filters.includes(item.s1 || '') }">{{ t('基础属性', '基础') }}: {{ item.s1 || '-' }}</span>
+                    <span :class="{ 'text-secondary': plannerS2Filters.includes(item.s2 || '') }">{{ t('附加属性', '附加') }}: {{ item.s2 || '-' }}</span>
+                    <span :class="{ 'text-accent': plannerS3Filters.includes(item.s3 || '') }">{{ t('技能属性', '技能') }}: {{ item.s3 || '-' }}</span>
                   </div>
                 </div>
               </div>
               
               <!-- Inline Actions Row -->
-              <div class="row items-center q-gutter-sm q-mt-sm q-pa-sm rounded-borders planner-inline-tools">
+              <div class="row items-center q-gutter-xs q-mt-xs q-pa-xs rounded-borders planner-inline-tools">
                 <q-btn
                   size="sm"
                   unelevated
                   :color="item.mark.ownedWeapon ? 'primary' : 'grey-8'"
-                  :label="item.mark.ownedWeapon ? '标记未拥有' : '标记已拥有'"
+                  :label="item.mark.ownedWeapon ? t('标记未拥有', '标记未拥有') : t('标记已拥有', '标记已拥有')"
                   @click.stop="setMarkField(item.name, 'ownedWeapon', !item.mark.ownedWeapon)"
                 />
                 <q-btn
                   size="sm"
                   unelevated
                   :color="item.mark.ownedMatrix ? 'teal' : 'grey-8'"
-                  :label="item.mark.ownedMatrix ? '标记无基质' : '标记有基质'"
+                  :label="item.mark.ownedMatrix ? t('标记无基质', '标记无基质') : t('标记有基质', '标记有基质')"
                   @click.stop="setMarkField(item.name, 'ownedMatrix', !item.mark.ownedMatrix)"
                 />
                 <q-input
                   :model-value="item.mark.note"
                   dense
                   borderless
-                  placeholder="备注..."
+                  :placeholder="t('备注', '备注') + '...'"
                   class="col-grow text-caption note-input"
                   input-class="planner-note-input"
                   @click.stop
@@ -512,12 +520,26 @@
 
     <!-- Right Panel: Recommendations -->
     <div class="panel-column">
-      <q-card flat bordered class="panel-card">
+      <q-card flat bordered class="panel-card recommend-panel">
         <q-card-section class="panel-header row items-center justify-between">
-          <div class="text-h6">方案推荐列表</div>
+          <div class="text-h6">{{ t('方案推荐列表') }}</div>
           <div class="row q-gutter-sm items-center">
             <q-chip dense color="secondary" text-color="white">
-              已选 {{ effectiveSelectedWeaponNames.length }} / 待刷 {{ pendingCount }} 把
+              {{ t('已选', '已选') }} {{ effectiveSelectedWeaponNames.length }} / {{ t('待刷') }} {{ pendingCount }} {{ t('把') }}
+            </q-chip>
+            <q-chip
+              v-if="recommendations.length > 0 && coverageSummary"
+              dense
+              :color="coverageSummary.hasGap ? 'warning' : 'positive'"
+              :text-color="coverageSummary.hasGap ? 'dark' : 'white'"
+            >
+              {{ t('覆盖进度', '覆盖进度') }} {{ coverageSummary.bestMatchCount }} / {{ coverageSummary.totalSelected }}
+              <q-tooltip v-if="coverageSummary.hasGap" class="bg-warning text-dark">
+                {{ t('未覆盖', '未覆盖') }}：{{ coverageSummary.missingNames.join('、') || '-' }}
+              </q-tooltip>
+              <q-tooltip v-else class="bg-positive text-white">
+                {{ t('当前主推荐已覆盖全部目标武器', '当前主推荐已覆盖全部目标武器') }}
+              </q-tooltip>
             </q-chip>
             <q-btn
               v-if="extraRecommendations.length"
@@ -525,7 +547,7 @@
               dense
               size="sm"
               color="primary"
-              :label="showAllSchemes ? '收起其他方案' : `展开其他方案 (+${extraRecommendations.length})`"
+              :label="showAllSchemes ? t('收起其他方案', '收起其他方案') : `${t('展开其他方案', '展开其他方案')} (+${extraRecommendations.length})`"
               @click="showAllSchemes = !showAllSchemes"
             />
           </div>
@@ -533,30 +555,17 @@
 
         <q-separator />
 
-        <div class="recommendations-container q-pa-md">
-          <q-banner
-            v-if="recommendations.length > 0 && coverageSummary"
-            rounded
-            class="q-mb-md"
-            :class="coverageSummary.hasGap ? 'bg-warning text-dark' : 'bg-positive text-white'"
-          >
-            <div class="text-subtitle2">
-              覆盖进度：{{ coverageSummary.bestMatchCount }} / {{ coverageSummary.totalSelected }}
-            </div>
-            <div v-if="coverageSummary.hasGap" class="text-caption">
-              未覆盖：{{ coverageSummary.missingNames.join('、') || '-' }}
-            </div>
-            <div v-else class="text-caption">当前主推荐已覆盖全部目标武器</div>
-          </q-banner>
-
+        <div class="recommendations-container">
           <!-- Case 1: No Selection -->
           <div v-if="!state.selectedWeapons.length" class="empty-state text-center text-grey-6 q-py-xl">
-            请选择至少一把武器，系统将自动推荐可共刷的副本方案。
+            {{ state.hideWeaponSelector
+              ? t('当前已隐藏左侧选择器，请通过 URL 参数 weapons 预选至少一把武器。', '当前已隐藏左侧选择器，请通过 URL 参数 weapons 预选至少一把武器。')
+              : t('请选择至少一把武器，系统将自动推荐可共刷的副本方案。', '请选择至少一把武器，系统将自动推荐可共刷的副本方案。') }}
           </div>
 
           <!-- Case 2: Filtered Out (Has selection but effective list is empty) -->
           <div v-else-if="!effectiveSelectedWeaponNames.length" class="empty-state text-center text-grey-6 q-py-xl">
-            所有已选武器均被配置排除（已拥有或手动排除）。
+            {{ t('所有已选武器均被配置排除（已拥有或手动排除）。', '所有已选武器均被配置排除（已拥有或手动排除）。') }}
           </div>
 
           <!-- Case 3: No Scheme Found (Conflict) -->
@@ -565,35 +574,35 @@
               <template v-slot:avatar>
                 <q-icon name="warning" color="warning" />
               </template>
-              <div class="text-subtitle1">当前选择无可用共刷方案</div>
+              <div class="text-subtitle1">{{ t('当前选择无可用共刷方案', '当前选择无可用共刷方案') }}</div>
               <div class="text-caption text-grey-4">
-                附加属性或技能属性无法统一，或无副本掉落该组合。
+                {{ t('附加属性或技能属性无法统一，或无副本掉落该组合。', '附加属性或技能属性无法统一，或无副本掉落该组合。') }}
               </div>
             </q-banner>
 
             <div v-if="fallbackPlan" class="conflict-details">
-              <div class="text-subtitle2 q-mb-sm">冲突分析</div>
+              <div class="text-subtitle2 q-mb-sm">{{ t('冲突分析', '冲突分析') }}</div>
               <div class="row q-gutter-sm q-mb-md">
                 <q-chip
                   v-if="fallbackPlan.baseOverflow"
                   color="negative"
                   text-color="white"
                   icon="error"
-                  label="基础属性冲突"
+                  :label="t('基础属性冲突')"
                 />
                 <q-chip
                   v-if="fallbackPlan.s2Conflict"
                   color="warning"
                   text-color="dark"
                   icon="warning"
-                  label="附加属性不一致"
+                  :label="t('附加属性不一致', '附加属性不一致')"
                 />
                 <q-chip
                   v-if="fallbackPlan.s3Conflict"
                   color="warning"
                   text-color="dark"
                   icon="warning"
-                  label="技能属性不一致"
+                  :label="t('技能属性不一致', '技能属性不一致')"
                 />
               </div>
 
@@ -607,9 +616,9 @@
                    <div class="row items-center q-gutter-x-sm">
                       <span class="text-subtitle2">{{ weapon.name }}</span>
                       <div class="row q-gutter-x-sm text-caption">
-                        <span :class="{ 'text-negative': weapon.baseConflict }">基础: {{ weapon.s1 }}</span>
-                        <span :class="{ 'text-warning': fallbackPlan.s2Conflict }">附加: {{ weapon.s2 }}</span>
-                        <span :class="{ 'text-warning': fallbackPlan.s3Conflict }">技能: {{ weapon.s3 }}</span>
+                        <span :class="{ 'text-negative': weapon.baseConflict }">{{ t('基础属性', '基础') }}: {{ weapon.s1 }}</span>
+                        <span :class="{ 'text-warning': fallbackPlan.s2Conflict }">{{ t('附加属性', '附加') }}: {{ weapon.s2 }}</span>
+                        <span :class="{ 'text-warning': fallbackPlan.s3Conflict }">{{ t('技能属性', '技能') }}: {{ weapon.s3 }}</span>
                       </div>
                    </div>
                 </div>
@@ -624,9 +633,9 @@
               class="q-pa-sm rounded-borders q-mb-sm"
               style="background: var(--planner-surface-soft); border: 1px solid var(--planner-item-border);"
             >
-              <div class="text-subtitle2">当前选择需要分批刷取</div>
+              <div class="text-subtitle2">{{ t('当前选择需要分批刷取', '当前选择需要分批刷取') }}</div>
               <div class="text-caption text-grey-5">
-                本次展示 {{ displaySchemes.length }} 个方案，已尽量覆盖全部已选武器。
+                {{ t('本次展示 {count} 个方案，已尽量覆盖全部已选武器。', '本次展示 {count} 个方案，已尽量覆盖全部已选武器。', { count: displaySchemes.length }) }}
               </div>
             </div>
 
@@ -901,9 +910,10 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { getDungeons, getWeaponImageId, getWeapons, toLegacyAssetUrl } from '@/core/data';
+import { getDungeons, getUpSchedules, getWeaponImageId, getWeapons, toLegacyAssetUrl } from '@/core/data';
+import { translatePlannerText } from '@/core/i18n';
 import { getRecommendations } from '@/core/recommender';
-import type { PlannerState, RecommendationConfig, RecommendationResult, Weapon } from '@/core/types';
+import type { PlannerState, RecommendationConfig, RecommendationResult, UpScheduleMap, Weapon } from '@/core/types';
 import { pinyin } from 'pinyin-pro';
 
 const props = defineProps<{
@@ -918,6 +928,18 @@ interface WeaponMark {
   note: string;
 }
 
+interface WeaponUpWindow {
+  startMs: number;
+  endMs: number;
+}
+
+interface WeaponUpRecord {
+  weaponName: string;
+  windows: WeaponUpWindow[];
+  characters: string[];
+  primaryCharacter: string;
+}
+
 const emit = defineEmits<{
   (e: 'update:selectedWeapons', value: string[]): void;
   (e: 'update:weaponMark', name: string, partial: Partial<WeaponMark>): void;
@@ -926,28 +948,32 @@ const emit = defineEmits<{
   (e: 'import:weaponMarks', raw: string): void;
 }>();
 
+function t(key: string, fallback = key, params?: Record<string, string | number>): string {
+  return translatePlannerText(props.state.lang, key, fallback, params);
+}
+
 const baseWeapons = getWeapons();
 // weaponImageNameSet removed — use getWeaponImageId directly
 const dungeons = getDungeons();
 const regionOptions = [...new Set(dungeons.map((d) => d.name.split('·')[0]?.trim()).filter(Boolean))].sort((a, b) =>
   a.localeCompare(b, 'zh-Hans-CN'),
 );
-const regionPriorityModeOptions = [
-  { label: '忽略地区优先级', value: 'ignore' },
-  { label: '同覆盖率下按地区优先', value: 'sameCoverage' },
-  { label: '同效率下按地区优先', value: 'sameEfficiency' },
-  { label: '严格按地区优先', value: 'strict' },
-];
-const ownershipPriorityModeOptions = [
-  { label: '忽略拥有状态', value: 'ignore' },
-  { label: '同覆盖率下优先已拥有武器', value: 'sameCoverage' },
-  { label: '同效率下优先已拥有武器', value: 'sameEfficiency' },
-  { label: '严格按拥有状态优先', value: 'strict' },
-];
-const strictPriorityOrderOptions = [
-  { label: '拥有优先 > 地区优先', value: 'ownershipFirst' },
-  { label: '地区优先 > 拥有优先', value: 'regionFirst' },
-];
+const regionPriorityModeOptions = computed(() => [
+  { label: t('忽略地区优先级', '忽略地区优先级'), value: 'ignore' },
+  { label: t('同覆盖率下按地区优先', '同覆盖率下按地区优先'), value: 'sameCoverage' },
+  { label: t('同效率下按地区优先', '同效率下按地区优先'), value: 'sameEfficiency' },
+  { label: t('严格按地区优先', '严格按地区优先'), value: 'strict' },
+]);
+const ownershipPriorityModeOptions = computed(() => [
+  { label: t('忽略拥有状态', '忽略拥有状态'), value: 'ignore' },
+  { label: t('同覆盖率下优先已拥有武器', '同覆盖率下优先已拥有武器'), value: 'sameCoverage' },
+  { label: t('同效率下优先已拥有武器', '同效率下优先已拥有武器'), value: 'sameEfficiency' },
+  { label: t('严格按拥有状态优先', '严格按拥有状态优先'), value: 'strict' },
+]);
+const strictPriorityOrderOptions = computed(() => [
+  { label: t('拥有优先 > 地区优先', '拥有优先 > 地区优先'), value: 'ownershipFirst' },
+  { label: t('地区优先 > 拥有优先', '地区优先 > 拥有优先'), value: 'regionFirst' },
+]);
 
 const hideFourStar = computed({
   get: () => props.state.recommendationConfig.hideFourStarWeaponsInSelector,
@@ -981,6 +1007,9 @@ const customWeaponDraft = reactive({
 });
 
 const allWeapons = computed<Weapon[]>(() => [...baseWeapons, ...customWeapons.value]);
+const upSchedules = getUpSchedules();
+const upScheduleNowMs = ref(Date.now());
+let upScheduleTimer: number | null = null;
 
 const weaponNameSet = computed(() => new Set(allWeapons.value.map((item) => item.name)));
 const pinyinSearchCache = new Map<string, string>();
@@ -1017,6 +1046,119 @@ function setMarkNote(name: string, value: string) {
 
 function normalizeSelectedWeapons(list: string[]): string[] {
   return [...new Set(list)].filter((name) => weaponNameSet.value.has(name));
+}
+
+function normalizeUpWindows(entry: { windows?: Array<{ start?: string; end?: string }> } | undefined): WeaponUpWindow[] {
+  if (!entry || !Array.isArray(entry.windows)) {
+    return [];
+  }
+  return entry.windows
+    .map((windowItem) => {
+      const startMs = Date.parse(String(windowItem?.start || ''));
+      const endMs = Date.parse(String(windowItem?.end || ''));
+      if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+        return null;
+      }
+      return { startMs, endMs };
+    })
+    .filter((item): item is WeaponUpWindow => Boolean(item))
+    .sort((left, right) => left.startMs - right.startMs || left.endMs - right.endMs);
+}
+
+function mergeUpWindows(existing: WeaponUpWindow[], incoming: WeaponUpWindow[]): WeaponUpWindow[] {
+  const signatures = new Set<string>();
+  return [...existing, ...incoming]
+    .filter((item) => {
+      const signature = `${item.startMs}|${item.endMs}`;
+      if (signatures.has(signature)) {
+        return false;
+      }
+      signatures.add(signature);
+      return true;
+    })
+    .sort((left, right) => left.startMs - right.startMs || left.endMs - right.endMs);
+}
+
+function buildWeaponUpMap(weapons: Weapon[], scheduleMap: UpScheduleMap): Record<string, WeaponUpRecord> {
+  const characterWeaponMap = new Map<string, Weapon[]>();
+  weapons.forEach((weapon) => {
+    const characters = Array.isArray(weapon.chars)
+      ? Array.from(new Set(weapon.chars.map((item) => String(item || '').trim()).filter(Boolean)))
+      : [];
+    characters.forEach((characterName) => {
+      const bucket = characterWeaponMap.get(characterName) || [];
+      bucket.push(weapon);
+      characterWeaponMap.set(characterName, bucket);
+    });
+  });
+
+  const byWeapon: Record<string, WeaponUpRecord> = {};
+  Object.entries(scheduleMap || {}).forEach(([characterName, entry]) => {
+    const windows = normalizeUpWindows(entry);
+    if (!windows.length) {
+      return;
+    }
+    const relatedWeapons = (characterWeaponMap.get(characterName) || []).slice().sort((left, right) => {
+      if (right.rarity !== left.rarity) {
+        return right.rarity - left.rarity;
+      }
+      return left.name.localeCompare(right.name, 'zh-Hans-CN');
+    });
+    relatedWeapons.forEach((weapon) => {
+      const existing = byWeapon[weapon.name];
+      if (!existing) {
+        byWeapon[weapon.name] = {
+          weaponName: weapon.name,
+          windows: windows.slice(),
+          characters: [characterName],
+          primaryCharacter: characterName,
+        };
+        return;
+      }
+      existing.windows = mergeUpWindows(existing.windows, windows);
+      if (!existing.characters.includes(characterName)) {
+        existing.characters = [...existing.characters, characterName];
+      }
+      if (!existing.primaryCharacter) {
+        existing.primaryCharacter = characterName;
+      }
+    });
+  });
+
+  return byWeapon;
+}
+
+const weaponUpByWeapon = computed(() => buildWeaponUpMap(allWeapons.value, upSchedules));
+
+const activeWeaponUpMap = computed<Record<string, WeaponUpRecord>>(() => {
+  const now = upScheduleNowMs.value;
+  return Object.fromEntries(
+    Object.entries(weaponUpByWeapon.value).filter(([, record]) =>
+      record.windows.some((windowItem) => now >= windowItem.startMs && now < windowItem.endMs),
+    ),
+  );
+});
+
+function isWeaponUpActive(name: string): boolean {
+  return Boolean(activeWeaponUpMap.value[name]);
+}
+
+function partitionWeaponsByUpActive(rows: Weapon[], activeByWeapon: Record<string, WeaponUpRecord>): Weapon[] {
+  const customRows: Weapon[] = [];
+  const upActiveRows: Weapon[] = [];
+  const fallbackRows: Weapon[] = [];
+  rows.forEach((weapon) => {
+    if ((weapon as { isCustom?: boolean }).isCustom) {
+      customRows.push(weapon);
+      return;
+    }
+    if (activeByWeapon[weapon.name]) {
+      upActiveRows.push(weapon);
+      return;
+    }
+    fallbackRows.push(weapon);
+  });
+  return [...customRows, ...upActiveRows, ...fallbackRows];
 }
 
 const plannerS1Options = computed(() => {
@@ -1103,7 +1245,7 @@ const previewWeaponRows = computed(() => {
 const filteredWeapons = computed(() => {
   const cfg = props.state.recommendationConfig;
   const keyword = weaponKeyword.value.trim().toLowerCase();
-  return allWeapons.value.filter((weapon) => {
+  const rows = allWeapons.value.filter((weapon) => {
     const mark = ensureMark(weapon.name);
     if (hideFourStar.value && weapon.rarity <= 4) {
       return false;
@@ -1134,6 +1276,7 @@ const filteredWeapons = computed(() => {
     if (text.includes(keyword)) return true;
     return getPinyinSearchText(rawText).includes(keyword);
   });
+  return partitionWeaponsByUpActive(rows, activeWeaponUpMap.value);
 });
 
 const weaponGalleryRows = computed(() => {
@@ -1142,6 +1285,8 @@ const weaponGalleryRows = computed(() => {
     isCustom: Boolean((item as { isCustom?: boolean }).isCustom),
     selected: props.state.selectedWeapons.includes(item.name),
     mark: ensureMark(item.name),
+    upActive: isWeaponUpActive(item.name),
+    upCharactersText: activeWeaponUpMap.value[item.name]?.characters.join(' / ') || '',
   }));
 });
 
@@ -1470,7 +1615,7 @@ function getWeapon(name: string): Weapon | undefined {
 }
 
 function getLockLabel(type: 's2' | 's3'): string {
-  return type === 's2' ? '附加属性' : '技能属性';
+  return type === 's2' ? t('附加属性') : t('技能属性');
 }
 
 function resetCustomWeaponDraft() {
@@ -1485,15 +1630,15 @@ function resetCustomWeaponDraft() {
 function addCustomWeapon() {
   const name = customWeaponDraft.name.trim();
   if (!name) {
-    customWeaponError.value = '请输入武器名称';
+    customWeaponError.value = t('请输入武器名称', '请输入武器名称');
     return;
   }
   if (allWeapons.value.some((item) => item.name === name)) {
-    customWeaponError.value = '武器名称重复';
+    customWeaponError.value = t('武器名称重复', '武器名称重复');
     return;
   }
   if (!customWeaponDraft.s1 || !customWeaponDraft.s2 || !customWeaponDraft.s3) {
-    customWeaponError.value = '请完整选择 S1 / S2 / S3';
+    customWeaponError.value = t('请完整选择 S1 / S2 / S3', '请完整选择 S1 / S2 / S3');
     return;
   }
   customWeapons.value = [
@@ -1502,7 +1647,7 @@ function addCustomWeapon() {
       name,
       rarity: Number(customWeaponDraft.rarity) || 6,
       type: customWeaponDraft.type,
-      short: '自定义',
+      short: t('自定义', '自定义'),
       chars: [],
       s1: customWeaponDraft.s1,
       s2: customWeaponDraft.s2,
@@ -1619,10 +1764,17 @@ function handleDocumentClick(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick);
+  upScheduleTimer = window.setInterval(() => {
+    upScheduleNowMs.value = Date.now();
+  }, 60000);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick);
+  if (upScheduleTimer !== null) {
+    window.clearInterval(upScheduleTimer);
+    upScheduleTimer = null;
+  }
 });
 
 function triggerMarksImport() {
@@ -1656,7 +1808,40 @@ watch(
 </script>
 
 <style scoped lang="scss">
+.panel-header,
+.toolbar-section,
+.selection-bar {
+  padding: 10px 12px !important;
+}
+
+.plan-config-panel {
+  padding: 0 12px 12px !important;
+}
+
+.filter-panel-content :deep(.q-card__section),
+.weapon-list-container,
+.recommendations-container {
+  padding: 10px 12px 12px !important;
+}
+
+.filter-actions {
+  margin-top: 6px !important;
+}
+
+.selection-bar {
+  gap: 8px;
+}
+
+.selection-tags,
+.selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .planner-inline-tools {
+  column-gap: 6px;
+  row-gap: 6px;
   background: var(--planner-surface-soft);
   border: 1px solid var(--planner-item-border);
 }
@@ -1684,7 +1869,7 @@ watch(
   aspect-ratio: 1 / 1;
   border-radius: 8px;
   border: 1px solid rgba(var(--color-white-rgb), 0.08);
-  background: rgba(var(--color-black-rgb), var(--alpha-92));
+  background: var(--planner-thumb-bg, rgba(var(--color-black-rgb), var(--alpha-92)));
   cursor: pointer;
   transition: 0.2s ease;
   overflow: hidden;
@@ -1839,6 +2024,34 @@ watch(
   gap: 4px;
   max-width: 62%;
   pointer-events: none;
+}
+
+.weapon-up-chip {
+  order: 1;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.weapon-up-chip-fallback {
+  display: none;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(95, 201, 228, var(--alpha-50));
+  background: rgba(13, 43, 58, var(--alpha-88));
+  color: #dff8ff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+}
+
+.weapon-up-chip.is-fallback .weapon-up-chip-fallback {
+  display: inline-block;
 }
 
 .weapon-custom-chip,
@@ -2001,6 +2214,39 @@ watch(
 
 .planner-scheme-header {
   background: var(--planner-surface-soft) !important;
+}
+
+@media (min-width: 900px) {
+  .planner-layout {
+    align-items: start;
+  }
+
+  .panel-column {
+    min-height: 0;
+  }
+
+  .main-panel,
+  .recommend-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 88px);
+    min-height: 0;
+  }
+
+  .planner-layout.is-embed .main-panel,
+  .planner-layout.is-embed .recommend-panel {
+    max-height: 100dvh;
+  }
+
+  .weapon-list-container,
+  .recommendations-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
 }
 
 :deep(.planner-note-input) {

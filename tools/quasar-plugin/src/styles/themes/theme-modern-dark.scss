@@ -1,0 +1,21 @@
+body.body--dark {
+  --card-bg: #1e1e1e;
+  --card-border: #333333;
+  --planner-text-primary: rgba(255, 255, 255, 0.87);
+  --planner-text-secondary: #aaaaaa;
+  --planner-surface-soft: rgba(255, 255, 255, 0.05);
+  --planner-surface-strong: rgba(255, 255, 255, 0.1);
+  --planner-item-bg: rgba(30, 30, 30, 0.92);
+  --planner-item-border: rgba(255, 255, 255, 0.14);
+  --planner-thumb-bg: rgba(255, 255, 255, 0.08);
+  --planner-control-bg: rgba(26, 26, 26, 0.92);
+  --planner-control-bg-hover: rgba(34, 34, 34, 0.96);
+  --planner-control-border: rgba(255, 255, 255, 0.14);
+  --planner-surface-card-bg: rgba(24, 24, 24, 0.98);
+  --planner-popup-bg: rgba(30, 30, 30, 1);
+  --planner-dialog-backdrop: rgba(0, 0, 0, 0.6);
+  --planner-notice-bg: rgba(30, 30, 30, 0.98);
+  --planner-notice-border: rgba(255, 255, 255, 0.14);
+  --planner-notice-shadow: 0 20px 40px rgba(0, 0, 0, 0.32);
+  background: #121212;
+}

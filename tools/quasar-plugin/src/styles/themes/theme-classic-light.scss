@@ -1,0 +1,63 @@
+html[data-theme-style='classic'][data-theme='light'] body {
+  --card-bg: linear-gradient(
+    140deg,
+    rgba(var(--color-white-rgb), 0.82),
+    rgba(240, 248, 255, 0.76)
+  );
+  --card-border: rgba(22, 44, 72, 0.1);
+  --planner-text-primary: #1a2a3d;
+  --planner-text-secondary: #4e5f78;
+  --planner-surface-soft: rgba(22, 44, 72, 0.05);
+  --planner-surface-strong: rgba(22, 44, 72, 0.08);
+  --planner-item-bg: rgba(var(--color-white-rgb), var(--alpha-96));
+  --planner-item-border: rgba(22, 44, 72, 0.12);
+  --planner-thumb-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 246, 252, 0.96));
+  --planner-thumb-border: rgba(22, 44, 72, 0.16);
+  --planner-thumb-border-hover: rgba(22, 44, 72, 0.26);
+  --planner-thumb-hover-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0));
+  --planner-thumb-selected-bg: linear-gradient(180deg, rgba(240, 251, 248, 0.96), rgba(221, 246, 240, 0.96));
+  --planner-thumb-selected-border: rgba(var(--color-accent-rgb), 0.54);
+  --planner-thumb-selected-ring: rgba(var(--color-accent-rgb), 0.2);
+  --planner-thumb-selected-overlay: linear-gradient(180deg, rgba(var(--color-accent-rgb), 0.12), rgba(var(--color-accent-rgb), 0));
+  --planner-thumb-name-color: #51657b;
+  --planner-thumb-selected-name-color: #0f625f;
+  --planner-rarity-6-band-glow: linear-gradient(180deg, rgba(255, 196, 112, 0) 0%, rgba(255, 196, 112, 0.12) 48%, rgba(255, 196, 112, 0.34) 100%);
+  --planner-rarity-5-band-glow: linear-gradient(180deg, rgba(226, 194, 116, 0) 0%, rgba(226, 194, 116, 0.12) 48%, rgba(226, 194, 116, 0.3) 100%);
+  --planner-rarity-4-band-glow: linear-gradient(180deg, rgba(157, 126, 227, 0) 0%, rgba(157, 126, 227, 0.12) 48%, rgba(157, 126, 227, 0.28) 100%);
+  --planner-rarity-6-band-line: #eb8a18;
+  --planner-rarity-5-band-line: #af7f23;
+  --planner-rarity-4-band-line: #7d63ca;
+  --planner-rarity-6-band: var(--planner-rarity-6-band-glow), linear-gradient(180deg, var(--planner-rarity-6-band-line) 0%, var(--planner-rarity-6-band-line) 100%);
+  --planner-rarity-5-band: var(--planner-rarity-5-band-glow), linear-gradient(180deg, var(--planner-rarity-5-band-line) 0%, var(--planner-rarity-5-band-line) 100%);
+  --planner-rarity-4-band: var(--planner-rarity-4-band-glow), linear-gradient(180deg, var(--planner-rarity-4-band-line) 0%, var(--planner-rarity-4-band-line) 100%);
+  --planner-rarity-6-text: #975400;
+  --planner-rarity-5-text: #6f5722;
+  --planner-rarity-4-text: #5d4b98;
+  --planner-bg-overlay-solid: transparent;
+  --planner-radius-card: 16px;
+  --planner-radius-control: 12px;
+  --planner-radius-tile: 8px;
+  --planner-toolbar-radius: 16px;
+  --planner-card-shadow: none;
+  --planner-panel-backdrop: blur(18px) saturate(115%);
+  --planner-control-bg: rgba(var(--color-white-rgb), 0.82);
+  --planner-control-bg-hover: rgba(var(--color-white-rgb), 0.92);
+  --planner-control-border: rgba(22, 44, 72, 0.14);
+  --planner-control-border-focus: rgba(var(--color-accent-rgb), 0.45);
+  --planner-surface-card-bg: rgba(var(--color-white-rgb), 0.72);
+  --planner-popup-bg: rgba(var(--color-white-rgb), 0.78);
+  --planner-dialog-backdrop: rgba(232, 240, 252, 0.78);
+  --planner-notice-bg: rgba(var(--color-white-rgb), 0.65);
+  --planner-notice-border: rgba(var(--color-black-rgb), 0.16);
+  --planner-notice-shadow: none;
+  --planner-muted-utility: #5a6d84;
+  --planner-soft-utility: #73849a;
+  --planner-weak-surface-bg: rgba(22, 44, 72, 0.08);
+  --planner-weak-surface-border: rgba(22, 44, 72, 0.16);
+  --weapon-frame-bg: none;
+  background: #edf2fb;
+}
+
+html[data-theme-style='classic'][data-theme='light'] body::after {
+  display: none;
+}

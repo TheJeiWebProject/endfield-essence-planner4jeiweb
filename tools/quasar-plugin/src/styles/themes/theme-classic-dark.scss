@@ -1,0 +1,41 @@
+html[data-theme-style='classic'][data-theme='dark'] body {
+  --card-bg: linear-gradient(
+    145deg,
+    rgba(26, 35, 47, 0.84),
+    rgba(11, 16, 24, 0.74)
+  );
+  --card-border: rgba(var(--color-white-rgb), 0.1);
+  --planner-text-primary: #e6e9ef;
+  --planner-text-secondary: #b2bdc9;
+  --planner-surface-soft: rgba(var(--color-white-rgb), 0.06);
+  --planner-surface-strong: rgba(var(--color-white-rgb), 0.1);
+  --planner-item-bg: rgba(18, 24, 34, 0.92);
+  --planner-item-border: rgba(var(--color-white-rgb), 0.14);
+  --planner-thumb-bg: rgba(var(--color-white-rgb), 0.08);
+  --planner-bg-overlay-solid: rgba(8, 12, 18, 0.42);
+  --planner-radius-card: 16px;
+  --planner-radius-control: 12px;
+  --planner-radius-tile: 8px;
+  --planner-toolbar-radius: 16px;
+  --planner-card-shadow: 0 24px 60px rgba(var(--color-black-rgb), 0.45);
+  --planner-panel-backdrop: blur(18px) saturate(120%);
+  --planner-control-bg: rgba(20, 28, 39, 0.78);
+  --planner-control-bg-hover: rgba(26, 36, 49, 0.9);
+  --planner-control-border: rgba(var(--color-white-rgb), 0.12);
+  --planner-control-border-focus: rgba(var(--color-accent-rgb), 0.55);
+  --planner-surface-card-bg: linear-gradient(
+    145deg,
+    rgba(22, 30, 42, 0.82),
+    rgba(10, 14, 22, 0.72)
+  );
+  --planner-popup-bg: linear-gradient(
+    145deg,
+    rgba(22, 30, 42, 0.92),
+    rgba(10, 14, 22, 0.82)
+  );
+  --planner-dialog-backdrop: rgba(var(--color-black-rgb), 0.72);
+  --planner-notice-bg: rgba(18, 24, 34, 0.72);
+  --planner-notice-border: rgba(var(--color-white-rgb), 0.08);
+  --planner-notice-shadow: 0 24px 60px rgba(var(--color-black-rgb), 0.45);
+  background: #0b0f14;
+}

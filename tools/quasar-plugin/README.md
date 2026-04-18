@@ -142,6 +142,7 @@ dist/
 | **装备精锻 (隐藏左栏)** | `/?view=gear-refining&gearName=天灾防护重甲&hideWeaponSelector=1` | 隐藏左侧装备列表，仅展示精锻结果 |
 | **旧版引擎** | `/?renderer=legacy` | 强制使用旧版 (Legacy) 渲染引擎 |
 | **只读嵌入** | `/?view=planner&embed=1&readonly=1` | 以只读模式嵌入，隐藏 UI 且禁止修改 |
+| **API 嵌入并隐藏左栏** | `/?view=planner&api=1&hideWeaponSelector=1&weapons=莫奈何,长路` | 适合宿主页面通过 API 控制，仅展示右侧结果区 |
 
 #### 数据与状态
 
@@ -159,6 +160,12 @@ dist/
 | :--- | :--- | :--- |
 | **api** | 启用 API 通信 | `1` (开启，允许通过 `window` 对象或 `postMessage` 进行交互) |
 
+当 `hideWeaponSelector=1` 时，建议同时传入与当前页面对应的预选参数：
+
+- `view=planner` 时配合 `weapons=...`
+- `view=match` 时配合 `matchSource=...`
+- `view=gear-refining` 时配合 `gearName=...`
+
 ### API 调用
 
 开启 `api=1` 参数后，可以通过 `postMessage` 或挂载的全局对象进行交互：
@@ -169,6 +176,29 @@ const state = window.EndfieldPlannerPlugin.call('getState');
 
 // 设置状态
 window.EndfieldPlannerPlugin.call('setState', { selectedWeapons: ['莫奈何'] });
+
+// 直接隐藏左侧武器 / 装备选择器列
+window.EndfieldPlannerPlugin.call('setState', { hideWeaponSelector: true });
+
+// 常见嵌入用法：预选武器并隐藏左栏
+window.EndfieldPlannerPlugin.call('setState', {
+    selectedWeapons: ['莫奈何', '长路'],
+    hideWeaponSelector: true,
+});
+
+// 词条对照页：预选源武器并隐藏左栏
+window.EndfieldPlannerPlugin.call('setState', {
+    view: 'match',
+    matchSource: '莫奈何',
+    hideWeaponSelector: true,
+});
+
+// 装备精锻页：预选装备并隐藏左栏
+window.EndfieldPlannerPlugin.call('setState', {
+    view: 'gear-refining',
+    gearName: '天灾防护重甲',
+    hideWeaponSelector: true,
+});
 
 // 获取推荐结果
 const recommendations = window.EndfieldPlannerPlugin.call('getRecommendations');

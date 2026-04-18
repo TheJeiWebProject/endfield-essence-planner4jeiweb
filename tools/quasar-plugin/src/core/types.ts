@@ -140,7 +140,7 @@ export interface PlannerState {
   selectedWeapons: string[];
   selectedCharacterId?: string;
   lang: 'zh-CN' | 'zh-TW' | 'en' | 'ja';
-  theme: 'light' | 'dark' | 'auto';
+  theme: 'light' | 'dark' | 'auto' | 'classic-light' | 'classic-dark';
   embed: boolean;
   api: boolean;
   readonly: boolean;

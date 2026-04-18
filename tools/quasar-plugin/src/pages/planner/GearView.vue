@@ -939,8 +939,10 @@ if (!selectedGearName.value && normalizedGears.length > 0) {
 }
 
 .planner-surface-card {
-  background: var(--planner-surface-soft) !important;
+  background: var(--planner-surface-card-bg) !important;
   border-color: var(--planner-item-border) !important;
+  -webkit-backdrop-filter: var(--planner-panel-backdrop);
+  backdrop-filter: var(--planner-panel-backdrop);
 }
 
 .planner-surface-header {

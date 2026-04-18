@@ -61,8 +61,17 @@ function normalizeLang(value: string | null): PlannerState['lang'] {
 }
 
 function normalizeTheme(value: string | null): PlannerState['theme'] {
-  if (value === 'light' || value === 'dark' || value === 'auto') {
+  if (
+    value === 'light' ||
+    value === 'dark' ||
+    value === 'auto' ||
+    value === 'classic-light' ||
+    value === 'classic-dark'
+  ) {
     return value;
+  }
+  if (value === 'classic') {
+    return 'classic-dark';
   }
   return 'auto';
 }
