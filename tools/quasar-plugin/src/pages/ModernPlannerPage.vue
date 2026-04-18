@@ -101,6 +101,24 @@
                   </q-btn-dropdown>
                   
                   <q-separator vertical class="q-mx-sm" />
+
+                  <q-btn
+                    v-if="hasPlannerContent"
+                    flat
+                    dense
+                    color="primary"
+                    icon="campaign"
+                    label="公告"
+                    no-caps
+                    @click="openAnnouncementDialog"
+                  >
+                    <q-badge v-if="hasUnreadAnnouncement" floating rounded color="negative" />
+                    <q-tooltip>
+                      当前支持 {{ supportedVersionLabel }}
+                      <span v-if="nextVersionLabel">，下个版本 {{ nextVersionLabel }}</span>
+                      <span v-if="nextVersionDateLabel">，预计 {{ nextVersionDateLabel }}</span>
+                    </q-tooltip>
+                  </q-btn>
                   
                   <q-btn
                     unelevated
@@ -124,6 +142,7 @@
             :state="state"
             :weapon-marks="weaponMarks"
             @update:selected-weapons="onUpdateSelectedWeapons"
+            @update:selected-character-id="state.selectedCharacterId = $event || undefined"
             @update:weapon-mark="onUpdateWeaponMark"
             @update:match-source="state.matchSource = $event"
             @update:gear-name="state.gearName = $event"
@@ -132,15 +151,75 @@
             @import:weapon-marks="importWeaponMarks"
           />
         </keep-alive>
+
+        <q-dialog v-model="showAnnouncementDialog" @hide="closeAnnouncementDialog()">
+          <q-card class="notice-dialog">
+            <q-card-section class="row items-start justify-between q-col-gutter-md">
+              <div class="col">
+                <div class="text-h6">{{ announcementTitle }}</div>
+                <div class="text-caption text-grey-6 q-mt-xs">
+                  当前支持 {{ supportedVersionLabel }}
+                  <span v-if="nextVersionLabel">，下个版本 {{ nextVersionLabel }}</span>
+                  <span v-if="nextVersionDateLabel">，预计 {{ nextVersionDateLabel }}</span>
+                </div>
+              </div>
+              <div class="col-auto row q-gutter-sm items-center">
+                <q-chip v-if="plannerAnnouncement?.date" dense color="grey-8" text-color="white">
+                  {{ plannerAnnouncement.date }}
+                </q-chip>
+                <q-chip v-if="plannerAnnouncement?.version" dense color="primary" text-color="white">
+                  {{ plannerAnnouncement.version }}
+                </q-chip>
+              </div>
+            </q-card-section>
+
+            <q-separator />
+
+            <q-card-section class="content-card-body q-gutter-y-md">
+              <section v-if="announcementItems.length" class="content-section">
+                <div class="text-subtitle2 q-mb-sm">公告</div>
+                <ul class="content-item-list">
+                  <li v-for="(item, index) in announcementItems" :key="`announcement-${index}`" v-html="renderContentLine(item)"></li>
+                </ul>
+              </section>
+
+              <section v-if="qqGroupEntries.length" class="content-section">
+                <div class="text-subtitle2 q-mb-sm">交流群</div>
+                <div class="column q-gutter-y-sm">
+                  <div v-for="entry in qqGroupEntries" :key="entry.group" class="row q-gutter-sm items-center">
+                    <q-chip dense color="secondary" text-color="white">{{ entry.label }} {{ entry.group }}</q-chip>
+                    <div v-if="entry.note" class="text-caption text-grey-6">{{ entry.note }}</div>
+                  </div>
+                </div>
+              </section>
+
+              <section v-if="latestChangelogEntries.length" class="content-section">
+                <div class="text-subtitle2 q-mb-sm">{{ changelogTitle }}</div>
+                <div v-for="entry in latestChangelogEntries" :key="entry.date" class="changelog-entry">
+                  <div class="text-caption text-grey-5 q-mb-xs">{{ entry.date }}</div>
+                  <ul class="content-item-list">
+                    <li v-for="(item, itemIndex) in entry.items" :key="`${entry.date}-${itemIndex}`" v-html="renderContentLine(item)"></li>
+                  </ul>
+                </div>
+              </section>
+            </q-card-section>
+
+            <q-separator />
+
+            <q-card-actions align="right">
+              <q-btn flat color="primary" label="关闭" @click="closeAnnouncementDialog()" />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
       </div>
     </q-page>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { getWeapons, getDungeons } from '@/core/data';
+import { getWeapons, getDungeons, getPlannerContent } from '@/core/data';
 import { getRecommendations } from '@/core/recommender';
 import {
   DEFAULT_RECOMMENDATION_CONFIG,
@@ -196,6 +275,7 @@ interface WeaponMark {
 }
 
 const STORAGE_KEY = 'modern-planner-state:v1';
+const NOTICE_SEEN_KEY = 'modern-planner-announcement-seen:v1';
 
 const langOptions = [
   { label: '简体中文', value: 'zh-CN' },
@@ -214,8 +294,163 @@ const initialState = parseStateFromUrl();
 const state = reactive<PlannerState>({ ...DEFAULT_STATE, ...initialState });
 const weaponMarks = reactive<Record<string, WeaponMark>>({});
 const allWeapons = getWeapons();
+const plannerContent = getPlannerContent();
 const weaponNameSet = new Set(allWeapons.map((item) => item.name));
 const marksFromUrl = parseWeaponMarksFromUrl(window.location.href, weaponNameSet);
+const plannerAnnouncement = plannerContent.announcement;
+const announcementItems = Array.isArray(plannerAnnouncement?.items) ? plannerAnnouncement.items : [];
+const latestChangelogEntries = Array.isArray(plannerContent.changelog?.entries)
+  ? plannerContent.changelog.entries.slice(0, 3)
+  : [];
+const hasPlannerContent = Boolean(
+  plannerContent.gameCompat || announcementItems.length || latestChangelogEntries.length,
+);
+const supportedVersionLabel = plannerContent.gameCompat?.supportedVersion || '未知版本';
+const nextVersionLabel = plannerContent.gameCompat?.nextVersion || '';
+const showAnnouncementDialog = ref(false);
+
+function formatPlannerContentDate(value?: string): string {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleDateString('zh-CN');
+}
+
+const nextVersionDateLabel = formatPlannerContentDate(plannerContent.gameCompat?.nextVersionAt);
+const announcementVersion = plannerAnnouncement?.version || plannerAnnouncement?.date || '';
+const contentTitlePattern = /^[A-Za-z0-9_]+(?:[.-][A-Za-z0-9_]+)+$/;
+
+const contentTitleMessages: Record<string, Record<string, string>> = {
+  'zh-CN': {
+    'nav.announcement': '公告',
+    'nav.changelog': '更新日志',
+  },
+  'zh-TW': {
+    'nav.announcement': '公告',
+    'nav.changelog': '更新日誌',
+  },
+  en: {
+    'nav.announcement': 'Announcement',
+    'nav.changelog': 'Changelog',
+  },
+  ja: {
+    'nav.announcement': 'お知らせ',
+    'nav.changelog': '更新履歴',
+  },
+};
+
+function t(key: string, fallback = key): string {
+  return contentTitleMessages[state.lang]?.[key] || contentTitleMessages['zh-CN']?.[key] || fallback;
+}
+
+function resolveContentTitle(rawTitle: string | undefined, fallbackKey: string): string {
+  const fallbackTitle = t(fallbackKey, fallbackKey);
+  if (typeof rawTitle !== 'string') {
+    return fallbackTitle;
+  }
+  const normalizedTitle = rawTitle.trim();
+  if (!normalizedTitle) {
+    return fallbackTitle;
+  }
+  if (!contentTitlePattern.test(normalizedTitle)) {
+    return normalizedTitle;
+  }
+  return t(normalizedTitle, fallbackTitle);
+}
+
+const announcementTitle = computed(() => resolveContentTitle(plannerAnnouncement?.title, 'nav.announcement'));
+const changelogTitle = computed(() => resolveContentTitle(plannerContent.changelog?.title, 'nav.changelog'));
+const qqGroupEntries = computed(() => {
+  const entries: Array<{ label: string; group: string; note: string }> = [];
+  if (plannerAnnouncement?.qqGroup) {
+    entries.push({
+      label: '主站 QQ 群',
+      group: plannerAnnouncement.qqGroup,
+      note: plannerAnnouncement.qqNote || '',
+    });
+  }
+  entries.push({
+    label: 'JeiWeb QQ 群',
+    group: '1080814651',
+    note: 'JeiWeb 版本反馈与交流',
+  });
+  return entries;
+});
+
+function loadSeenAnnouncementVersion(): string {
+  try {
+    return window.localStorage.getItem(NOTICE_SEEN_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function saveSeenAnnouncementVersion(version: string) {
+  try {
+    if (version) {
+      window.localStorage.setItem(NOTICE_SEEN_KEY, version);
+      return;
+    }
+    window.localStorage.removeItem(NOTICE_SEEN_KEY);
+  } catch {
+    // Ignore localStorage failures for non-critical UI state.
+  }
+}
+
+const seenAnnouncementVersion = ref(loadSeenAnnouncementVersion());
+const hasUnreadAnnouncement = computed(() => Boolean(announcementVersion && seenAnnouncementVersion.value !== announcementVersion));
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderInlineText(value: string): string {
+  return escapeHtml(value).replace(/==([^=]+)==/g, '<strong>$1</strong>');
+}
+
+function renderContentLine(value: string): string {
+  const source = String(value || '');
+  const tokenPattern = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s]+)/g;
+  let lastIndex = 0;
+  let html = '';
+  let match: RegExpExecArray | null;
+
+  while ((match = tokenPattern.exec(source))) {
+    html += renderInlineText(source.slice(lastIndex, match.index));
+    if (match[1] && match[2]) {
+      html += `<a href="${escapeHtml(match[2])}" target="_blank" rel="noopener noreferrer">${renderInlineText(match[1])}</a>`;
+    } else if (match[3]) {
+      const url = match[3];
+      html += `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
+    }
+    lastIndex = tokenPattern.lastIndex;
+  }
+
+  html += renderInlineText(source.slice(lastIndex));
+  return html;
+}
+
+function openAnnouncementDialog() {
+  showAnnouncementDialog.value = true;
+}
+
+function closeAnnouncementDialog(markAsSeen = true) {
+  if (showAnnouncementDialog.value) {
+    showAnnouncementDialog.value = false;
+  }
+  if (!markAsSeen || !announcementVersion) {
+    return;
+  }
+  seenAnnouncementVersion.value = announcementVersion;
+  saveSeenAnnouncementVersion(announcementVersion);
+}
 
 const currentViewComponent = computed(() => {
   switch (state.view) {
@@ -340,6 +575,7 @@ function loadPersistedState() {
     
     const parsed = JSON.parse(raw) as {
       selectedWeapons?: string[];
+      selectedCharacterId?: string;
       weaponMarks?: Record<string, WeaponMark>;
       matchSource?: string;
       gearName?: string;
@@ -349,6 +585,10 @@ function loadPersistedState() {
 
     if (Array.isArray(parsed.selectedWeapons) && state.selectedWeapons.length === 0) {
       state.selectedWeapons = normalizeSelectedWeapons(parsed.selectedWeapons);
+    }
+
+    if (parsed.selectedCharacterId && !state.selectedCharacterId) {
+      state.selectedCharacterId = parsed.selectedCharacterId;
     }
     
     if (parsed.matchSource && !state.matchSource) {
@@ -411,6 +651,15 @@ const onSystemThemeChange = () => {
 mediaQuery.addEventListener('change', onSystemThemeChange);
 applyTheme(state.theme);
 
+onMounted(() => {
+  if (state.embed || !hasPlannerContent) {
+    return;
+  }
+  if (hasUnreadAnnouncement.value || (plannerAnnouncement?.forceModal && !announcementVersion)) {
+    openAnnouncementDialog();
+  }
+});
+
 watch(
   () => state.theme,
   (value) => {
@@ -421,6 +670,7 @@ watch(
 watch(
   () => ({
     selectedWeapons: [...state.selectedWeapons],
+    selectedCharacterId: state.selectedCharacterId,
     weaponMarks: JSON.parse(JSON.stringify(weaponMarks)),
     matchSource: state.matchSource,
     gearName: state.gearName,
@@ -446,6 +696,7 @@ watch(
 watch(
   () => ({
     selectedWeapons: [...state.selectedWeapons],
+    selectedCharacterId: state.selectedCharacterId,
     lang: state.lang,
     theme: state.theme,
     embed: state.embed,
@@ -474,6 +725,9 @@ const apiContext = {
     if (partial.selectedWeapons) {
       state.selectedWeapons = normalizeSelectedWeapons(partial.selectedWeapons);
       state.selectedWeapons.forEach(ensureMark);
+    }
+    if (partial.selectedCharacterId === null) {
+      state.selectedCharacterId = undefined;
     }
     return { ...state, selectedWeapons: [...state.selectedWeapons] };
   },
@@ -519,5 +773,38 @@ onBeforeUnmount(() => {
 .planner-page.is-embed .planner-container {
   max-width: 100%;
   padding: 0;
+}
+
+.content-card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.content-section + .content-section {
+  padding-top: 8px;
+  border-top: 1px solid var(--planner-item-border);
+}
+
+.content-item-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--planner-text-secondary);
+}
+
+.content-item-list li + li {
+  margin-top: 6px;
+}
+
+.content-item-list :deep(a) {
+  color: var(--q-primary);
+  text-decoration: underline;
+}
+
+.content-item-list :deep(strong) {
+  color: var(--planner-text-primary);
+}
+
+.changelog-entry + .changelog-entry {
+  margin-top: 12px;
 }
 </style>

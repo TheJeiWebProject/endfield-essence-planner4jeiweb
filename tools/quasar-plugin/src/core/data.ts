@@ -5,7 +5,8 @@ import upSchedules from '@/data/up-schedules.json';
 import weaponImages from '@/data/weapon-images.json';
 import gearImages from '@/data/equip-images.json';
 import characters from '@/data/characters.json';
-import type { Character, Dungeon, Gear, UpScheduleMap, Weapon } from './types';
+import content from '@/data/content.json';
+import type { Character, Dungeon, Gear, PlannerContent, UpScheduleMap, Weapon } from './types';
 
 export function toLegacyAssetUrl(path: string): string {
   const base = import.meta.env.BASE_URL || '/';
@@ -47,4 +48,8 @@ export function getGearImageId(name: string): string | undefined {
 
 export function getCharacters(): Character[] {
   return characters as unknown as Character[];
+}
+
+export function getPlannerContent(): PlannerContent {
+  return content as unknown as PlannerContent;
 }

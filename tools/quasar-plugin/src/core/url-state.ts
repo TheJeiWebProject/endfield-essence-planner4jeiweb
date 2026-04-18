@@ -79,6 +79,7 @@ export function parseStateFromUrl(url = window.location.href): PlannerState {
   return {
     view: normalizeView(params.get('view')),
     selectedWeapons,
+    selectedCharacterId: params.get('operator') || undefined,
     lang: normalizeLang(params.get('lang')),
     theme: normalizeTheme(params.get('theme')),
     embed: params.get('embed') === '1',
@@ -148,6 +149,8 @@ export function writeStateToUrl(
   const params = url.searchParams;
 
   params.set('view', state.view);
+  if (state.view === 'strategy' && state.selectedCharacterId) params.set('operator', state.selectedCharacterId);
+  else params.delete('operator');
   if (state.selectedWeapons.length > 0) {
     params.set('weapons', state.selectedWeapons.join(','));
   } else {

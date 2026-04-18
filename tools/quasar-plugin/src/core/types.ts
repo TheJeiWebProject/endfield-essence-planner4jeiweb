@@ -73,6 +73,38 @@ export interface Character {
   guide?: Record<string, unknown>;
 }
 
+export interface PlannerContentCompat {
+  supportedVersion?: string;
+  nextVersion?: string;
+  nextVersionAt?: string;
+}
+
+export interface PlannerContentAnnouncement {
+  version?: string;
+  title?: string;
+  date?: string;
+  forceModal?: boolean;
+  qqGroup?: string;
+  qqNote?: string;
+  items?: string[];
+}
+
+export interface PlannerContentChangelogEntry {
+  date: string;
+  items: string[];
+}
+
+export interface PlannerContentChangelog {
+  title?: string;
+  entries?: PlannerContentChangelogEntry[];
+}
+
+export interface PlannerContent {
+  gameCompat?: PlannerContentCompat;
+  announcement?: PlannerContentAnnouncement;
+  changelog?: PlannerContentChangelog;
+}
+
 export interface UpWindow {
   start: string;
   end: string;
@@ -106,6 +138,7 @@ export interface RecommendationConfig {
 export interface PlannerState {
   view: PlannerView;
   selectedWeapons: string[];
+  selectedCharacterId?: string;
   lang: 'zh-CN' | 'zh-TW' | 'en' | 'ja';
   theme: 'light' | 'dark' | 'auto';
   embed: boolean;

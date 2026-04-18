@@ -48,6 +48,26 @@
 			</q-card-section>
 
 			<q-card-section v-else>
+				<div v-if="attributionEntries.length" class="guide-attributions q-mb-md">
+					<div class="text-caption text-grey-5 q-mb-xs">攻略署名</div>
+					<div class="row q-gutter-sm q-gutter-y-xs">
+						<q-chip
+							v-for="(entry, index) in attributionEntries"
+							:key="`attr-${index}`"
+							square
+							color="grey-9"
+							text-color="white"
+							clickable
+							:tag="entry.url ? 'a' : 'div'"
+							:href="entry.url || undefined"
+							target="_blank"
+							rel="noreferrer"
+						>
+							{{ entry.role || '署名' }} · {{ entry.name || '-' }}
+						</q-chip>
+					</div>
+				</div>
+
 				<div class="row items-center justify-between q-mb-md">
 					<div class="row items-center q-gutter-sm">
 						<q-btn flat dense icon="arrow_back" label="返回列表" @click="backToList" />
@@ -56,15 +76,18 @@
 					<q-chip color="secondary" text-color="white">{{ currentCharacter.rarity || '-' }}★</q-chip>
 				</div>
 
-				<div class="row q-col-gutter-md q-mb-md">
-					<div class="col-auto">
+				<div class="row q-col-gutter-md q-mb-md detail-hero">
+					<div class="col-12 col-md-auto">
 						<img :src="getCharacterImageUrl(currentCharacter.name)" class="detail-avatar" loading="lazy" />
 					</div>
-					<div class="col">
+					<div class="col-12 col-md">
 						<div class="text-body2">元素：{{ currentCharacter.element || '-' }}</div>
 						<div class="text-body2">武器：{{ currentCharacter.weaponType || '-' }}</div>
 						<div class="text-body2">职业：{{ currentCharacter.profession || currentCharacter.role || '-' }}</div>
 						<div class="text-body2">主副属性：{{ currentCharacter.mainAbility || '-' }} / {{ currentCharacter.subAbility || '-' }}</div>
+					</div>
+					<div class="col-12 col-md-auto" v-if="characterCardUrl(currentCharacter)">
+						<img :src="characterCardUrl(currentCharacter)" class="detail-card-image" loading="lazy" @error="onCharacterCardError" />
 					</div>
 				</div>
 
@@ -103,7 +126,7 @@
 
 				<q-separator class="q-my-sm" />
 
-				<div v-if="strategyCategory === 'info' && strategyTab === 'base'" class="tab-panel">
+				<div v-if="strategyCategory === 'info' && strategyTab === 'base'" class="tab-panel q-gutter-y-md">
 					<div class="stats-grid">
 						<div class="stat-item">力量：{{ currentCharacter.stats?.strength || '-' }}</div>
 						<div class="stat-item">敏捷：{{ currentCharacter.stats?.agility || '-' }}</div>
@@ -112,32 +135,118 @@
 						<div class="stat-item">攻击：{{ currentCharacter.stats?.attack || '-' }}</div>
 						<div class="stat-item">生命：{{ currentCharacter.stats?.hp || '-' }}</div>
 					</div>
+
+					<q-card flat bordered class="panel-card-inner">
+						<q-card-section>
+							<div class="text-subtitle2 q-mb-sm">精英材料</div>
+							<div class="materials-grid">
+								<div v-for="level in materialLevels" :key="level" class="material-block">
+									<div class="text-caption text-grey-5 q-mb-xs">精英 {{ level.replace('elite', '') }}</div>
+									<div class="material-tags">
+										<q-chip
+											v-for="(item, index) in materialEntries(level)"
+											:key="`${level}-${index}`"
+											dense
+											square
+											color="grey-9"
+											text-color="white"
+										>
+											{{ item }}
+										</q-chip>
+										<span v-if="!materialEntries(level).length" class="text-grey-6">暂无</span>
+									</div>
+								</div>
+							</div>
+						</q-card-section>
+					</q-card>
 				</div>
 
-				<div v-if="strategyCategory === 'info' && strategyTab === 'skillsTalents'" class="tab-panel">
-					<div class="text-subtitle2 q-mb-sm">技能</div>
-					<q-card v-for="(skill, idx) in (currentCharacter.skills || [])" :key="'skill-' + idx" flat bordered class="q-mb-sm">
-						<q-card-section>
-							<div class="row items-center q-gutter-sm q-mb-xs">
-								<div class="text-subtitle2">{{ skill.name }}</div>
-								<q-badge v-if="skill.type" color="secondary" outline>{{ skill.type }}</q-badge>
-							</div>
-							<div class="preline">{{ skill.description }}</div>
-						</q-card-section>
-					</q-card>
+				<div v-if="strategyCategory === 'info' && strategyTab === 'skillsTalents'" class="tab-panel q-gutter-y-md">
+					<div>
+						<div class="text-subtitle2 q-mb-sm">技能</div>
+						<q-expansion-item
+							v-for="(skill, idx) in (currentCharacter.skills || [])"
+							:key="`skill-${idx}-${skill.name}`"
+							:label="skill.name"
+							:caption="skill.type"
+							header-class="skill-header"
+							expand-icon-class="text-primary"
+							class="editor-expansion q-mb-sm"
+						>
+							<q-card flat class="panel-card-inner">
+								<q-card-section>
+									<div class="preline">{{ skill.description }}</div>
+									<div v-if="skill.dataTables?.length" class="q-mt-md">
+										<div v-for="table in skill.dataTables" :key="table.title" class="q-mb-md">
+											<div class="text-caption text-grey-5 q-mb-xs">{{ table.title }}</div>
+											<q-table
+												dense
+												flat
+												bordered
+												:rows="table.rows"
+												:columns="skillTableColumns"
+												row-key="name"
+												hide-pagination
+												:rows-per-page-options="[0]"
+												class="skill-table"
+											>
+												<template #body-cell-values="cellProps">
+													<q-td :props="cellProps">
+														<div class="row q-gutter-xs">
+															<q-badge
+																v-for="(val, valueIndex) in cellProps.row.values"
+																:key="valueIndex"
+																color="grey-8"
+																:label="val"
+																size="sm"
+															/>
+														</div>
+													</q-td>
+												</template>
+											</q-table>
+										</div>
+									</div>
+								</q-card-section>
+							</q-card>
+						</q-expansion-item>
+					</div>
 
-					<div class="text-subtitle2 q-mt-md q-mb-sm">天赋</div>
-					<q-card v-for="(talent, idx) in (currentCharacter.talents || [])" :key="'talent-' + idx" flat bordered class="q-mb-sm">
-						<q-card-section>
-							<div class="text-subtitle2 q-mb-xs">{{ talent.name }}</div>
-							<div class="preline">{{ talent.description }}</div>
-						</q-card-section>
-					</q-card>
+					<div v-if="currentCharacter.talents?.length">
+						<div class="text-subtitle2 q-mb-sm">天赋</div>
+						<q-expansion-item
+							v-for="(talent, idx) in (currentCharacter.talents || [])"
+							:key="`talent-${idx}-${talent.name}`"
+							:label="talent.name"
+							:caption="talent.type"
+							header-class="skill-header"
+							expand-icon-class="text-secondary"
+							class="editor-expansion q-mb-sm"
+						>
+							<q-card flat class="panel-card-inner">
+								<q-card-section>
+									<div class="preline">{{ talent.description }}</div>
+								</q-card-section>
+							</q-card>
+						</q-expansion-item>
+					</div>
+
+					<div v-if="currentCharacter.baseSkills?.length">
+						<div class="text-subtitle2 q-mb-sm">基础技能</div>
+						<q-card v-for="(skill, idx) in (currentCharacter.baseSkills || [])" :key="`base-skill-${idx}-${skill.name}`" flat bordered class="q-mb-sm">
+							<q-card-section>
+								<div class="row items-center q-gutter-sm q-mb-xs">
+									<div class="text-subtitle2">{{ skill.name }}</div>
+									<q-badge v-if="skill.type" color="teal" outline>{{ skill.type }}</q-badge>
+								</div>
+								<div class="preline">{{ skill.description }}</div>
+							</q-card-section>
+						</q-card>
+					</div>
 				</div>
 
 				<div v-if="strategyCategory === 'info' && strategyTab === 'potentials'" class="tab-panel">
 					<q-list bordered separator>
-						<q-item v-for="(p, idx) in (currentCharacter.potentials || [])" :key="'pot-' + idx">
+						<q-item v-for="(p, idx) in (currentCharacter.potentials || [])" :key="`pot-${idx}`">
 							<q-item-section>
 								<q-item-label>潜能 {{ idx + 1 }}</q-item-label>
 								<q-item-label caption class="preline">{{ resolvePotentialText(p) }}</q-item-label>
@@ -147,23 +256,23 @@
 				</div>
 
 				<div v-if="strategyCategory === 'guide' && strategyTab === 'analysis'" class="tab-panel preline">
-					{{ currentGuide?.analysis || '暂无' }}
+					{{ guideText('analysis') || '暂无' }}
 				</div>
 
 				<div v-if="strategyCategory === 'guide' && strategyTab === 'operation'" class="tab-panel preline">
-					{{ currentGuide?.operation || '暂无' }}
+					{{ guideText('operationTips', 'operation') || '暂无' }}
 				</div>
 
 				<div v-if="strategyCategory === 'guide' && strategyTab === 'team'" class="tab-panel">
-					<div class="preline q-mb-md">{{ currentGuide?.teamTips || '暂无' }}</div>
-					<div class="team-grid">
-						<q-card v-for="(slot, idx) in teamSlots" :key="'slot-' + idx" flat bordered>
+					<div class="preline q-mb-md">{{ guideText('teamTips') || '暂无' }}</div>
+					<div v-if="teamSlots.length" class="team-grid q-mb-md">
+						<q-card v-for="(slot, idx) in teamSlots" :key="`slot-${idx}`" flat bordered>
 							<q-card-section>
 								<div class="text-subtitle2 q-mb-sm">{{ slot?.name || `位置 ${idx + 1}` }}</div>
 								<div class="row q-gutter-sm">
 									<q-chip
 										v-for="weapon in slotWeapons(slot)"
-										:key="'slot-w-' + idx + '-' + weapon"
+										:key="`slot-w-${idx}-${weapon}`"
 										dense
 										square
 										color="grey-9"
@@ -178,21 +287,22 @@
 						</q-card>
 					</div>
 
-					<q-separator class="q-my-md" />
-
 					<div class="text-subtitle2 q-mb-sm">配装推荐</div>
-					<q-card v-for="(row, idx) in guideRows" :key="'equip-row-' + idx" flat bordered class="q-mb-sm">
+					<q-card v-for="(row, idx) in guideRows" :key="`equip-row-${idx}`" flat bordered class="q-mb-sm">
 						<q-card-section>
 							<div class="text-caption text-grey-5 q-mb-sm">{{ idx === 0 ? '优先方案' : '备选方案' }}</div>
 							<div class="row q-gutter-sm q-mb-sm">
 								<div
 									v-for="weapon in row.weapons"
-									:key="'rw-' + idx + '-' + weapon.name"
+									:key="`rw-${idx}-${weapon.name}`"
 									class="guide-weapon-chip"
 									@click="toggleWeaponSelection(weapon.name)"
 								>
 									<img v-if="getWeaponImageUrl(weapon.name)" :src="getWeaponImageUrl(weapon.name)" class="guide-weapon-img" />
-									<div class="guide-weapon-name">{{ weapon.name }}</div>
+									<div>
+										<div class="guide-weapon-name">{{ weapon.name }}</div>
+										<div v-if="weapon.note" class="text-caption text-grey-5">{{ weapon.note }}</div>
+									</div>
 								</div>
 							</div>
 						</q-card-section>
@@ -204,9 +314,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { getCharacters, getWeaponImageId, getWeapons, toLegacyAssetUrl } from '@/core/data';
 import type { Character, PlannerState } from '@/core/types';
+
+type StrategyCategory = 'info' | 'guide';
+type StrategyTab = 'base' | 'skillsTalents' | 'potentials' | 'analysis' | 'team' | 'operation';
+
+interface GuideWeaponRow {
+	name: string;
+	note?: string;
+}
 
 const props = defineProps<{
 	state: PlannerState;
@@ -215,16 +333,31 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	(e: 'update:selectedWeapons', value: string[]): void;
+	(e: 'update:selectedCharacterId', value: string | null): void;
 }>();
 
 const allWeapons = getWeapons();
 const weaponNameSet = new Set(allWeapons.map((w) => w.name));
 const characters = getCharacters().slice().sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'));
+const materialLevels = ['elite1', 'elite2', 'elite3', 'elite4'];
+const skillTableColumns = [
+	{ name: 'name', label: '数值名称', field: 'name', align: 'left' as const },
+	{ name: 'values', label: '等级数值', field: 'values', align: 'left' as const },
+];
 
 const keyword = ref('');
-const selectedCharacterId = ref<string | null>(null);
-const strategyCategory = ref<'info' | 'guide'>('info');
-const strategyTab = ref<'base' | 'skillsTalents' | 'potentials' | 'analysis' | 'team' | 'operation'>('base');
+const selectedCharacterId = ref<string | null>(props.state.selectedCharacterId || null);
+const strategyCategory = ref<StrategyCategory>('info');
+const strategyTab = ref<StrategyTab>('base');
+
+watch(
+	() => props.state.selectedCharacterId,
+	(value) => {
+		if ((value || null) !== selectedCharacterId.value) {
+			selectedCharacterId.value = value || null;
+		}
+	},
+);
 
 const rows = computed(() => {
 	return characters.map((character) => {
@@ -252,12 +385,22 @@ const currentGuide = computed<Record<string, unknown> | null>(() => {
 	return (currentCharacter.value?.guide as Record<string, unknown>) || null;
 });
 
+const attributionEntries = computed(() => {
+	const entries = currentGuide.value?.attributions;
+	return Array.isArray(entries) ? (entries as Array<Record<string, string>>) : [];
+});
+
 const guideRows = computed(() => {
-	const rows = currentGuide.value?.equipRows;
-	if (!Array.isArray(rows)) return [];
-	return rows.map((row) => {
+	const rowsValue = currentGuide.value?.equipRows;
+	if (!Array.isArray(rowsValue)) return [];
+	return rowsValue.map((row) => {
 		const weapons = Array.isArray((row as { weapons?: unknown[] }).weapons)
-			? ((row as { weapons?: unknown[] }).weapons as { name: string }[]).filter((w) => Boolean(w?.name))
+			? ((row as { weapons?: unknown[] }).weapons as Array<Record<string, unknown>>)
+					.map((weapon) => ({
+						name: String(weapon.name || '').trim(),
+						note: typeof weapon.note === 'string' ? weapon.note : '',
+					}))
+					.filter((weapon) => Boolean(weapon.name))
 			: [];
 		return { weapons };
 	});
@@ -267,6 +410,12 @@ const teamSlots = computed(() => {
 	const slots = currentGuide.value?.teamSlots;
 	return Array.isArray(slots) ? (slots as Array<Record<string, unknown>>) : [];
 });
+
+function materialEntries(level: string): string[] {
+	const materials = currentCharacter.value?.materials as Record<string, unknown> | undefined;
+	const list = materials && Array.isArray(materials[level]) ? (materials[level] as string[]) : [];
+	return list.filter(Boolean);
+}
 
 function slotWeapons(slot: Record<string, unknown> | null | undefined): string[] {
 	if (!slot) return [];
@@ -282,18 +431,42 @@ function slotWeapons(slot: Record<string, unknown> | null | undefined): string[]
 	return [...set];
 }
 
+function guideText(...keys: string[]): string {
+	if (!currentGuide.value) return '';
+	for (const key of keys) {
+		const value = currentGuide.value[key];
+		if (typeof value === 'string' && value.trim()) {
+			return value;
+		}
+	}
+	return '';
+}
+
 function selectCharacter(id: string) {
 	selectedCharacterId.value = id;
 	strategyCategory.value = 'info';
 	strategyTab.value = 'base';
+	emit('update:selectedCharacterId', id);
 }
 
 function backToList() {
 	selectedCharacterId.value = null;
+	emit('update:selectedCharacterId', null);
 }
 
 function getCharacterImageUrl(name: string): string {
 	return toLegacyAssetUrl(`legacy/image/characters/${encodeURIComponent(name)}.avif`);
+}
+
+function characterCardUrl(character: Character | null): string {
+	if (!character) return '';
+	const name = character.name || character.id;
+	return name ? toLegacyAssetUrl(`legacy/image/characters/${encodeURIComponent(name)}_card.avif`) : '';
+}
+
+function onCharacterCardError(event: Event) {
+	const target = event.target as HTMLImageElement | null;
+	if (target) target.style.display = 'none';
 }
 
 function getWeaponImageUrl(name: string): string {
@@ -355,10 +528,15 @@ function resolvePotentialText(value: unknown): string {
 	text-align: center;
 }
 
-.weapon-chips {
+.weapon-chips,
+.material-tags {
 	display: flex;
 	gap: 6px;
 	flex-wrap: wrap;
+}
+
+.detail-hero {
+	align-items: center;
 }
 
 .detail-avatar {
@@ -366,6 +544,14 @@ function resolvePotentialText(value: unknown): string {
 	height: 96px;
 	border-radius: 12px;
 	object-fit: cover;
+}
+
+.detail-card-image {
+	width: 132px;
+	max-width: 100%;
+	border-radius: 12px;
+	object-fit: cover;
+	border: 1px solid var(--planner-item-border);
 }
 
 .tab-panel {
@@ -376,29 +562,34 @@ function resolvePotentialText(value: unknown): string {
 	white-space: pre-line;
 }
 
-.stats-grid {
+.stats-grid,
+.materials-grid,
+.team-grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 8px;
+	gap: 10px;
 }
 
-.stat-item {
+.stats-grid {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.materials-grid,
+.team-grid {
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.stat-item,
+.material-block {
 	padding: 8px 10px;
 	border: 1px solid var(--planner-item-border);
 	border-radius: 6px;
 	background: var(--planner-surface-soft);
 }
 
-.team-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-	gap: 10px;
-}
-
 .guide-weapon-chip {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	padding: 6px 8px;
 	border: 1px solid var(--planner-item-border);
 	border-radius: 8px;
@@ -414,6 +605,13 @@ function resolvePotentialText(value: unknown): string {
 
 .guide-weapon-name {
 	font-size: 12px;
+	font-weight: 600;
+}
+
+@media (max-width: 640px) {
+	.stats-grid {
+		grid-template-columns: 1fr;
+	}
 }
 </style>
 
