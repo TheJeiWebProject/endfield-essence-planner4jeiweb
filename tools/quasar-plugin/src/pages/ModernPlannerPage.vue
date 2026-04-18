@@ -265,6 +265,17 @@
                 </ul>
               </section>
 
+              <section class="content-section">
+                <div class="text-subtitle2 q-mb-sm">站点说明</div>
+                <ul class="content-item-list">
+                  <li
+                    v-for="(item, index) in officialSiteAnnouncementItems"
+                    :key="`official-site-${index}`"
+                    v-html="renderContentLine(item)"
+                  ></li>
+                </ul>
+              </section>
+
               <section v-if="qqGroupEntries.length" class="content-section">
                 <div class="text-subtitle2 q-mb-sm">交流群</div>
                 <div class="column q-gutter-y-sm">
@@ -422,7 +433,7 @@ const { snapshotDataUrl: resolvedRemoteBackgroundUrl, snapshotSource: resolvedRe
 let backgroundFadeTimer: number | null = null;
 let backgroundResolveToken = 0;
 
-const langOptions = computed(() => [
+const langOptions = computed<Array<{ label: string; value: PlannerState['lang'] }>>(() => [
   { label: '简体中文', value: 'zh-CN' },
   { label: '繁體中文', value: 'zh-TW' },
   { label: 'English', value: 'en' },
@@ -433,7 +444,7 @@ const currentLangLabel = computed(
   () => langOptions.value.find((option) => option.value === state.lang)?.label || state.lang,
 );
 
-const themeOptions = computed(() => [
+const themeOptions = computed<Array<{ label: string; value: PlannerState['theme'] }>>(() => [
   { label: t('自动'), value: 'auto' },
   { label: t('浅色', '浅色'), value: 'light' },
   { label: t('深色', '深色'), value: 'dark' },
@@ -532,6 +543,10 @@ function resolveContentTitle(rawTitle: string | undefined, fallbackKey: string):
 
 const announcementTitle = computed(() => resolveContentTitle(plannerAnnouncement?.title, 'nav.announcement'));
 const changelogTitle = computed(() => resolveContentTitle(plannerContent.changelog?.title, 'nav.changelog'));
+const officialSiteAnnouncementItems = computed(() => [
+  t('当前 JeiWeb 版本为原站官方授权的重构版本。', '当前 JeiWeb 版本为原站官方授权的重构版本。'),
+  '[原始版本原站](https://end.canmoe.com/)',
+]);
 const qqGroupEntries = computed(() => {
   const entries: Array<{ label: string; group: string; note: string }> = [];
   if (plannerAnnouncement?.qqGroup) {

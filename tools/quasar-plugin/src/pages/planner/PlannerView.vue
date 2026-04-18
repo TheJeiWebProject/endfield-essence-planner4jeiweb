@@ -1,7 +1,10 @@
 <template>
-  <div class="planner-layout" :class="{ 'single-column': state.hideWeaponSelector, 'is-embed': state.embed }">
+  <div
+    class="planner-layout"
+    :class="{ 'single-column': state.hideWeaponSelector, 'is-embed': state.embed, 'has-mobile-nav': showMobileSectionNavigator }"
+  >
     <!-- Left Panel: Weapon Selector -->
-    <div v-if="!state.hideWeaponSelector" class="panel-column">
+    <div v-if="!state.hideWeaponSelector" ref="weaponSelectorSection" class="panel-column planner-section-anchor">
       <q-card flat bordered class="panel-card main-panel">
         <q-card-section class="panel-header">
           <div class="row items-center justify-between no-wrap">
@@ -413,6 +416,15 @@
                   class="weapon-up-chip is-fallback"
                   :title="item.upCharactersText || t('当前 UP', '当前 UP')"
                 >
+                  <img
+                    class="weapon-up-chip-icon"
+                    :src="WEAPON_UP_BADGE_SRC"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    @load="handleWeaponUpBadgeLoad"
+                    @error="handleWeaponUpBadgeError"
+                  />
                   <span class="weapon-up-chip-fallback">{{ t('up_badge_text', 'UP') }}</span>
                 </div>
                 <div v-if="item.isCustom" class="weapon-custom-chip">{{ t('自定义', '自定义') }}</div>
@@ -460,7 +472,22 @@
                       />
                     </span>
                     <span class="text-subtitle2">{{ item.name }}</span>
-                    <q-badge v-if="item.upActive" color="warning" text-color="black">{{ t('up_badge_text', 'UP') }}</q-badge>
+                    <span
+                      v-if="item.upActive"
+                      class="weapon-up-chip weapon-up-chip--inline is-fallback"
+                      :title="item.upCharactersText || t('当前 UP', '当前 UP')"
+                    >
+                      <img
+                        class="weapon-up-chip-icon"
+                        :src="WEAPON_UP_BADGE_SRC"
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        @load="handleWeaponUpBadgeLoad"
+                        @error="handleWeaponUpBadgeError"
+                      />
+                      <span class="weapon-up-chip-fallback">{{ t('up_badge_text', 'UP') }}</span>
+                    </span>
                     <q-badge v-if="item.short" color="secondary" outline>{{ item.short }}</q-badge>
                     <q-badge :color="item.selected ? 'primary' : 'grey-7'">{{ item.selected ? t('已选', '已选') : t('未选', '未选') }}</q-badge>
                     <q-badge
@@ -519,7 +546,7 @@
     </div>
 
     <!-- Right Panel: Recommendations -->
-    <div class="panel-column">
+    <div ref="recommendationSection" class="panel-column planner-section-anchor">
       <q-card flat bordered class="panel-card recommend-panel">
         <q-card-section class="panel-header row items-center justify-between">
           <div class="text-h6">{{ t('方案推荐列表') }}</div>
@@ -874,6 +901,31 @@
         </div>
       </q-card>
     </div>
+
+    <div
+      v-if="showMobileSectionNavigator"
+      class="mobile-section-nav"
+      :aria-label="t('移动端快速导航', '移动端快速导航')"
+      role="navigation"
+    >
+      <button
+        v-if="!state.hideWeaponSelector"
+        type="button"
+        class="mobile-section-nav__button"
+        @click="scrollToPlannerSection('selector')"
+      >
+        <q-icon name="tune" size="16px" />
+        <span>{{ t('武器选择器', '武器选择器') }}</span>
+      </button>
+      <button
+        type="button"
+        class="mobile-section-nav__button"
+        @click="scrollToPlannerSection('recommendations')"
+      >
+        <q-icon name="format_list_bulleted" size="16px" />
+        <span>{{ t('方案推荐', '方案推荐') }}</span>
+      </button>
+    </div>
   </div>
 
   <q-dialog v-model="showWeaponAttrDataModal">
@@ -952,6 +1004,41 @@ function t(key: string, fallback = key, params?: Record<string, string | number>
   return translatePlannerText(props.state.lang, key, fallback, params);
 }
 
+const WEAPON_UP_BADGE_SRC =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIQAAAA8CAMAAACQA+KNAAAAw1BMVEX/8gD/8gD/8QD/8QD/8QH/8QH/8QH/8QH/8gL/8gP/8gP/9ib/8QH/8AH/8QH/8gz/8wL/8QD/8QX/8QD/9Av/8QFBQCTh1gX/8QD/8gH/7wH/8wb/8gF1bxv/9AH/8gCOiBWqoRD/8Ab/8AD/8wD/7wP/8AD/7gT/8QD/7Q1aVyBCQCSpohHFvAv/8gH/7wI1NCb/8wJnYx3/6glOSyK3rg6CfBjw4wL/8wL/8wCclRPUyQn/8wD/7wGpohD/7wApKSmAwyqyAAAAQHRSTlPl2M7FlIt4ZVtINQSBnm4OPuEhsRio/Oi7p1IrUfYYsfLvI+ErP7srug75/O7rnW/9UvcY++3054GB8epuUe5v8HZtSQAAApxJREFUWMPFmdlygkAQRcm+xywo2VBQowaEGIyaxCz8/1cFmIE7oVJFU0PZ/WQmL8ee7nt7WuOkZV7dH18cPRwenO+f7u2etXs3O9tbl8Ym4+Spm0HcSYjwlglinEC85Jm47Y02D9Eyc4hPAcGUieHxY3EdZ+3rFGJgbCIAYfbHeU28p5nggGjNr+75M9FFi/LVhJm36LOAuB4xXEe3PxSZAARHi6YQX0pNMECoiim6gycTQqx+ZCYmDDWR6oTaoiw1IRQT3cGTCdQEZ3eoYhVWdYfVyWKBk6U4yT53lPAi16rhHYCo9g4rzsLFiS1Oss9xKWyrTotCJ3oTfQiEv6ZlQigmRazoEIjZmuaixXW8NQeB8Fck70isXM3EqFmI+IOumNAJfQg7SGJhSwiPBAHFxDyhBeGIf3zLqqBaOca7dnMQxqv40yJMVn2IlTCwxiAiQBAUE9cRojD1IXxAUFy0nIlBExBOjZpovjCjaRIfXp3uIExWWjrhElsUELI7Bg0qJnXaxoM4bBrCt2jj3ZC8GgCEg5NI+cK1GdTxrjCwsMLKC2XGgZCk1/8gZs6qxgtMQlDGuw76Tk1NpED4Xhr2MqjxIMZ1VLooSqCY7xx4JXRCY1NDehAvZKblZbuxCEsHojUvzxMVEKtZPj8ugmAKRdKCEJmgGRjyX45AD8LsYzVAqAk4tBpLQw8CVk59lVt+jEB/amcCYgUXpVPYK32IcX4d7+SdlatgeJADQGzmLRosvU4SkfNHkaZZrOvXRGl7x7HRfSoU81Ma2IRtU3PHvdseKooZsixJpIuq3sG0LlLFiiETECvWndUcPzW8Me4xpYtKA+sxQaA7uDIBF+XcY2KykgbGvsfk+6nhr4FNGLsDss32C/ED45b/F5MPF3B+XRSlAAAAAElFTkSuQmCC';
+const MOBILE_PLANNER_BREAKPOINT = 900;
+
+function resolveWeaponUpBadgeImage(event: Event): HTMLImageElement | null {
+  return event.currentTarget instanceof HTMLImageElement ? event.currentTarget : null;
+}
+
+function handleWeaponUpBadgeLoad(event: Event): void {
+  const image = resolveWeaponUpBadgeImage(event);
+  image?.closest('.weapon-up-chip')?.classList.remove('is-fallback');
+}
+
+function handleWeaponUpBadgeError(event: Event): void {
+  const image = resolveWeaponUpBadgeImage(event);
+  if (!image) return;
+  image.style.display = 'none';
+  image.closest('.weapon-up-chip')?.classList.add('is-fallback');
+}
+
+const showMobileSectionNavigator = computed(() => isMobilePlannerMode.value);
+
+function updateMobilePlannerMode(matches: boolean): void {
+  isMobilePlannerMode.value = matches;
+}
+
+function handleMobilePlannerMediaChange(event: MediaQueryListEvent): void {
+  updateMobilePlannerMode(event.matches);
+}
+
+function scrollToPlannerSection(section: 'selector' | 'recommendations'): void {
+  const target = section === 'selector' ? weaponSelectorSection.value : recommendationSection.value;
+  target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 const baseWeapons = getWeapons();
 // weaponImageNameSet removed — use getWeaponImageId directly
 const dungeons = getDungeons();
@@ -992,11 +1079,14 @@ const showAllSchemes = ref(false);
 const schemeBaseSelections = ref<Record<string, string[]>>({});
 const conflictOpenMap = ref<Record<string, boolean>>({});
 const planConfigRoot = ref<HTMLElement | null>(null);
+const weaponSelectorSection = ref<HTMLElement | null>(null);
+const recommendationSection = ref<HTMLElement | null>(null);
 const planConfigSectionCollapsed = ref<Record<string, boolean>>({});
 const planConfigSectionManuallySet = ref(false);
 const showWeaponAttrDataModal = ref(false);
 const customWeapons = ref<Weapon[]>([]);
 const customWeaponError = ref('');
+const isMobilePlannerMode = ref(false);
 const customWeaponDraft = reactive({
   name: '',
   rarity: 6,
@@ -1010,6 +1100,7 @@ const allWeapons = computed<Weapon[]>(() => [...baseWeapons, ...customWeapons.va
 const upSchedules = getUpSchedules();
 const upScheduleNowMs = ref(Date.now());
 let upScheduleTimer: number | null = null;
+let mobilePlannerMediaQuery: MediaQueryList | null = null;
 
 const weaponNameSet = computed(() => new Set(allWeapons.value.map((item) => item.name)));
 const pinyinSearchCache = new Map<string, string>();
@@ -1764,6 +1855,13 @@ function handleDocumentClick(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick);
+  mobilePlannerMediaQuery = window.matchMedia(`(max-width: ${MOBILE_PLANNER_BREAKPOINT - 1}px)`);
+  updateMobilePlannerMode(mobilePlannerMediaQuery.matches);
+  if (typeof mobilePlannerMediaQuery.addEventListener === 'function') {
+    mobilePlannerMediaQuery.addEventListener('change', handleMobilePlannerMediaChange);
+  } else {
+    mobilePlannerMediaQuery.addListener(handleMobilePlannerMediaChange);
+  }
   upScheduleTimer = window.setInterval(() => {
     upScheduleNowMs.value = Date.now();
   }, 60000);
@@ -1771,6 +1869,14 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick);
+  if (mobilePlannerMediaQuery) {
+    if (typeof mobilePlannerMediaQuery.removeEventListener === 'function') {
+      mobilePlannerMediaQuery.removeEventListener('change', handleMobilePlannerMediaChange);
+    } else {
+      mobilePlannerMediaQuery.removeListener(handleMobilePlannerMediaChange);
+    }
+    mobilePlannerMediaQuery = null;
+  }
   if (upScheduleTimer !== null) {
     window.clearInterval(upScheduleTimer);
     upScheduleTimer = null;
@@ -1844,6 +1950,52 @@ watch(
   row-gap: 6px;
   background: var(--planner-surface-soft);
   border: 1px solid var(--planner-item-border);
+}
+
+.planner-section-anchor {
+  scroll-margin-top: 72px;
+}
+
+.planner-layout.has-mobile-nav {
+  padding-bottom: 88px;
+}
+
+.mobile-section-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(221, 230, 242, 0.18);
+  border-radius: 999px;
+  background: rgba(11, 18, 28, 0.84);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+}
+
+.mobile-section-nav__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--planner-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.mobile-section-nav__button:active {
+  transform: translateY(1px);
 }
 
 .config-section-header {
@@ -2037,6 +2189,18 @@ watch(
   white-space: nowrap;
 }
 
+.weapon-up-chip-icon {
+  width: 44px;
+  height: 20px;
+  display: block;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.weapon-up-chip--inline {
+  flex: 0 0 auto;
+}
+
 .weapon-up-chip-fallback {
   display: none;
   padding: 2px 7px;
@@ -2217,6 +2381,14 @@ watch(
 }
 
 @media (min-width: 900px) {
+  .planner-layout.has-mobile-nav {
+    padding-bottom: 0;
+  }
+
+  .mobile-section-nav {
+    display: none;
+  }
+
   .planner-layout {
     align-items: start;
   }
@@ -2229,7 +2401,7 @@ watch(
   .recommend-panel {
     display: flex;
     flex-direction: column;
-    max-height: calc(100dvh - 88px);
+    max-height: calc(100dvh - 64px);
     min-height: 0;
   }
 
