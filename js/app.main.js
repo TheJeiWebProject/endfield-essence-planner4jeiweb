@@ -166,6 +166,39 @@
     return pending;
   };
 
+  const scheduleBackgroundAnalyticsBootstrap = () => {
+    if (typeof window === "undefined") return;
+    if (window.__APP_BACKGROUND_ANALYTICS_BOOTSTRAP_SCHEDULED__) return;
+    window.__APP_BACKGROUND_ANALYTICS_BOOTSTRAP_SCHEDULED__ = true;
+
+    const inject = () => {
+      loadScriptOnce("./js/analytics.bootstrap.js").catch(() => {
+        // Analytics is intentionally best-effort and must stay silent.
+      });
+    };
+
+    const schedule = () => {
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(inject, { timeout: 4000 });
+        return;
+      }
+      setTimeout(inject, 1200);
+    };
+
+    if (document.readyState === "complete") {
+      schedule();
+      return;
+    }
+
+    window.addEventListener(
+      "load",
+      () => {
+        schedule();
+      },
+      { once: true }
+    );
+  };
+
   const createUiScheduler = (updateFn) => () => {
     if (typeof window === "undefined") return;
     const run = () => updateFn();
@@ -326,9 +359,15 @@
       recommendationConfig: { type: Object, required: true },
       showPlanConfig: { type: Boolean, required: true },
       showPlanConfigHintDot: { type: Boolean, required: true },
+      showPlanConfigDisplayRulesHintDot: { type: Boolean, required: true },
+      showPlanConfigOwnershipHintDot: { type: Boolean, required: true },
       showWeaponAttrs: { type: Boolean, required: true },
-      showWeaponOwnership: { type: Boolean, required: true },
-      toggleShowWeaponOwnership: { type: Function, required: true },
+      showWeaponOwnershipInList: { type: Boolean, required: true },
+      showWeaponOwnershipInPlans: { type: Boolean, required: true },
+      toggleShowWeaponOwnershipInList: { type: Function, required: true },
+      toggleShowWeaponOwnershipInPlans: { type: Function, required: true },
+      markPlanConfigDisplayRulesHintSeen: { type: Function, required: true },
+      markPlanConfigOwnershipHintSeen: { type: Function, required: true },
       exportWeaponMarks: { type: Function, required: true },
       handleMarksImportFile: { type: Function, required: true },
       marksImportFileName: { type: String, default: "" },
@@ -417,10 +456,18 @@
       t: { type: Function, required: true },
       mobilePanel: { type: String, required: true },
       query: { type: String, required: true },
+      filterSub1: { type: Array, required: true },
+      filterSub2: { type: Array, required: true },
+      filterSpecial: { type: Array, required: true },
+      filterOptionEntries: { type: Object, required: true },
+      filterPanelCollapsed: { type: Boolean, required: true },
       groupedSets: { type: Array, required: true },
       selectedEquipName: { type: String, default: "" },
       isSetCollapsed: { type: Function, required: true },
       toggleSetCollapsed: { type: Function, required: true },
+      toggleFilterValue: { type: Function, required: true },
+      clearFilters: { type: Function, required: true },
+      toggleFilterPanelCollapsed: { type: Function, required: true },
       selectEquip: { type: Function, required: true },
       hasEquipImage: { type: Function, required: true },
       equipImageSrc: { type: Function, required: true },
@@ -586,6 +633,7 @@
       state.formatMarkdownBlocks = formatMarkdownBlocks;
       state.loadScriptOnce = loadScriptOnce;
       state.createUiScheduler = createUiScheduler;
+      scheduleBackgroundAnalyticsBootstrap();
       const runtimeEnv = readRuntimeEnv();
       if (typeof window !== "undefined") {
         window.__APP_RUNTIME_ENV__ = runtimeEnv;
@@ -593,6 +641,9 @@
       announceStrictRuntimeEnv(runtimeEnv);
       const showEditorEntry = runtimeEnv === "development" || runtimeEnv === "test";
       state.showEditorEntry = showEditorEntry;
+      // Keep the hero ad banner codepath available, but disable both rendering
+      // and related detection until this area is needed again.
+      state.heroAdBannerEnabled = ref(false);
       const initializedModules = new Set();
       const providedCapabilities = new Set();
       const pendingInitContractWarnings = [];
@@ -848,7 +899,6 @@
         "initUpSchedule",
         "initRerunRanking",
         "initStorage",
-        "initAnalytics",
         "initEmbed",
         "initPerf",
         "initBackground",
@@ -859,6 +909,7 @@
         "initRecommendationDisplay",
         "initModals",
         "initUpdate",
+        "initSync",
         "initMedia",
         "initStrategy",
         "initEquipRefining",
@@ -1049,25 +1100,7 @@
       const weaponCatalog =
         typeof window !== "undefined" && Array.isArray(window.WEAPONS) ? window.WEAPONS : [];
       const weaponNameSet = new Set(weaponCatalog.map((weapon) => weapon.name));
-      const parseWeaponNames = (params) => {
-        if (!params) return [];
-        const entries = [];
-        const packed = params.get("weapons");
-        if (packed) {
-          entries.push(...packed.split(","));
-        }
-        const repeated = params.getAll("weapon");
-        if (repeated.length) {
-          entries.push(...repeated);
-        }
-        if (!entries.length) return [];
-        const unique = Array.from(
-          new Set(entries.map((name) => (name || "").trim()).filter(Boolean))
-        );
-        return unique.filter((name) => weaponNameSet.has(name));
-      };
-
-      const parseRoute = () => {
+const parseRoute = () => {
         if (typeof window === "undefined") {
           return { view: state.currentView.value };
         }
@@ -1085,16 +1118,13 @@
           return { view: "editor" };
         }
         if (view === "equip-refining") {
-          return { view: "equip-refining", weaponNames, hasWeaponParam };
+          return { view: "equip-refining", gearName, weaponNames, hasWeaponParam };
         }
         if (view === "rerun-ranking") {
           return { view: "rerun-ranking" };
         }
         if (view === "match") {
           return { view: "match", matchSource };
-        }
-        if (view === "background") {
-          return { view: "background" };
         }
         if (view === "background") {
           return { view: "background" };
@@ -1118,7 +1148,7 @@
         if (route.view === "match") {
           state.matchSourceName.value = route.matchSource || "";
         }
-        if (route.view === "gear-refining") {
+        if (route.view === "equip-refining") {
           if (route.gearName) {
             state.selectedGearRefiningGearName.value = route.gearName;
           }
@@ -1146,7 +1176,7 @@
           const source = state.matchSourceName.value;
           if (source) params.set("matchSource", source);
         }
-        if (view === "gear-refining") {
+        if (view === "equip-refining") {
           const gearName = state.selectedGearRefiningGearName.value;
           if (gearName) params.set("gearName", gearName);
         }
@@ -1162,72 +1192,12 @@
         return query ? `?${query}` : "";
       };
 
-      const buildAnalyticsPath = () => {
-        const view = state.currentView.value;
-        if (view === "strategy") {
-          const id =
-            state.selectedCharacterId && state.selectedCharacterId.value
-              ? state.selectedCharacterId.value
-              : pendingStrategyCharacterId || "";
-          if (id) return `/strategy/${encodeURIComponent(id)}`;
-          return "/strategy";
-        }
-        if (view === "editor") {
-          return "/editor";
-        }
-        if (view === "equip-refining") {
-          return "/equip-refining";
-        }
-        if (view === "rerun-ranking") {
-          return "/rerun-ranking";
-        }
-        if (view === "match") {
-          return "/match";
-        }
-        if (view === "background") {
-          return "/background";
-        }
-        return "/planner";
-      };
-
-      const legacyScrollbarHiddenViews = new Set([
-        "planner",
-        "match",
-        "strategy",
-        "editor",
-        "equip-refining",
-        "rerun-ranking",
-        "background",
-      ]);
+      const legacyScrollbarHiddenViews = new Set([]);
       const syncLegacyScrollbarMode = () => {
         if (typeof document === "undefined" || !document.documentElement) return;
         const root = document.documentElement;
         const currentView = String(state.currentView.value || "planner");
         root.classList.toggle("legacy-scrollbar-hidden", legacyScrollbarHiddenViews.has(currentView));
-      };
-
-      const buildAnalyticsUrl = () => {
-        if (typeof window === "undefined") return "";
-        const pathname = window.location.pathname || "";
-        const base = pathname.endsWith("/")
-          ? pathname.slice(0, -1)
-          : pathname.endsWith(".html")
-          ? pathname.replace(/\/[^/]*$/, "")
-          : pathname;
-        const path = buildAnalyticsPath();
-        if (!base) return path;
-        return `${base}${path}`;
-      };
-
-      const trackPageview = () => {
-        if (typeof state.trackPageview !== "function") return;
-        if (typeof window === "undefined") return;
-        state.trackPageview({
-          url: buildAnalyticsUrl(),
-          path: buildAnalyticsPath(),
-          view: state.currentView.value,
-          title: document.title,
-        });
       };
 
       const resizeNoteTextarea = (event) => {
@@ -1266,7 +1236,6 @@
       const onPopState = () => {
         applyRoute(parseRoute());
         syncLegacyScrollbarMode();
-        trackPageview();
       };
 
       onMounted(() => {
@@ -1274,7 +1243,6 @@
         applyRoute(route);
         syncLegacyScrollbarMode();
         syncQuery(true);
-        trackPageview();
         if (typeof window !== "undefined") {
           window.addEventListener("popstate", onPopState);
         }
@@ -1301,17 +1269,7 @@
       watch([state.currentView, () => (state.selectedCharacterId ? state.selectedCharacterId.value : null)], () => {
         syncLegacyScrollbarMode();
         syncQuery(false);
-        trackPageview();
       });
-
-      watch(
-        state.selectedNames,
-        () => {
-          if (state.currentView.value !== "planner") return;
-          syncQuery(true);
-        },
-        { deep: true }
-      );
 
       const parseExceptionTime = (value) => {
         const time = Date.parse(String(value || ""));
@@ -1654,6 +1612,7 @@
         tOwnershipPriorityModeOptions: state.tOwnershipPriorityModeOptions,
         tStrictPriorityOrderOptions: state.tStrictPriorityOrderOptions,
         showAiNotice: state.showAiNotice,
+        heroAdBannerEnabled: state.heroAdBannerEnabled,
         searchQuery: state.searchQuery,
         selectedNames: state.selectedNames,
         selectedCount: state.selectedCount,
@@ -1672,8 +1631,10 @@
         updateWeaponNote: state.updateWeaponNote,
         toggleShowWeaponAttrs: state.toggleShowWeaponAttrs,
         showWeaponAttrs: state.showWeaponAttrs,
-        toggleShowWeaponOwnership: state.toggleShowWeaponOwnership,
-        showWeaponOwnership: state.showWeaponOwnership,
+        toggleShowWeaponOwnershipInList: state.toggleShowWeaponOwnershipInList,
+        toggleShowWeaponOwnershipInPlans: state.toggleShowWeaponOwnershipInPlans,
+        showWeaponOwnershipInList: state.showWeaponOwnershipInList,
+        showWeaponOwnershipInPlans: state.showWeaponOwnershipInPlans,
         showAttrHint: state.showAttrHint,
         dismissAttrHint: state.dismissAttrHint,
         showFilterPanel: state.showFilterPanel,
@@ -1682,6 +1643,8 @@
         showPlanConfig: state.showPlanConfig,
         showWeaponAttrDataModal: state.showWeaponAttrDataModal,
         showPlanConfigHintDot: state.showPlanConfigHintDot,
+        showPlanConfigDisplayRulesHintDot: state.showPlanConfigDisplayRulesHintDot,
+        showPlanConfigOwnershipHintDot: state.showPlanConfigOwnershipHintDot,
         marksImportError: state.marksImportError,
         marksImportFileName: state.marksImportFileName,
         marksImportSummary: state.marksImportSummary,
@@ -1697,6 +1660,8 @@
         showRerunRankingNavHintDot: state.showRerunRankingNavHintDot,
         showEditorEntry: state.showEditorEntry,
         togglePlanConfig: state.togglePlanConfig,
+        markPlanConfigDisplayRulesHintSeen: state.markPlanConfigDisplayRulesHintSeen,
+        markPlanConfigOwnershipHintSeen: state.markPlanConfigOwnershipHintSeen,
         isPlanConfigSectionCollapsed: state.isPlanConfigSectionCollapsed,
         togglePlanConfigSectionCollapsed: state.togglePlanConfigSectionCollapsed,
         openWeaponAttrDataModal: state.openWeaponAttrDataModal,
@@ -1723,6 +1688,7 @@
         isWeaponRawAttrMissingField: state.isWeaponRawAttrMissingField,
         recommendationConfig: state.recommendationConfig,
         regionOptions: state.regionOptions,
+        availableRegions: state.availableRegions,
         showBackToTop: state.showBackToTop,
         scrollToTop: state.scrollToTop,
         tutorialActive: state.tutorialActive,
@@ -1777,6 +1743,8 @@
         toggleFilterValue: state.toggleFilterValue,
         clearAttributeFilters: state.clearAttributeFilters,
         hasAttributeFilters: state.hasAttributeFilters,
+        isRegionSelected: state.isRegionSelected,
+        toggleRegionFilter: state.toggleRegionFilter,
         filteredWeapons: state.filteredWeapons,
         visibleFilteredWeapons: state.visibleFilteredWeapons,
         hiddenInSelectorSummary: state.hiddenInSelectorSummary,
@@ -1827,6 +1795,30 @@
           if (state.equipRefiningQuery) {
             state.equipRefiningQuery.value = value;
           }
+        },
+        get equipRefiningFilterSub1() {
+          return state.equipRefiningFilterSub1;
+        },
+        get equipRefiningFilterSub2() {
+          return state.equipRefiningFilterSub2;
+        },
+        get equipRefiningFilterSpecial() {
+          return state.equipRefiningFilterSpecial;
+        },
+        get equipRefiningFilterOptionEntries() {
+          return state.equipRefiningFilterOptionEntries;
+        },
+        get equipRefiningFilterPanelCollapsed() {
+          return state.equipRefiningFilterPanelCollapsed;
+        },
+        get toggleEquipRefiningFilterValue() {
+          return state.toggleEquipRefiningFilterValue;
+        },
+        get clearEquipRefiningFilters() {
+          return state.clearEquipRefiningFilters;
+        },
+        get toggleEquipRefiningFilterPanelCollapsed() {
+          return state.toggleEquipRefiningFilterPanelCollapsed;
         },
         get equipRefiningEquipCount() {
           return state.equipRefiningEquipCount;
@@ -1896,6 +1888,8 @@
         contentLoading: state.contentLoading,
         showAbout: state.showAbout,
         showFaq: state.showFaq,
+        showSyncModal: state.showSyncModal,
+        showCnSyncUnavailableModal: state.showCnSyncUnavailableModal,
         showNotice: state.showNotice,
         showChangelog: state.showChangelog,
         hasLegacyMigrationData: state.hasLegacyMigrationData,
@@ -1973,7 +1967,12 @@
         openChangelog: state.openChangelog,
         openAbout: state.openAbout,
         openFaq,
+        openCnSyncUnavailableModal: state.openCnSyncUnavailableModal,
+        openSyncModal: state.openSyncModal,
+        closeCnSyncUnavailableModal: state.closeCnSyncUnavailableModal,
+        closeSyncModal: state.closeSyncModal,
         closeNotice: state.closeNotice,
+        closeAdblockNotice: state.closeAdblockNotice,
         appReady: state.appReady,
         mobilePanel: state.mobilePanel,
         matchMobilePanel: state.matchMobilePanel,
@@ -1991,6 +1990,101 @@
         themePreference: state.themePreference,
         resolvedTheme: state.resolvedTheme,
         showSecondaryMenu: state.showSecondaryMenu,
+        syncRegionAccessMode: state.syncRegionAccessMode,
+        syncAuthMode: state.syncAuthMode,
+        syncBusy: state.syncBusy,
+        syncAuthenticated: state.syncAuthenticated,
+        syncUser: state.syncUser,
+        syncAccountInput: state.syncAccountInput,
+        syncUsernameInput: state.syncUsernameInput,
+        syncEmailInput: state.syncEmailInput,
+        syncPasswordInput: state.syncPasswordInput,
+        syncPasswordConfirmInput: state.syncPasswordConfirmInput,
+        syncCurrentPasswordInput: state.syncCurrentPasswordInput,
+        syncResetCodeInput: state.syncResetCodeInput,
+        syncPasswordChangeMode: state.syncPasswordChangeMode,
+        syncNewPasswordInput: state.syncNewPasswordInput,
+        syncChangePasswordConfirmInput: state.syncChangePasswordConfirmInput,
+        syncPasswordChangeError: state.syncPasswordChangeError,
+        syncPasswordChangeNotice: state.syncPasswordChangeNotice,
+        syncPasswordResetRequestAccountInput: state.syncPasswordResetRequestAccountInput,
+        syncShowPasswordModal: state.syncShowPasswordModal,
+        syncShowEmailModal: state.syncShowEmailModal,
+        syncEmailActionMode: state.syncEmailActionMode,
+        syncEmailActionInput: state.syncEmailActionInput,
+        syncEmailCodeInput: state.syncEmailCodeInput,
+        syncEmailActionError: state.syncEmailActionError,
+        syncEmailActionNotice: state.syncEmailActionNotice,
+        syncVerificationCooldownSeconds: state.syncVerificationCooldownSeconds,
+        syncVerificationSubmitCooldownSeconds: state.syncVerificationSubmitCooldownSeconds,
+        syncEmailChangeCooldownSeconds: state.syncEmailChangeCooldownSeconds,
+        syncResetCodeRequestCooldownSeconds: state.syncResetCodeRequestCooldownSeconds,
+        syncPaymentChannelInput: state.syncPaymentChannelInput,
+        syncPaymentReferenceInput: state.syncPaymentReferenceInput,
+        syncPaymentMerchantOrderInput: state.syncPaymentMerchantOrderInput,
+        syncPaymentPaidTimeInput: state.syncPaymentPaidTimeInput,
+        syncPaymentClaimError: state.syncPaymentClaimError,
+        syncPaymentClaimNotice: state.syncPaymentClaimNotice,
+        syncUserPaymentClaims: state.syncUserPaymentClaims,
+        showSyncRightsDetails: state.showSyncRightsDetails,
+        syncTurnstileRef: state.syncTurnstileRef,
+        syncTurnstileLoading: state.syncTurnstileLoading,
+        syncTurnstileUnavailable: state.syncTurnstileUnavailable,
+        syncTurnstileEnabled: state.syncTurnstileEnabled,
+        syncTurnstileMounted: state.syncTurnstileMounted,
+        syncTurnstileReadyToSubmit: state.syncTurnstileReadyToSubmit,
+        syncTurnstileVerified: state.syncTurnstileVerified,
+        syncTurnstileMessage: state.syncTurnstileMessage,
+        syncTurnstileMessageTone: state.syncTurnstileMessageTone,
+        syncSessionChecking: state.syncSessionChecking,
+        syncError: state.syncError,
+        syncErrorDetails: state.syncErrorDetails,
+        syncNotice: state.syncNotice,
+        syncConflictDetected: state.syncConflictDetected,
+        syncFrontendBlocked: state.syncFrontendBlocked,
+        syncFrontendBlockedMessage: state.syncFrontendBlockedMessage,
+        syncAutoSyncText: state.syncAutoSyncText,
+        syncConflictCurrentSummary: state.syncConflictCurrentSummary,
+        syncConflictConfirmMode: state.syncConflictConfirmMode,
+        syncLocalSummary: state.syncLocalSummary,
+        syncRemoteSummary: state.syncRemoteSummary,
+        syncSuccessToastEnabled: state.syncSuccessToastEnabled,
+        syncAutoSyncEnabled: state.syncAutoSyncEnabled,
+        syncIsLocalhostMode: state.syncIsLocalhostMode,
+        syncShowDevPanel: state.syncShowDevPanel,
+        syncApiBaseInput: state.syncApiBaseInput,
+        syncDevHeaderNameInput: state.syncDevHeaderNameInput,
+        syncDevHeaderValueInput: state.syncDevHeaderValueInput,
+        syncLastSyncedAt: state.syncLastSyncedAt,
+        syncLastSyncedDisplay: state.syncLastSyncedDisplay,
+        syncRemoteUpdatedDisplay: state.syncRemoteUpdatedDisplay,
+        formatSyncDateTime: state.formatSyncDateTime,
+        submitSyncAuth: state.submitSyncAuth,
+        submitSyncPasswordChange: state.submitSyncPasswordChange,
+        openSyncPasswordModal: state.openSyncPasswordModal,
+        requestSyncResetCode: state.requestSyncResetCode,
+        closeSyncPasswordModal: state.closeSyncPasswordModal,
+        openSyncEmailModal: state.openSyncEmailModal,
+        closeSyncEmailModal: state.closeSyncEmailModal,
+        beginOverlayPointerClose: state.beginOverlayPointerClose,
+        finishOverlayPointerClose: state.finishOverlayPointerClose,
+        cancelOverlayPointerClose: state.cancelOverlayPointerClose,
+        submitSyncEmailAction: state.submitSyncEmailAction,
+        sendSyncVerificationCode: state.sendSyncVerificationCode,
+        submitPaymentClaim: state.submitPaymentClaim,
+        formatSyncPaymentChannelLabel: state.formatSyncPaymentChannelLabel,
+        formatSyncPaymentStatusLabel: state.formatSyncPaymentStatusLabel,
+        formatClaimTime: state.formatClaimTime,
+        logoutSync: state.logoutSync,
+        performManualSync: state.performManualSync,
+        resolveSyncConflictUseServer: state.resolveSyncConflictUseServer,
+        resolveSyncConflictUseLocal: state.resolveSyncConflictUseLocal,
+        confirmSyncConflictResolution: state.confirmSyncConflictResolution,
+        cancelSyncConflictConfirmation: state.cancelSyncConflictConfirmation,
+        clearSyncFeedback: state.clearSyncFeedback,
+        saveSyncDevSettings: state.saveSyncDevSettings,
+        aboutAdLoaded: state.aboutAdLoaded,
+        showAdblockNotice: state.showAdblockNotice,
         showPerfNotice: state.showPerfNotice,
         setPerfMode: state.setPerfMode,
         setThemeMode: state.setThemeMode,
@@ -2138,6 +2232,9 @@
         get editorStrategyTab() {
           return state.editorStrategyTab;
         },
+        get editorSectionState() {
+          return state.editorSectionState;
+        },
         get editorCurrentCharacter() {
           return state.editorCurrentCharacter;
         },
@@ -2167,6 +2264,30 @@
         },
         get setEditorStrategyTab() {
           return state.setEditorStrategyTab;
+        },
+        get isEditorSectionExpanded() {
+          return state.isEditorSectionExpanded;
+        },
+        get toggleEditorSection() {
+          return state.toggleEditorSection;
+        },
+        get prepareEditorSectionEnter() {
+          return state.prepareEditorSectionEnter;
+        },
+        get runEditorSectionEnter() {
+          return state.runEditorSectionEnter;
+        },
+        get finishEditorSectionEnter() {
+          return state.finishEditorSectionEnter;
+        },
+        get prepareEditorSectionLeave() {
+          return state.prepareEditorSectionLeave;
+        },
+        get runEditorSectionLeave() {
+          return state.runEditorSectionLeave;
+        },
+        get finishEditorSectionLeave() {
+          return state.finishEditorSectionLeave;
         },
         get triggerEditorImport() {
           return state.triggerEditorImport;
@@ -2284,6 +2405,12 @@
         },
         get addEditorPotential() {
           return state.addEditorPotential;
+        },
+        get addEditorGuideAttribution() {
+          return state.addEditorGuideAttribution;
+        },
+        get removeEditorGuideAttribution() {
+          return state.removeEditorGuideAttribution;
         },
         get removeEditorPotential() {
           return state.removeEditorPotential;

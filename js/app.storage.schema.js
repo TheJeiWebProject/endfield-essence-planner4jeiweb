@@ -258,6 +258,12 @@
       if (typeof raw.showWeaponOwnership === "boolean") {
         next.showWeaponOwnership = raw.showWeaponOwnership;
       }
+      if (typeof raw.showWeaponOwnershipInList === "boolean") {
+        next.showWeaponOwnershipInList = raw.showWeaponOwnershipInList;
+      }
+      if (typeof raw.showWeaponOwnershipInPlans === "boolean") {
+        next.showWeaponOwnershipInPlans = raw.showWeaponOwnershipInPlans;
+      }
       if (typeof raw.filterPanelManuallySet === "boolean") {
         next.filterPanelManuallySet = raw.filterPanelManuallySet;
       }
@@ -308,33 +314,19 @@
       const s1Filter = Array.from(new Set(sanitizeArray(raw.filterS1).filter((value) => s1Set.has(value))));
       const s2Filter = Array.from(new Set(sanitizeArray(raw.filterS2).filter((value) => s2Set.has(value))));
       const s3Filter = Array.from(new Set(sanitizeArray(raw.filterS3).filter((value) => s3Set.has(value))));
+      const regionFilter = Array.from(
+        new Set(
+          sanitizeArray(raw.selectedRegions)
+            .map((value) => (typeof value === "string" ? value.trim() : String(value || "").trim()))
+            .filter((value) => regionSet.has(value))
+        )
+      );
       if (s1Filter.length) next.filterS1 = s1Filter;
       if (s2Filter.length) next.filterS2 = s2Filter;
       if (s3Filter.length) next.filterS3 = s3Filter;
+      if (regionFilter.length) next.selectedRegions = regionFilter;
 
       return next;
-    };
-
-    const getUrlSelectedWeaponNames = () => {
-      if (typeof window === "undefined") return [];
-      try {
-        const params = new URLSearchParams(window.location.search || "");
-        if (!params.has("weapons") && !params.has("weapon")) return [];
-        const names = [];
-        const packed = params.get("weapons");
-        if (packed) {
-          names.push(...packed.split(","));
-        }
-        const repeated = params.getAll("weapon");
-        if (repeated.length) {
-          names.push(...repeated);
-        }
-        if (!names.length) return [];
-        const unique = Array.from(new Set(names.map((name) => String(name || "").trim()).filter(Boolean)));
-        return unique.filter((name) => weaponNameSet.has(name));
-      } catch (error) {
-        return [];
-      }
     };
 
     const isThemeMode = (value) => themeModes.has(value);
@@ -350,7 +342,6 @@
       inspectWeaponMarksSchemaIssues,
       serializeWeaponMarksNormalized,
       sanitizeState,
-      getUrlSelectedWeaponNames,
       isThemeMode,
       shouldCollapseFilterPanelByDefault,
     };

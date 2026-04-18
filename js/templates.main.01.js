@@ -52,15 +52,60 @@
               <option value="dark">{{ t("nav.dark") }}</option>
             </select>
           </div>
-          <button class="about-button notice-button" @click="openNotice">{{ t("nav.announcement") }}</button>
-          <button class="about-button" @click="openChangelog">{{ t("nav.changelog") }}</button>
-          <button class="about-button" @click="openFaq">FAQ</button>
-          <button class="about-button" @click="openAbout">{{ t("nav.about") }}</button>
+          <button
+            v-if="syncRegionAccessMode !== 'hidden' && syncRegionAccessMode !== 'cn-blocked'"
+            class="about-button login-button profile-entry-button"
+            :title="syncRegionAccessMode === 'detect-failed'
+              ? t('sync.region_detection_failed_title')
+              : (syncAuthenticated && syncUser && syncUser.username ? syncUser.username : t('sync.login_action'))"
+            @click="openSyncModal"
+          >
+            <span class="profile-entry-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M12 12a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z"></path>
+                <path d="M4.5 20.25a7.5 7.5 0 0 1 15 0"></path>
+              </svg>
+            </span>
+            <span class="profile-entry-label">
+              {{ syncRegionAccessMode === 'detect-failed'
+                ? t("sync.region_detection_failed_action")
+                : (syncAuthenticated && syncUser && syncUser.username ? syncUser.username : t("sync.login_action")) }}
+            </span>
+              <span
+                v-if="syncRegionAccessMode !== 'detect-failed' && syncAuthenticated && syncUser && syncUser.plan_tier === 'premium'"
+                class="sync-badge-pill profile-entry-badge"
+              >
+                {{ t('sync.badge_supporter') }}
+              </span>
+          </button>
+          <button
+            v-else-if="syncRegionAccessMode === 'cn-blocked'"
+            class="about-button login-button profile-entry-button"
+            :title="t('sync.cn_region_unavailable_title')"
+            @click="openCnSyncUnavailableModal"
+          >
+            <span class="profile-entry-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M12 12a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z"></path>
+                <path d="M4.5 20.25a7.5 7.5 0 0 1 15 0"></path>
+              </svg>
+            </span>
+            <span class="profile-entry-label">{{ t("sync.cn_region_unavailable_action") }}</span>
+          </button>
           <div class="secondary-menu">
             <button class="about-button menu-toggle" @click="showSecondaryMenu = !showSecondaryMenu">
-              {{ t("nav.more_settings") }}
+              {{ t("nav.more_tools") }}
             </button>
             <div v-if="showSecondaryMenu" class="secondary-panel">
+              <div class="secondary-item">
+                <div class="secondary-label">{{ t("nav.quick_links") }}</div>
+                <div class="secondary-actions">
+                  <button class="about-button secondary-shortcut" @click="openNotice(); showSecondaryMenu = false">{{ t("nav.announcement") }}</button>
+                  <button class="about-button secondary-shortcut" @click="openChangelog(); showSecondaryMenu = false">{{ t("nav.changelog") }}</button>
+                  <button class="about-button secondary-shortcut" @click="openFaq(); showSecondaryMenu = false">FAQ</button>
+                  <button class="about-button secondary-shortcut" @click="openAbout(); showSecondaryMenu = false">{{ t("nav.about") }}</button>
+                </div>
+              </div>
               <div class="secondary-item">
                 <div class="secondary-label">{{ t("nav.performance_mode") }}</div>
                 <select class="secondary-select" :value="perfPreference" @change="setPerfMode($event.target.value)">
@@ -223,6 +268,26 @@
           </nav>
         </div>
       </header>
+      <section class="site-feedback-banner" aria-label="问卷入口">
+        <span class="site-feedback-label">我们诚邀您填写网站调研问卷，感谢您抽出宝贵时间作答：</span>
+        <a
+          class="about-button site-feedback-link"
+          href="https://wj.qq.com/s2/26332435/z16l/"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          问卷跳转
+        </a>
+      </section>
+      <section
+        v-if="heroAdBannerEnabled && (!syncAuthenticated || (syncUser && !syncUser.ad_free))"
+        class="hero-ad-banner"
+      >
+        <span class="hero-ad-badge">广告/AD</span>
+        <a class="about-button hero-ad-link" href="https://pan.quark.cn/s/27540d6f3706" target="_blank" rel="noreferrer noopener">
+          {{ t("sync.download_background") }}
+        </a>
+      </section>
       <div v-if="showAiNotice" class="ai-notice">
         <span class="ai-chip">{{ t("AI") }}</span>
         <span>{{ t("error.this_language_is_ai_translated_and_may_be_inaccurate_if_") }}</span>
@@ -232,7 +297,7 @@
           {{ t("nav.low_gpu_mode_enabled") }}{{ perfPreference === "auto" ? t("nav.auto_2") : t("nav.manual") }}
         </div>
         <button class="ghost-button" @click.stop="showSecondaryMenu = true">
-          {{ t("nav.more_settings") }}
+          {{ t("nav.more_tools") }}
         </button>
       </div>
       <div v-if="showPerfNotice" class="perf-notice">
@@ -286,11 +351,17 @@
                 :recommendation-config="recommendationConfig"
                 :show-plan-config="showPlanConfig"
                 :show-plan-config-hint-dot="showPlanConfigHintDot"
+                :show-plan-config-display-rules-hint-dot="showPlanConfigDisplayRulesHintDot"
+                :show-plan-config-ownership-hint-dot="showPlanConfigOwnershipHintDot"
                 :is-plan-config-section-collapsed="isPlanConfigSectionCollapsed"
                 :toggle-plan-config-section-collapsed="togglePlanConfigSectionCollapsed"
                 :show-weapon-attrs="showWeaponAttrs"
-                :show-weapon-ownership="showWeaponOwnership"
-                :toggle-show-weapon-ownership="toggleShowWeaponOwnership"
+                :show-weapon-ownership-in-list="showWeaponOwnershipInList"
+                :show-weapon-ownership-in-plans="showWeaponOwnershipInPlans"
+                :toggle-show-weapon-ownership-in-list="toggleShowWeaponOwnershipInList"
+                :toggle-show-weapon-ownership-in-plans="toggleShowWeaponOwnershipInPlans"
+                :mark-plan-config-display-rules-hint-seen="markPlanConfigDisplayRulesHintSeen"
+                :mark-plan-config-ownership-hint-seen="markPlanConfigOwnershipHintSeen"
                 :export-weapon-marks="exportWeaponMarks"
                 :handle-marks-import-file="handleMarksImportFile"
                 :marks-import-file-name="marksImportFileName"
@@ -393,9 +464,6 @@
                   "
                 >
                   <span>{{ formatS1(option.value) }}</span>
-                  <span v-if="option.isDisabled && !filterS1.includes(option.value)" class="chip-meta">
-                    {{ option.disabledHintLabel }}
-                  </span>
                 </button>
               </div>
             </div>
@@ -422,9 +490,6 @@
                   "
                 >
                   <span>{{ tTerm("s2", option.value) }}</span>
-                  <span v-if="option.isDisabled && !filterS2.includes(option.value)" class="chip-meta">
-                    {{ option.disabledHintLabel }}
-                  </span>
                 </button>
               </div>
             </div>
@@ -451,9 +516,6 @@
                   "
                 >
                   <span>{{ tTerm("s3", option.value) }}</span>
-                  <span v-if="option.isDisabled && !filterS3.includes(option.value)" class="chip-meta">
-                    {{ option.disabledHintLabel }}
-                  </span>
                 </button>
               </div>
               <div class="filter-hint">{{ t("error.gray_attributes_mean_no_weapons_under_current_filters") }}</div>
@@ -473,7 +535,7 @@
                 <span class="tag-name">{{ tTerm("weapon", weapon.name) }}</span>
                 <span v-if="weapon.isUnowned" class="tag-note is-unowned">{{ t("nav.not_owned") }}</span>
                 <span v-if="weapon.isEssenceOwned" class="tag-note is-essence-owned">{{ t("nav.essence_owned") }}</span>
-                <button @click.stop="toggleWeapon(weapon, 'tag')">✕</button>
+                <button @click.stop="toggleWeapon(weapon)">✕</button>
               </span>
             </div>
             <div class="tag-actions">
@@ -499,8 +561,10 @@
             <div
               v-for="weapon in visibleFilteredWeapons"
               :key="weapon.name"
+              class="weapon-grid-entry"
+            >
+            <div
               class="weapon-item"
-              v-memo="[locale, localeRenderVersion, selectedNameSet.has(weapon.name), isWeaponOwned(weapon.name), isEssenceOwned(weapon.name), weaponUpBadgeMemoKey, selectorHiddenMemoKey, showWeaponOwnership]"
               :class="{
                 'is-selected': selectedNameSet.has(weapon.name),
                 'is-unowned': isUnowned(weapon.name),
@@ -509,7 +573,7 @@
                 'rarity-5': weapon.rarity === 5,
                 'rarity-4': weapon.rarity === 4,
               }"
-              @click="toggleWeapon(weapon, 'grid')"
+              @click="toggleWeapon(weapon)"
             >
               <div class="weapon-art">
                 <img
@@ -555,20 +619,33 @@
                   {{ t("nav.hidden") }}
                 </div>
               </div>
-              <span
-                v-if="showWeaponOwnership"
-                class="weapon-ownership-badge"
-                :class="{
-                  'is-owned': isWeaponOwned(weapon.name),
-                  'is-unowned': isUnowned(weapon.name),
-                }"
-              >
-                {{ isWeaponOwned(weapon.name) ? t("badge.owned") : t("nav.not_owned") }}
-              </span>
               <div class="weapon-name">
                 <div class="weapon-title">
                   <span class="weapon-title-text">{{ tTerm("weapon", weapon.name) }}</span>
                 </div>
+              </div>
+            </div>
+              <div v-if="showWeaponOwnershipInList" class="weapon-grid-ownership-row" @click.stop>
+                <label class="exclude-checkbox-label compact">
+                  <input
+                    type="checkbox"
+                    class="exclude-checkbox"
+                    :checked="isWeaponOwned(weapon.name)"
+                    @click.stop
+                    @change.stop="toggleWeaponOwned(weapon)"
+                  />
+                  <span>{{ t("label.weapon") }}</span>
+                </label>
+                <label class="exclude-checkbox-label compact">
+                  <input
+                    type="checkbox"
+                    class="exclude-checkbox"
+                    :checked="isEssenceOwned(weapon.name)"
+                    @click.stop
+                    @change.stop="toggleEssenceOwned(weapon)"
+                  />
+                  <span>{{ t("label.essence") }}</span>
+                </label>
               </div>
             </div>
             <div
@@ -672,7 +749,7 @@
                 'is-unowned': isUnowned(weapon.name),
                 'is-essence-owned': isEssenceOwned(weapon.name),
               }"
-              @click="toggleWeapon(weapon, 'attrs')"
+              @click="toggleWeapon(weapon)"
             >
               <div class="scheme-weapon-title">
                 <div
@@ -740,21 +817,25 @@
                   {{ tTerm("s3", weapon.s3) }}
                 </span>
               </div>
-              <div class="weapon-exclude-row" @click.stop>
-                <button
-                  class="exclude-toggle small"
-                  :class="{ active: isWeaponOwned(weapon.name), 'intent-alert': !isWeaponOwned(weapon.name) }"
-                  @click.stop="toggleWeaponOwned(weapon)"
-                >
-                  {{ isWeaponOwned(weapon.name) ? t("button.mark_weapon_not_owned") : t("button.mark_weapon_owned") }}
-                </button>
-                <button
-                  class="exclude-toggle small"
-                  :class="{ active: isEssenceOwned(weapon.name), 'intent-alert': !isEssenceOwned(weapon.name) }"
-                  @click.stop="toggleEssenceOwned(weapon)"
-                >
-                  {{ isEssenceOwned(weapon.name) ? t("button.mark_essence_not_owned") : t("button.mark_essence_owned") }}
-                </button>
+              <div v-if="showWeaponOwnershipInList" class="weapon-exclude-row" @click.stop>
+                <label class="exclude-checkbox-label">
+                  <input
+                    type="checkbox"
+                    class="exclude-checkbox"
+                    :checked="isWeaponOwned(weapon.name)"
+                    @change.stop="toggleWeaponOwned(weapon)"
+                  />
+                  <span>{{ t("label.weapon_owned") }}</span>
+                </label>
+                <label class="exclude-checkbox-label">
+                  <input
+                    type="checkbox"
+                    class="exclude-checkbox"
+                    :checked="isEssenceOwned(weapon.name)"
+                    @change.stop="toggleEssenceOwned(weapon)"
+                  />
+                  <span>{{ t("label.essence_owned") }}</span>
+                </label>
                 <textarea
                   class="exclude-note-input"
                   :class="{ 'is-essence-owned': isEssenceOwned(weapon.name), 'is-unowned': isUnowned(weapon.name) }"
@@ -785,11 +866,17 @@
                 :recommendation-config="recommendationConfig"
                 :show-plan-config="showPlanConfig"
                 :show-plan-config-hint-dot="showPlanConfigHintDot"
+                :show-plan-config-display-rules-hint-dot="showPlanConfigDisplayRulesHintDot"
+                :show-plan-config-ownership-hint-dot="showPlanConfigOwnershipHintDot"
                 :is-plan-config-section-collapsed="isPlanConfigSectionCollapsed"
                 :toggle-plan-config-section-collapsed="togglePlanConfigSectionCollapsed"
                 :show-weapon-attrs="showWeaponAttrs"
-                :show-weapon-ownership="showWeaponOwnership"
-                :toggle-show-weapon-ownership="toggleShowWeaponOwnership"
+                :show-weapon-ownership-in-list="showWeaponOwnershipInList"
+                :show-weapon-ownership-in-plans="showWeaponOwnershipInPlans"
+                :toggle-show-weapon-ownership-in-list="toggleShowWeaponOwnershipInList"
+                :toggle-show-weapon-ownership-in-plans="toggleShowWeaponOwnershipInPlans"
+                :mark-plan-config-display-rules-hint-seen="markPlanConfigDisplayRulesHintSeen"
+                :mark-plan-config-ownership-hint-seen="markPlanConfigOwnershipHintSeen"
                 :export-weapon-marks="exportWeaponMarks"
                 :handle-marks-import-file="handleMarksImportFile"
                 :marks-import-file-name="marksImportFileName"
@@ -827,12 +914,35 @@
             </div>
           </div>
 
+          <div v-if="selectedCount && regionOptions.length > 1" class="region-filter-bar">
+            <span class="region-filter-label">{{ t("filter.region_filter") }}</span>
+            <div class="region-filter-chips">
+              <button
+                v-for="region in regionOptions"
+                :key="'region-filter-' + region"
+                class="filter-chip"
+                :class="{ 
+                  'is-active': isRegionSelected(region),
+                  'is-disabled': !availableRegions.includes(region)
+                }"
+                :disabled="!availableRegions.includes(region)"
+                @click="toggleRegionFilter(region)"
+              >
+                {{ tTerm("dungeon", region) }}
+              </button>
+            </div>
+          </div>
+
           <div v-if="!selectedCount" class="empty">
             {{ t("nav.select_at_least_one_weapon_and_the_system_will_recommend") }}
           </div>
 
           <div v-else-if="recommendationEmptyReason === 'filteredOut'" class="empty">
             {{ t("nav.item") }}
+          </div>
+
+          <div v-else-if="recommendationEmptyReason === 'regionFilteredOut'" class="empty">
+            {{ t("nav.region_filter_no_matching_plans") }}
           </div>
 
           <div v-else-if="recommendationEmptyReason === 'noScheme'" class="recommendations">
@@ -962,21 +1072,25 @@
                       <span class="attr-label">{{ t("nav.skill_attributes") }}：</span>{{ tTerm("s3", weapon.s3) }}
                     </span>
                   </div>
-                  <div class="weapon-exclude-row" @click.stop>
-                    <button
-                      class="exclude-toggle small"
-                      :class="{ active: isWeaponOwned(weapon.name), 'intent-alert': !isWeaponOwned(weapon.name) }"
-                      @click.stop="toggleWeaponOwned(weapon)"
-                    >
-                      {{ isWeaponOwned(weapon.name) ? t("button.mark_weapon_not_owned") : t("button.mark_weapon_owned") }}
-                    </button>
-                    <button
-                      class="exclude-toggle small"
-                      :class="{ active: isEssenceOwned(weapon.name), 'intent-alert': !isEssenceOwned(weapon.name) }"
-                      @click.stop="toggleEssenceOwned(weapon)"
-                    >
-                      {{ isEssenceOwned(weapon.name) ? t("button.mark_essence_not_owned") : t("button.mark_essence_owned") }}
-                    </button>
+                  <div v-if="showWeaponOwnershipInPlans" class="weapon-exclude-row" @click.stop>
+                    <label class="exclude-checkbox-label">
+                      <input
+                        type="checkbox"
+                        class="exclude-checkbox"
+                        :checked="isWeaponOwned(weapon.name)"
+                        @change.stop="toggleWeaponOwned(weapon)"
+                      />
+                      <span>{{ t("label.weapon_owned") }}</span>
+                    </label>
+                    <label class="exclude-checkbox-label">
+                      <input
+                        type="checkbox"
+                        class="exclude-checkbox"
+                        :checked="isEssenceOwned(weapon.name)"
+                        @change.stop="toggleEssenceOwned(weapon)"
+                      />
+                      <span>{{ t("label.essence_owned") }}</span>
+                    </label>
                     <textarea
                       class="exclude-note-input"
                       :class="{ 'is-essence-owned': isEssenceOwned(weapon.name), 'is-unowned': isUnowned(weapon.name) }"

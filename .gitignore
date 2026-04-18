@@ -11,3 +11,9 @@ tools/quasar-plugin/dist/
 pic
 pic
 .tmp
+
+ldy/
+.codebuddy
+.agents
+.shared
+references

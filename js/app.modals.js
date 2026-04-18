@@ -8,6 +8,12 @@
     if (!state.showFaq) {
       state.showFaq = typeof ref === "function" ? ref(false) : { value: false };
     }
+    if (!state.showSyncModal) {
+      state.showSyncModal = typeof ref === "function" ? ref(false) : { value: false };
+    }
+    if (!state.showCnSyncUnavailableModal) {
+      state.showCnSyncUnavailableModal = typeof ref === "function" ? ref(false) : { value: false };
+    }
     const reportStorageIssue = (operation, key, error, meta) => {
       if (typeof state.reportStorageIssue === "function") {
         state.reportStorageIssue(operation, key, error, meta);
@@ -88,6 +94,37 @@
       await ensureModalContent(false);
     };
 
+    const openCnSyncUnavailableModal = () => {
+      state.showCnSyncUnavailableModal.value = true;
+    };
+
+    const openSyncModal = async () => {
+      const syncAccessMode =
+        state.syncRegionAccessMode && "value" in state.syncRegionAccessMode
+          ? String(state.syncRegionAccessMode.value || "")
+          : "";
+      const localhostMode = Boolean(
+        state.syncIsLocalhostMode && "value" in state.syncIsLocalhostMode && state.syncIsLocalhostMode.value
+      );
+      if (syncAccessMode === "cn-blocked") {
+        openCnSyncUnavailableModal();
+        return;
+      }
+      if (!localhostMode && (syncAccessMode === "hidden" || syncAccessMode === "")) {
+        return;
+      }
+      state.showSyncModal.value = true;
+      await ensureModalContent(false);
+    };
+
+    const closeSyncModal = () => {
+      state.showSyncModal.value = false;
+    };
+
+    const closeCnSyncUnavailableModal = () => {
+      state.showCnSyncUnavailableModal.value = false;
+    };
+
     const closeNotice = () => {
       state.showNotice.value = false;
       const currentVersion = (state.announcement.value || {}).version;
@@ -151,17 +188,22 @@
       }
     };
 
+    const isModalFlagActive = (flag) =>
+      Boolean(flag && typeof flag === "object" && "value" in flag ? flag.value : flag);
+
     const hasActiveModal = () =>
       Boolean(
-        state.showNotice.value ||
-          state.showChangelog.value ||
-        state.showAbout.value ||
-        state.showFaq.value ||
-          state.showTutorialSkipConfirm.value ||
-          state.showStorageErrorModal.value ||
-          state.showStorageClearConfirmModal.value ||
-          state.showStorageIgnoreConfirmModal.value ||
-          (state.showMarksImportConfirmModal && state.showMarksImportConfirmModal.value)
+        isModalFlagActive(state.showNotice) ||
+          isModalFlagActive(state.showChangelog) ||
+          isModalFlagActive(state.showAbout) ||
+          isModalFlagActive(state.showFaq) ||
+          isModalFlagActive(state.showSyncModal) ||
+          isModalFlagActive(state.showCnSyncUnavailableModal) ||
+          isModalFlagActive(state.showTutorialSkipConfirm) ||
+          isModalFlagActive(state.showStorageErrorModal) ||
+          isModalFlagActive(state.showStorageClearConfirmModal) ||
+          isModalFlagActive(state.showStorageIgnoreConfirmModal) ||
+          isModalFlagActive(state.showMarksImportConfirmModal)
       );
 
     const clearStaleLockCheck = () => {
@@ -214,10 +256,16 @@
       const remindNewNotice = async () => {
         await ensureModalContent(false);
         if (!state.contentLoaded.value) return;
-        const currentVersion = (state.announcement.value || {}).version;
+        const announcement = state.announcement.value || {};
+        const currentVersion = announcement.version;
         if (!currentVersion) return;
         const skippedVersion = readNoticeSkipVersion();
         if (skippedVersion === currentVersion) return;
+        if (announcement.forceModal) {
+          state.skipNotice.value = false;
+          state.showNotice.value = true;
+          return;
+        }
         if (typeof state.pushToastNotice === "function") {
           const title =
             typeof state.t === "function"
@@ -268,6 +316,8 @@
         state.showChangelog,
         state.showAbout,
         state.showFaq,
+        state.showSyncModal,
+        state.showCnSyncUnavailableModal,
         state.showTutorialSkipConfirm,
         state.showStorageErrorModal,
         state.showStorageClearConfirmModal,
@@ -279,23 +329,15 @@
         changelogOpen,
         aboutOpen,
         faqOpen,
+        syncOpen,
+        cnSyncUnavailableOpen,
         skipOpen,
         storageErrorOpen,
         storageClearConfirmOpen,
         storageIgnoreConfirmOpen,
         marksImportConfirmOpen,
       ]) => {
-        const hasOpenModal = Boolean(
-          noticeOpen ||
-            changelogOpen ||
-            aboutOpen ||
-            faqOpen ||
-            skipOpen ||
-            storageErrorOpen ||
-            storageClearConfirmOpen ||
-            storageIgnoreConfirmOpen ||
-            marksImportConfirmOpen
-        );
+        const hasOpenModal = hasActiveModal();
         if (modalUnlockTimer) {
           clearTimeout(modalUnlockTimer);
           modalUnlockTimer = null;
@@ -319,6 +361,8 @@
         state.showChangelog,
         state.showAbout,
         state.showFaq,
+        state.showSyncModal,
+        state.showCnSyncUnavailableModal,
         state.showDomainWarning,
         state.showStorageErrorModal,
         state.showStorageClearConfirmModal,
@@ -349,6 +393,10 @@
     state.openChangelog = openChangelog;
     state.openAbout = openAbout;
     state.openFaq = openFaq;
+    state.openCnSyncUnavailableModal = openCnSyncUnavailableModal;
+    state.openSyncModal = openSyncModal;
+    state.closeCnSyncUnavailableModal = closeCnSyncUnavailableModal;
+    state.closeSyncModal = closeSyncModal;
     state.closeNotice = closeNotice;
   };
 })();

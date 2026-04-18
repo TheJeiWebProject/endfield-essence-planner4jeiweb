@@ -23,8 +23,22 @@
     });
     state.customWeaponError = ref(null);
     state.showAbout = ref(false);
+    state.aboutAdLoaded = ref(false);
+    state.showAdblockNotice = ref(false);
     state.showFaq = ref(false);
+    state.showSyncModal = ref(false);
+    state.showCnSyncUnavailableModal = ref(false);
     state.showSecondaryMenu = ref(false);
+    state.showSyncRightsDetails = ref(false);
+    state.syncUserPaymentClaims = ref([]);
+    state.syncRegionAccessMode = ref(
+      typeof window !== "undefined" &&
+        window.location &&
+        /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
+        ? "available"
+        : "checking"
+    );
+    state.syncRegionCode = ref("");
 
     state.contentLoading = ref(false);
     state.contentLoaded = ref(Boolean(window.CONTENT));
@@ -64,9 +78,16 @@
     state.backgroundStorageKey = "planner-bg-image:v1";
     state.backgroundApiStorageKey = "planner-bg-api:v1";
     state.backgroundDisplayStorageKey = "planner-bg-display:v1";
+    state.syncMetaStorageKey = "planner-sync-meta:v1";
+    state.syncPrefsStorageKey = "planner-sync-prefs:v1";
+    state.syncDevStorageKey = "planner-sync-dev:v1";
     state.planConfigHintStorageKey = "planner-plan-config-hint:v1";
     // 更新基质规划设置时递增该版本号，可让红点对所有用户重新显示一次。
-    state.planConfigHintVersion = "6";
+    state.planConfigHintVersion = "7";
+    state.planConfigDisplayRulesHintStorageKey = "planner-plan-config-display-rules-hint:v1";
+    state.planConfigDisplayRulesHintVersion = "1";
+    state.planConfigOwnershipHintStorageKey = "planner-plan-config-ownership-hint:v1";
+    state.planConfigOwnershipHintVersion = "1";
     state.equipRefiningNavHintStorageKey = "planner-equip-refining-nav-hint:v1";
     // 更新装备精锻导航提示时递增该版本号，可让红点对所有用户重新显示一次。
     state.equipRefiningNavHintVersion = "1";
@@ -105,7 +126,8 @@
     state.equipRefiningMobilePanel = ref("equips");
     state.equipRefiningSelectedName = ref("");
     state.showWeaponAttrs = ref(false);
-    state.showWeaponOwnership = ref(false);
+    state.showWeaponOwnershipInList = ref(false);
+    state.showWeaponOwnershipInPlans = ref(true);
     state.showAttrHint = ref(false);
     state.showFilterPanel = ref(true);
     state.filterPanelManuallySet = ref(false);
@@ -115,6 +137,8 @@
     state.planConfigSectionManuallySet = ref(false);
     state.showWeaponAttrDataModal = ref(false);
     state.showPlanConfigHintDot = ref(false);
+    state.showPlanConfigDisplayRulesHintDot = ref(false);
+    state.showPlanConfigOwnershipHintDot = ref(false);
     state.marksImportError = ref("");
     state.marksImportFileName = ref("");
     state.marksImportSummary = ref(null);
@@ -140,6 +164,8 @@
       strictPriorityOrder: "ownershipFirst",
     });
     state.regionOptions = ref([]);
+    state.availableRegions = ref([]);
+    state.effectiveSelectedRegions = ref([]);
     state.regionPriorityModeOptions = [
       {
         value: "ignore",
@@ -244,6 +270,7 @@
     state.filterS1 = ref([]);
     state.filterS2 = ref([]);
     state.filterS3 = ref([]);
+    state.selectedRegions = ref([]);
 
     state.tutorialWeaponTarget = ref(null);
     state.tutorialSchemeTarget = ref(null);

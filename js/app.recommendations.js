@@ -2,7 +2,7 @@
   const modules = (window.AppModules = window.AppModules || {});
 
   modules.initRecommendations = function initRecommendations(ctx, state) {
-    const { computed } = ctx;
+    const { computed, watch } = ctx;
 
     const uniqueSorted = (items, sorter) => {
       const values = Array.from(new Set(items.filter(Boolean)));
@@ -33,6 +33,11 @@
     const getSelectedWeaponAttrIssues = () =>
       typeof state.getSelectedWeaponAttrIssues === "function"
         ? state.getSelectedWeaponAttrIssues()
+        : [];
+
+    const getEffectiveSelectedRegions = () =>
+      state.effectiveSelectedRegions && Array.isArray(state.effectiveSelectedRegions.value)
+        ? state.effectiveSelectedRegions.value
         : [];
 
     const resolveRecommendationContext = () => {
@@ -570,23 +575,14 @@
       if (!recommendationContext.selectedWeapons.length) return "";
       if (!recommendationContext.targets.length) return "filteredOut";
       if (recommendationDataIssue.value) return "noScheme";
+      if (!recommendations.value.length) return "noScheme";
+      const selectedRegions = getEffectiveSelectedRegions();
+      if (!selectedRegions.length) return "";
+      const hasVisibleRegionScheme = recommendations.value.some((scheme) =>
+        selectedRegions.includes(scheme.dungeonRegion)
+      );
+      if (!hasVisibleRegionScheme) return "regionFilteredOut";
       return "";
-    });
-
-    const coverageSummary = computed(() => {
-      const schemes = recommendations.value;
-      if (!schemes.length) return null;
-      const best = schemes[0];
-      const bestMatchCount = getSelectedMatchCountForSort(best);
-      const totalSelected =
-        Number.isFinite(best.targetCount) && best.targetCount > 0 ? best.targetCount : 0;
-      if (!totalSelected) return null;
-      return {
-        totalSelected,
-        bestMatchCount,
-        missingNames: best.selectedMissingNames || [],
-        hasGap: bestMatchCount < totalSelected,
-      };
     });
 
     const primaryRecommendations = computed(() => {
@@ -676,13 +672,28 @@
       state.showAllSchemes.value ? recommendations.value : primaryRecommendations.value
     );
 
+    const availableRegions = computed(() => {
+      const schemes = recommendations.value || [];
+      const regions = new Set(schemes.map(scheme => scheme.dungeonRegion).filter(Boolean));
+      return Array.from(regions).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+    });
+
+    if (typeof watch === "function" && state.availableRegions && typeof state.availableRegions === "object") {
+      watch(
+        availableRegions,
+        (value) => {
+          state.availableRegions.value = Array.isArray(value) ? value.slice() : [];
+        },
+        { immediate: true }
+      );
+    }
+
     state.toggleSchemeBasePick = toggleSchemeBasePick;
     state.isConflictOpen = isConflictOpen;
     state.toggleConflictOpen = toggleConflictOpen;
     state.recommendations = recommendations;
     state.recommendationDataIssue = recommendationDataIssue;
     state.recommendationEmptyReason = recommendationEmptyReason;
-    state.coverageSummary = coverageSummary;
     state.primaryRecommendations = primaryRecommendations;
     state.extraRecommendations = extraRecommendations;
     state.visibleRecommendations = visibleRecommendations;

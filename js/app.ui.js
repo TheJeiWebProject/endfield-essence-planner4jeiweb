@@ -142,6 +142,10 @@
       typeof appUtils.triggerJsonDownload === "function"
         ? appUtils.triggerJsonDownload
         : () => {};
+    const collectFrontendDeliveryDiagnostic =
+      typeof appUtils.collectFrontendDeliveryDiagnostic === "function"
+        ? appUtils.collectFrontendDeliveryDiagnostic
+        : async () => null;
     const truncateText = (value, maxLength) => {
       const text = String(value || "");
       if (!text || maxLength <= 0) return "";
@@ -469,6 +473,35 @@
       toastManualPauseMeta.delete(String(noticeId || ""));
       clearToastTimer(noticeId);
       removeVisibleToastNotice(noticeId);
+    };
+    const dismissToastNoticeBySignature = (signature) => {
+      if (!toastNotices) return 0;
+      const signatureText = String(signature || "").trim();
+      if (!signatureText) return 0;
+      const current = Array.isArray(toastNotices.value) ? toastNotices.value : [];
+      const queue = Array.isArray(toastQueue) ? toastQueue : [];
+      const removedIds = [];
+      const nextVisible = current.filter((item) => {
+        const match = String((item && item.signature) || "") === signatureText;
+        if (match && item && item.id) removedIds.push(String(item.id));
+        return !match;
+      });
+      const nextQueue = queue.filter((item) => {
+        const match = String((item && item.signature) || "") === signatureText;
+        if (match && item && item.id) removedIds.push(String(item.id));
+        return !match;
+      });
+      if (!removedIds.length) return 0;
+      removedIds.forEach((id) => {
+        setToastPaused(id, false);
+        toastManualPauseMeta.delete(id);
+        clearToastTimer(id);
+      });
+      toastLastSeenAt.delete(signatureText);
+      setToastQueue(nextQueue);
+      setVisibleToastNotices(nextVisible);
+      fillToastVisibleFromQueue();
+      return removedIds.length;
     };
     const getToastNoticeById = (noticeId) => {
       if (!toastNotices || !noticeId) return null;
@@ -830,8 +863,9 @@
       window.location.replace(url.toString());
     };
 
-    const exportRuntimeDiagnosticBundle = () => {
+    const exportRuntimeDiagnosticBundle = async () => {
       try {
+        const frontendDelivery = await collectFrontendDeliveryDiagnostic();
         const payload = {
           exportedAt: nowIsoString(),
           fingerprint: getAppFingerprint(),
@@ -851,6 +885,7 @@
             state.runtimeWarningPreviewText && typeof state.runtimeWarningPreviewText.value === "string"
               ? state.runtimeWarningPreviewText.value
               : "",
+          frontendDelivery,
         };
         const stamp = nowIsoString().replace(/[^\d]/g, "").slice(0, 14) || String(Date.now());
         triggerJsonDownload(`planner-runtime-diagnostic-${stamp}.json`, payload);
@@ -1085,6 +1120,38 @@
       }
     };
 
+    const markPlanConfigOwnershipHintSeen = () => {
+      if (!state.showPlanConfigOwnershipHintDot || !state.showPlanConfigOwnershipHintDot.value) return;
+      state.showPlanConfigOwnershipHintDot.value = false;
+      try {
+        localStorage.setItem(
+          state.planConfigOwnershipHintStorageKey,
+          state.planConfigOwnershipHintVersion
+        );
+      } catch (error) {
+        reportStorageIssue("storage.write", state.planConfigOwnershipHintStorageKey, error, {
+          scope: "ui.plan-config-ownership-hint-write",
+        });
+      }
+    };
+
+    const markPlanConfigDisplayRulesHintSeen = () => {
+      if (!state.showPlanConfigDisplayRulesHintDot || !state.showPlanConfigDisplayRulesHintDot.value) return;
+      state.showPlanConfigDisplayRulesHintDot.value = false;
+      try {
+        localStorage.setItem(
+          state.planConfigDisplayRulesHintStorageKey,
+          state.planConfigDisplayRulesHintVersion
+        );
+      } catch (error) {
+        reportStorageIssue("storage.write", state.planConfigDisplayRulesHintStorageKey, error, {
+          scope: "ui.plan-config-display-rules-hint-write",
+        });
+      }
+    };
+
+    const planConfigOwnershipHintViewed = ref(false);
+
     const markEquipRefiningNavHintSeen = () => {
       if (!showEquipRefiningNavHintDot.value) return;
       showEquipRefiningNavHintDot.value = false;
@@ -1116,6 +1183,12 @@
 
     const togglePlanConfig = () => {
       const nextOpen = !showPlanConfig.value;
+      const flushPlanConfigHintsOnClose = () => {
+        if (!planConfigOwnershipHintViewed.value) return;
+        markPlanConfigOwnershipHintSeen();
+        planConfigOwnershipHintViewed.value = false;
+      };
+      if (!nextOpen) flushPlanConfigHintsOnClose();
       showPlanConfig.value = nextOpen;
       if (nextOpen) {
         markPlanConfigHintSeen();
@@ -1140,6 +1213,13 @@
       const next = { ...(planConfigSectionCollapsed.value || {}) };
       next[name] = !current;
       planConfigSectionCollapsed.value = next;
+      const nextCollapsed = Boolean(next[name]);
+      if (name === "displayRules" && !nextCollapsed) {
+        markPlanConfigDisplayRulesHintSeen();
+        if (state.showPlanConfigOwnershipHintDot && state.showPlanConfigOwnershipHintDot.value) {
+          planConfigOwnershipHintViewed.value = true;
+        }
+      }
       if (!planConfigSectionManuallySet.value) {
         planConfigSectionManuallySet.value = true;
       }
@@ -1156,6 +1236,7 @@
         showSecondaryMenu.value = false;
       }
       if (showPlanConfig.value && !event.target.closest(".plan-config")) {
+        flushPlanConfigHintsOnClose();
         showPlanConfig.value = false;
       }
       if (showLangMenu.value && !event.target.closest(".lang-switch")) {
@@ -1166,6 +1247,7 @@
     const handleDocKeydown = (event) => {
       if (!event) return;
       if (event.key === "Escape") {
+        if (showPlanConfig.value) flushPlanConfigHintsOnClose();
         showSecondaryMenu.value = false;
         showPlanConfig.value = false;
         showLangMenu.value = false;
@@ -1195,6 +1277,54 @@
       }
     };
 
+    let heroActionsOffsetRaf = null;
+    let heroActionsOffsetTimer = null;
+    let heroActionsResizeObserver = null;
+    const heroActionsOffsetFallback = 0;
+    const heroActionsOffsetVar = "--toast-hero-actions-top";
+    const setHeroActionsOffset = (value) => {
+      if (!root) return;
+      const numeric = Number.isFinite(value) ? Math.max(0, Math.round(value)) : heroActionsOffsetFallback;
+      root.style.setProperty(heroActionsOffsetVar, `${numeric}px`);
+    };
+    const measureHeroActionsOffset = () => {
+      if (typeof document === "undefined") return;
+      const el = document.querySelector(".hero-actions");
+      if (!el || typeof el.getBoundingClientRect !== "function") {
+        setHeroActionsOffset(heroActionsOffsetFallback);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const styles = typeof window !== "undefined" && window.getComputedStyle
+        ? window.getComputedStyle(el)
+        : null;
+      const marginBottom = styles ? Number.parseFloat(styles.marginBottom || "0") || 0 : 0;
+      const top = rect.top + rect.height + marginBottom + 12;
+      setHeroActionsOffset(top);
+    };
+    const scheduleHeroActionsOffset = () => {
+      if (typeof requestAnimationFrame !== "function") {
+        measureHeroActionsOffset();
+        return;
+      }
+      if (heroActionsOffsetRaf) {
+        cancelAnimationFrame(heroActionsOffsetRaf);
+        heroActionsOffsetRaf = null;
+      }
+      if (heroActionsOffsetTimer) {
+        clearTimeout(heroActionsOffsetTimer);
+        heroActionsOffsetTimer = null;
+      }
+      heroActionsOffsetRaf = requestAnimationFrame(() => {
+        heroActionsOffsetRaf = null;
+        measureHeroActionsOffset();
+      });
+      heroActionsOffsetTimer = setTimeout(() => {
+        heroActionsOffsetTimer = null;
+        measureHeroActionsOffset();
+      }, 160);
+    };
+
     onMounted(() => {
       const finalizePreload = () => {
         warmupBackgroundBeforeFinish()
@@ -1221,6 +1351,20 @@
         applyTheme(state.themePreference.value || "auto");
         updateViewportOrientation();
         window.addEventListener("resize", updateViewportOrientation);
+        scheduleHeroActionsOffset();
+        window.addEventListener("resize", scheduleHeroActionsOffset);
+        window.addEventListener("orientationchange", scheduleHeroActionsOffset);
+        window.addEventListener("pageshow", scheduleHeroActionsOffset);
+        window.addEventListener("scroll", scheduleHeroActionsOffset, { passive: true });
+        if (typeof window.ResizeObserver === "function" && typeof document !== "undefined") {
+          const heroActions = document.querySelector(".hero-actions");
+          if (heroActions) {
+            heroActionsResizeObserver = new window.ResizeObserver(() => {
+              scheduleHeroActionsOffset();
+            });
+            heroActionsResizeObserver.observe(heroActions);
+          }
+        }
         updateViewportSafeBottom();
         window.addEventListener("resize", scheduleViewportSafeBottom);
         if (window.visualViewport) {
@@ -1264,6 +1408,14 @@
       if (typeof window !== "undefined") {
         window.removeEventListener("scroll", handleBackToTopScroll);
         window.removeEventListener(optionalFailureEventName, handleOptionalFailureEvent);
+        window.removeEventListener("resize", scheduleHeroActionsOffset);
+        window.removeEventListener("orientationchange", scheduleHeroActionsOffset);
+        window.removeEventListener("pageshow", scheduleHeroActionsOffset);
+        window.removeEventListener("scroll", scheduleHeroActionsOffset);
+      }
+      if (heroActionsResizeObserver) {
+        heroActionsResizeObserver.disconnect();
+        heroActionsResizeObserver = null;
       }
       clearBackToTopTimer();
       if (optionalFailurePollTimer) {
@@ -1278,6 +1430,14 @@
       if (toastPointerSyncHandle) {
         cancelAnimationFrame(toastPointerSyncHandle);
         toastPointerSyncHandle = 0;
+      }
+      if (heroActionsOffsetRaf) {
+        cancelAnimationFrame(heroActionsOffsetRaf);
+        heroActionsOffsetRaf = null;
+      }
+      if (heroActionsOffsetTimer) {
+        clearTimeout(heroActionsOffsetTimer);
+        heroActionsOffsetTimer = null;
       }
       toastPointerTrackerReady = false;
       toastPointerPosition = null;
@@ -1297,6 +1457,8 @@
     state.scrollToTop = scrollToTop;
     state.setThemeMode = setThemeMode;
     state.togglePlanConfig = togglePlanConfig;
+    state.markPlanConfigDisplayRulesHintSeen = markPlanConfigDisplayRulesHintSeen;
+    state.markPlanConfigOwnershipHintSeen = markPlanConfigOwnershipHintSeen;
     state.isPlanConfigSectionCollapsed = isPlanConfigSectionCollapsed;
     state.togglePlanConfigSectionCollapsed = togglePlanConfigSectionCollapsed;
     state.markEquipRefiningNavHintSeen = markEquipRefiningNavHintSeen;
@@ -1313,6 +1475,7 @@
     state.snapshotToastLeaveRects = snapshotToastLeaveRects;
     state.pushToastNotice = pushToastNotice;
     state.dismissToastNotice = dismissToastNotice;
+    state.dismissToastNoticeBySignature = dismissToastNoticeBySignature;
     state.pauseToastNotice = pauseToastNotice;
     state.resumeToastNotice = resumeToastNotice;
     state.isToastNoticePaused = isToastNoticePaused;

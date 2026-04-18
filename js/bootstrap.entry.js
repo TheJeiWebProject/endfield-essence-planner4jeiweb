@@ -522,6 +522,7 @@
       optional_modal_detail_resources: "失败资源：{resources}",
       optional_modal_detail_non_blocking: "影响说明：仅影响可选功能，不影响核心功能。",
       optional_feature_pinyin: "拼音搜索",
+      optional_feature_turnstile: "登录人机验证",
       optional_feature_i18n: "扩展语言支持",
       optional_feature_notice_content: "公告与说明内容",
       optional_feature_sponsor_data: "赞助名单展示",
@@ -606,6 +607,7 @@
       optional_modal_detail_resources: "失敗資源：{resources}",
       optional_modal_detail_non_blocking: "影響說明：僅影響可選功能，不影響核心功能。",
       optional_feature_pinyin: "拼音搜尋",
+      optional_feature_turnstile: "登入人機驗證",
       optional_feature_i18n: "擴展語言支援",
       optional_feature_notice_content: "公告與說明內容",
       optional_feature_sponsor_data: "贊助名單展示",
@@ -691,6 +693,7 @@
       optional_modal_detail_resources: "Failed resources: {resources}",
       optional_modal_detail_non_blocking: "Impact: optional features only, core functionality remains available.",
       optional_feature_pinyin: "Pinyin search",
+      optional_feature_turnstile: "Login verification",
       optional_feature_i18n: "Extended language support",
       optional_feature_notice_content: "Announcement content",
       optional_feature_sponsor_data: "Sponsor list display",
@@ -779,6 +782,7 @@
       optional_modal_detail_resources: "失敗したリソース：{resources}",
       optional_modal_detail_non_blocking: "影響：任意機能のみ。コア機能は利用可能です。",
       optional_feature_pinyin: "ピンイン検索",
+      optional_feature_turnstile: "ログイン認証",
       optional_feature_i18n: "追加言語サポート",
       optional_feature_notice_content: "お知らせ内容表示",
       optional_feature_sponsor_data: "スポンサー一覧表示",
@@ -1226,19 +1230,6 @@
     if (!optionalScriptConfigs || typeof optionalScriptConfigs !== "object") {
       optionalScriptConfigs = {};
     }
-    var analyticsBootstrapSrc = "./js/analytics.bootstrap.js";
-    if (!optionalScriptConfigs[analyticsBootstrapSrc]) {
-      optionalScriptConfigs[analyticsBootstrapSrc] = {
-        featureKey: "analytics",
-        retryDelayMs: 1200,
-        maxRetries: 1,
-      };
-    }
-    if (typeof optionalScriptConfigs[analyticsBootstrapSrc].validate !== "function") {
-      optionalScriptConfigs[analyticsBootstrapSrc].validate = function () {
-        return typeof window.__loadAnalyticsNow === "function";
-      };
-    }
     var resourceRuntime = null;
 
     var finish = function () {
@@ -1338,13 +1329,6 @@
 
     var optionalReporter = optionalApi.createOptionalFailureReporter({ bt: bt });
     var reportOptionalResourceFailure = function (entry, reportOptions) {
-      if (entry && typeof entry === "object") {
-        var featureKey = String(entry.featureKey || "");
-        var src = String(entry.src || entry.label || entry.resource || "");
-        if (featureKey === "analytics" || src === analyticsBootstrapSrc) {
-          return null;
-        }
-      }
       return optionalReporter.reportOptionalResourceFailure(entry, reportOptions);
     };
     resourceRuntime = resourcesApiRuntime.createResourceRuntime({
@@ -1417,51 +1401,13 @@
         })
       );
     });
-    var optionalScripts = Object.keys(optionalScriptConfigs).filter(function (src) {
-      return src !== analyticsBootstrapSrc;
-    });
+    var optionalScripts = Object.keys(optionalScriptConfigs);
     var optionalScriptPromise = runtimePreludePromise.then(function () {
       return Promise.all(
         optionalScripts.map(function (src) {
           return loadOptionalScriptWithRetry(src, optionalScriptConfigs[src], runId);
         })
       );
-    });
-    var triggerAnalyticsNow = function () {
-      if (typeof window.__loadAnalyticsNow !== "function") return;
-      try {
-        // Intentionally eager: capture real startup timing under first-screen contention.
-        window.__loadAnalyticsNow();
-      } catch (error) {
-        reportNonFatalDiagnostic({
-          operation: "bootstrap.analytics-preload",
-          kind: "analytics-load-failed",
-          resource: "window.__loadAnalyticsNow",
-          errorName: String((error && error.name) || "Error"),
-          errorMessage: String((error && error.message) || "analytics preload failed"),
-          optionalSignature: "bootstrap.analytics-preload",
-        });
-      }
-    };
-    var analyticsBootstrapPromise = runtimePreludePromise.then(function () {
-      return loadOptionalScriptWithRetry(
-        analyticsBootstrapSrc,
-        optionalScriptConfigs[analyticsBootstrapSrc],
-        runId
-      );
-    });
-    analyticsBootstrapPromise.then(function () {
-      if (typeof window.__loadAnalyticsNow !== "function") {
-        reportNonFatalDiagnostic({
-          operation: "bootstrap.analytics-script",
-          kind: "analytics-bootstrap-load-failed",
-          resource: "./js/analytics.bootstrap.js",
-          errorName: "AnalyticsBootstrapUnavailable",
-          errorMessage: "analytics bootstrap load failed",
-          optionalSignature: "bootstrap.analytics-script",
-        });
-      }
-      triggerAnalyticsNow();
     });
     var shellReadyPromise = new Promise(function (resolve) {
       var guard = 0;

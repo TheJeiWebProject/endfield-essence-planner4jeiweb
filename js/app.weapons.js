@@ -563,19 +563,10 @@
     };
     reportWeaponDataIntegrityWarning(dataIntegrityWeaponAttrRows.value);
 
-    const defaultTrackEvent = (name, data) => {
-      if (typeof window === "undefined") return;
-      if (window.umami && typeof window.umami.track === "function") {
-        window.umami.track(name, data);
-      }
-    };
-    const trackEvent = typeof state.trackEvent === "function" ? state.trackEvent : defaultTrackEvent;
-
     const setWeaponOwned = (weapon, owned) => {
       if (!weapon || !weapon.name) return;
       const nextOwned = Boolean(owned);
       setWeaponMark(weapon.name, { weaponOwned: nextOwned });
-      trackEvent(nextOwned ? "weapon_mark_owned" : "weapon_mark_unowned", { weapon: weapon.name });
     };
 
     const toggleWeaponOwned = (weapon) => {
@@ -588,9 +579,6 @@
       if (!weapon || !weapon.name) return;
       const nextOwned = Boolean(owned);
       setWeaponMark(weapon.name, { essenceOwned: nextOwned });
-      trackEvent(nextOwned ? "weapon_mark_essence_owned" : "weapon_mark_essence_pending", {
-        weapon: weapon.name,
-      });
     };
 
     const toggleEssenceOwned = (weapon) => {
@@ -787,12 +775,6 @@
           ? ["unowned", "essenceOwned", "fourStar"].filter((key) => hiddenReasonSet.has(key))
           : [];
       const hiddenReasons = formatHiddenReasons(hiddenReasonKeys);
-      const isHiddenOnly = affectsHidden && !isEmpty && effectiveCount === 0;
-      const disabledHintLabel = isEmpty
-        ? translate("nav.none")
-        : isHiddenOnly
-          ? translate("nav.hidden")
-          : translate("nav.none");
       const disabledHintTitle = isEmpty
         ? translate("nav.no_weapons_under_current_filters")
         : hiddenReasons
@@ -805,7 +787,6 @@
         effectiveCount,
         isEmpty,
         hiddenReasons,
-        disabledHintLabel,
         disabledHintTitle,
         isDisabled: count === 0,
       };
@@ -884,21 +865,14 @@
     const pendingCount = computed(() => pendingSelectedWeapons.value.length);
     const selectedNameSet = computed(() => new Set(state.selectedNames.value));
 
-    const toggleWeapon = (weapon, source = "grid") => {
+    const toggleWeapon = (weapon) => {
       if (!weapon || !weapon.name) return;
       const index = state.selectedNames.value.indexOf(weapon.name);
-      const action = index === -1 ? "select" : "deselect";
       if (index === -1) {
         state.selectedNames.value.push(weapon.name);
       } else {
         state.selectedNames.value.splice(index, 1);
       }
-
-      trackEvent("weapon_click", {
-        weapon: weapon.name,
-        action,
-        source,
-      });
     };
 
     const toggleShowWeaponAttrs = () => {
@@ -908,8 +882,12 @@
       }
     };
 
-    const toggleShowWeaponOwnership = () => {
-      state.showWeaponOwnership.value = !state.showWeaponOwnership.value;
+    const toggleShowWeaponOwnershipInList = () => {
+      state.showWeaponOwnershipInList.value = !state.showWeaponOwnershipInList.value;
+    };
+
+    const toggleShowWeaponOwnershipInPlans = () => {
+      state.showWeaponOwnershipInPlans.value = !state.showWeaponOwnershipInPlans.value;
     };
 
     const toggleFilterPanel = () => {
@@ -938,6 +916,78 @@
       state.filterS1.value = [];
       state.filterS2.value = [];
       state.filterS3.value = [];
+    };
+
+    const arrayShallowEqual = (left, right) => {
+      if (left === right) return true;
+      if (!Array.isArray(left) || !Array.isArray(right)) return false;
+      if (left.length !== right.length) return false;
+      for (let index = 0; index < left.length; index += 1) {
+        if (left[index] !== right[index]) return false;
+      }
+      return true;
+    };
+
+    const sanitizeRegionSelection = (selection, regionOptions) => {
+      const orderedOptions = Array.isArray(regionOptions) ? regionOptions.filter(Boolean) : [];
+      if (!orderedOptions.length) return [];
+      const selectedSet = new Set(
+        (Array.isArray(selection) ? selection : []).map((value) => String(value || "").trim()).filter(Boolean)
+      );
+      if (!selectedSet.size) return [];
+      return orderedOptions.filter((item) => selectedSet.has(item));
+    };
+
+    const normalizeRegionSelection = (selection, availableRegions, regionOptions) => {
+      const orderedOptions = Array.isArray(regionOptions) ? regionOptions.filter(Boolean) : [];
+      const orderedAvailable = sanitizeRegionSelection(availableRegions, orderedOptions);
+      if (!orderedAvailable.length) return [];
+      const selected = sanitizeRegionSelection(selection, orderedOptions);
+      if (!selected.length) return [];
+      const selectedSet = new Set(selected);
+      const effective = orderedAvailable.filter((item) => selectedSet.has(item));
+      if (!effective.length || effective.length === orderedAvailable.length) return [];
+      return effective;
+    };
+
+    const getAvailableRegions = () =>
+      sanitizeRegionSelection(
+        state.availableRegions && Array.isArray(state.availableRegions.value) ? state.availableRegions.value : [],
+        state.regionOptions && Array.isArray(state.regionOptions.value) ? state.regionOptions.value : []
+      );
+
+    const effectiveSelectedRegions = computed(() =>
+      normalizeRegionSelection(
+        state.selectedRegions.value,
+        getAvailableRegions(),
+        state.regionOptions && Array.isArray(state.regionOptions.value) ? state.regionOptions.value : []
+      )
+    );
+
+    const isRegionSelected = (region) => {
+      const available = getAvailableRegions();
+      if (!available.includes(region)) return false;
+      const selected = effectiveSelectedRegions.value;
+      if (!selected.length) return true;
+      return selected.includes(region);
+    };
+
+    const toggleRegionFilter = (region) => {
+      const available = getAvailableRegions();
+      if (!available.includes(region)) return;
+      const current = effectiveSelectedRegions.value || [];
+      const nextSet = new Set(current);
+      if (!current.length) {
+        available.forEach((item) => {
+          if (item !== region) nextSet.add(item);
+        });
+      } else if (current.includes(region)) {
+        nextSet.delete(region);
+      } else {
+        nextSet.add(region);
+      }
+      const next = available.filter((item) => nextSet.has(item));
+      state.selectedRegions.value = !next.length || next.length === available.length ? [] : next;
     };
 
     const hasAttributeFilters = computed(
@@ -1101,7 +1151,7 @@
         return;
       }
       const containerSelector = ".weapon-list";
-      const itemSelector = ".weapon-item";
+      const itemSelector = ".weapon-grid-entry";
       const grid = document.querySelector(containerSelector);
       if (!grid) {
         weaponGridVirtual.value = {
@@ -1199,7 +1249,6 @@
       const next = new Set(state.selectedNames.value);
       rows.forEach((weapon) => next.add(weapon.name));
       state.selectedNames.value = Array.from(next);
-      trackEvent("weapon_select_all", { count: rows.length });
     };
 
     watch(
@@ -1256,6 +1305,33 @@
     );
 
     watch(
+      [
+        () => getAvailableRegions().slice(),
+        () => (Array.isArray(state.selectedRegions.value) ? state.selectedRegions.value.slice() : []),
+      ],
+      ([available, selected]) => {
+        if (!available.length) return;
+        const normalized = normalizeRegionSelection(
+          selected,
+          available,
+          state.regionOptions && Array.isArray(state.regionOptions.value) ? state.regionOptions.value : []
+        );
+        if (arrayShallowEqual(selected, normalized)) return;
+        state.selectedRegions.value = normalized;
+      },
+      { immediate: true }
+    );
+
+    watch(
+      effectiveSelectedRegions,
+      (value) => {
+        if (!state.effectiveSelectedRegions || typeof state.effectiveSelectedRegions !== "object") return;
+        state.effectiveSelectedRegions.value = Array.isArray(value) ? value.slice() : [];
+      },
+      { immediate: true }
+    );
+
+    watch(
       [filteredWeapons, state.showWeaponAttrs, () => state.currentView.value],
       scheduleWeaponGridWindow,
       { immediate: true }
@@ -1282,6 +1358,7 @@
     state.customWeapons = customWeaponsRef;
     state.customWeaponDraft = customWeaponDraftRef;
     state.customWeaponError = customWeaponErrorRef;
+    state.sanitizeCustomWeapons = sanitizeCustomWeapons;
     state.addCustomWeapon = addCustomWeapon;
     state.removeCustomWeapon = removeCustomWeapon;
     state.resetCustomWeaponDraft = resetCustomWeaponDraft;
@@ -1329,12 +1406,15 @@
     state.isEssenceOwnedForPlanning = isEssenceOwnedForPlanning;
     state.toggleWeapon = toggleWeapon;
     state.toggleShowWeaponAttrs = toggleShowWeaponAttrs;
-    state.toggleShowWeaponOwnership = toggleShowWeaponOwnership;
+    state.toggleShowWeaponOwnershipInList = toggleShowWeaponOwnershipInList;
+    state.toggleShowWeaponOwnershipInPlans = toggleShowWeaponOwnershipInPlans;
     state.toggleFilterPanel = toggleFilterPanel;
     state.clearSelection = clearSelection;
     state.toggleFilterValue = toggleFilterValue;
     state.clearAttributeFilters = clearAttributeFilters;
     state.hasAttributeFilters = hasAttributeFilters;
+    state.isRegionSelected = isRegionSelected;
+    state.toggleRegionFilter = toggleRegionFilter;
     state.filteredWeapons = filteredWeapons;
     state.visibleFilteredWeapons = visibleFilteredWeapons;
     state.hiddenInSelectorSummary = hiddenInSelectorSummary;
@@ -1343,7 +1423,6 @@
     state.getSelectorHiddenReason = getSelectorHiddenReason;
     state.allFilteredSelected = allFilteredSelected;
     state.selectAllWeapons = selectAllWeapons;
-    state.trackEvent = trackEvent;
     state.dismissAttrHint = dismissAttrHint;
   };
 })();

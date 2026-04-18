@@ -4,6 +4,11 @@
   modules.initRecommendationDisplay = function initRecommendationDisplay(ctx, state) {
     const { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } = ctx;
 
+    const getEffectiveSelectedRegions = () =>
+      state.effectiveSelectedRegions && Array.isArray(state.effectiveSelectedRegions.value)
+        ? state.effectiveSelectedRegions.value
+        : [];
+
     const reorderForTutorial = (list) => {
       if (!state.tutorialActive.value || state.tutorialStepKey.value !== "base-pick") {
         return list;
@@ -20,12 +25,18 @@
     const hasVisibleRows = (scheme) =>
       Boolean(scheme && Array.isArray(scheme.weaponRows) && scheme.weaponRows.length);
 
+    const filterByRegion = (scheme) => {
+      const selected = getEffectiveSelectedRegions();
+      if (!selected || !selected.length) return true;
+      return selected.includes(scheme.dungeonRegion);
+    };
+
     const displayPrimaryRecommendations = computed(() =>
-      reorderForTutorial(state.primaryRecommendations.value).filter(hasVisibleRows)
+      reorderForTutorial(state.primaryRecommendations.value).filter(hasVisibleRows).filter(filterByRegion)
     );
 
     const displayExtraRecommendations = computed(() =>
-      reorderForTutorial(state.extraRecommendations.value).filter(hasVisibleRows)
+      reorderForTutorial(state.extraRecommendations.value).filter(hasVisibleRows).filter(filterByRegion)
     );
 
     const displayRecommendations = computed(() => {
@@ -215,6 +226,59 @@
       });
     };
 
+    const coverageSummary = computed(() => {
+      const targets = Array.isArray(state.selectedWeapons.value) ? state.selectedWeapons.value : [];
+      if (!targets.length) return null;
+      if (state.recommendationDataIssue && state.recommendationDataIssue.value) return null;
+
+      const targetNames = targets.map((weapon) => weapon && weapon.name).filter(Boolean);
+      if (!targetNames.length) return null;
+
+      const allSchemes = Array.isArray(state.recommendations.value) ? state.recommendations.value : [];
+      if (!allSchemes.length) return null;
+
+      const shownSchemes = Array.isArray(displayRecommendations.value)
+        ? displayRecommendations.value
+        : [];
+      const coveredNames = new Set();
+
+      shownSchemes.forEach((scheme) => {
+        const names = Array.isArray(scheme.effectiveSelectedMatchNames)
+          ? scheme.effectiveSelectedMatchNames
+          : scheme.selectedMatchNames;
+        if (!Array.isArray(names)) return;
+        names.forEach((name) => {
+          if (name) coveredNames.add(name);
+        });
+      });
+
+      const missingNames = targetNames.filter((name) => !coveredNames.has(name));
+      if (!missingNames.length) return null;
+
+      const selectedRegions = getEffectiveSelectedRegions();
+      const allCoveredNames = new Set();
+      allSchemes.forEach((scheme) => {
+        const names = Array.isArray(scheme.effectiveSelectedMatchNames)
+          ? scheme.effectiveSelectedMatchNames
+          : scheme.selectedMatchNames;
+        if (!Array.isArray(names)) return;
+        names.forEach((name) => {
+          if (name) allCoveredNames.add(name);
+        });
+      });
+      const regionFilterReducedCoverage =
+        selectedRegions.length > 0 && targetNames.some((name) => allCoveredNames.has(name) && !coveredNames.has(name));
+
+      return {
+        totalSelected: targetNames.length,
+        bestMatchCount: coveredNames.size,
+        coveredNames: Array.from(coveredNames),
+        missingNames,
+        hasGap: true,
+        cause: regionFilterReducedCoverage ? "regionFilter" : "coverage",
+      };
+    });
+
     const fallbackPlan = computed(() => {
       const targets = state.selectedWeapons.value;
       if (!targets.length) return null;
@@ -326,6 +390,7 @@
       }
     );
 
+    state.coverageSummary = coverageSummary;
     state.displayRecommendations = displayRecommendations;
     state.displayDividerIndex = displayDividerIndex;
     state.visibleDisplayRecommendations = visibleDisplayRecommendations;

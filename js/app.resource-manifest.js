@@ -32,12 +32,6 @@
           retryDelayMs: 1200,
           maxRetries: 1,
         },
-      "./js/analytics.bootstrap.js": {
-        featureKey: "analytics",
-        timeoutMs: 12000,
-        retryDelayMs: 1200,
-        maxRetries: 1,
-      },
       },
     },
     app: {
@@ -58,7 +52,6 @@
         "./js/app.storage.recovery.js",
         "./js/app.storage.diagnostic.js",
         "./js/app.storage.js",
-        "./js/app.analytics.js",
         "./js/app.embed.js",
         "./js/app.perf.js",
         "./js/app.background.js",
@@ -69,6 +62,7 @@
         "./js/app.recommendations.display.js",
         "./js/app.modals.js",
         "./js/app.update.js",
+        "./js/app.sync.js",
         "./js/app.media.js",
         "./js/templates.plan-config.js",
         "./js/templates.equip-refining.js",
